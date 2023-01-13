@@ -1,0 +1,96 @@
+* FARKOS: Farsyte returns to kOS
+
+Many years ago, I enjoyed many (many!) hours of tinkering with Kerbal
+Space Program, including fiddling around with the "kOS" add-on.
+
+This project will start with a clean slate, and try to build up a
+reasonable flight control framework to capture interesting bits of kOS
+scripting that accomplish specific tasks, as well as methods to allow
+compising the parts together to build larger missions.
+
+I want to avoid "inheriting old mistakes" -- some of the code I used
+years ago was awkward to use or to maintain, and I long thought that
+if I were to do it all over, I would build differently.
+
+Now is that mythical "throw it all out and start over" point.
+
+Back then, I started by scripting "just what I need today" so the code
+tended to be a bit ... cranky. This time, I want to start with the
+basic foundations and what I want the frame to look like, then work at
+building them up and fleshing them out.
+
+* Compilation over Minification
+
+Best practice for flight control software is to author and maintain
+it in a form that maximizes readability, knowing that it what is
+placed onto the vessel will be a processed form.
+
+Naive use of kOS involves placing actual KerboScript source code onto
+the vessel, which risks overflowing the limited storage on the vessel
+to store the formatting whitespace, comments, and readable names that
+are needed to make the code readable.
+
+    COPYPATH("0:/myprog1", "").
+    RUNPATH("myprog1").
+
+kOS at its core runs compiled code, transparently produced when a
+source file is executed, but we can also manually convert the source
+files into the compiled version.
+
+    compile "0:/myprog1.ks" to "0:/myprog1.ksm".
+    copypath("0:/myprog1", "").
+    runpath("myprog1").
+
+* Stage One: module system and bootstrap
+
+kOS has no formal package model -- the idea is that you load up a
+source file and run it, and maybe it runs other files.
+
+I want to be able to have a more flexible scheme where the module I am
+working on can import another module, and gain access to its
+facilities, while minimizing conflict between modules.
+
+** The IMPORT function
+
+The desire to have modules loaded on demand, without polluting the
+global namespace, requires that this is mediated by calling a function
+that returns a value used to interact with the module. A global function
+called ~import~ can be written to satisfy this, and the intended usage
+should match this example code:
+
+#+BEGIN_SRC ks
+  local utilitypackage is import("utilitypackage").
+  local data is utilitypackage:data.
+  local result is utilitypackage:getter().
+  utilitypackage:action(result).
+#+END_SRC
+
+Requirements for the ~import~ method:
+
+It shall exist in the global namespace before control is turned over
+to code normally customized for each mission or each class of vessel.
+
+It shall retain a lexicon of successfully loaded modules, so it can
+immediately provide the module object to callers when the module is
+already present.
+
+Otherwise, the module source on the vessel is updated from the archive
+and interpreted; during this process, the module sources will indicate
+the value to be returned by the ~import~ call.
+
+Updating the module sources from the archive will search a short list
+of folders: one specfiic to the mission (using the ship name), one
+generic to the vessel class (ship name up to the last / character),
+and one that is common to all missions.
+
+If there is no connection to the archive, the ~import~ process will
+skip attempting to update, and reload from a copy of the module that
+remains on the vessel from a prior boot.
+
+It is an error to import a module for which there is no source, so
+missions should be careful to import all modules they need at least
+once, while connected to the archive, before they might reboot. This
+can and should be done before launch, as the process of loading
+modules may take some time, during which kOS will not be otherwise
+running code managing the mission.
+
