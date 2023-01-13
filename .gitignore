@@ -1,0 +1,8 @@
+[.]*
+*~
+[#]*[#]
+!.gitignore
+
+*.ksm
+
+auto_stage.ks
