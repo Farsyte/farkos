@@ -21,8 +21,14 @@ export({
     lock steering to retrograde.
     wait until stage:ready. stage.
 
-    wait until altitude < 4000.
+    wait until altitude < 40000.
+    lock steering to srfretrograde.
+
+    wait until altitude < 10000.
     lock steering to up.
+
+    wait until altitude < 4000.
     wait until stage:ready. stage.
+    unlock steering.
     wait until false.
 }).
