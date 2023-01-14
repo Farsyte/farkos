@@ -1,0 +1,10 @@
+* farkos-D flight 1: science check
+
+This flight used only the top bit of the stack down through science
+to verify that we can run experiments, and transfer results back to
+storge, without a scientist kerbal going EVA.
+
+The vessel was recovered with about 11 science collected from the
+launchpad.
+
+Mission Successful.
