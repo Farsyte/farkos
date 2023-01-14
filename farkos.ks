@@ -58,8 +58,10 @@
         for folder in path {
             local copy_from is folder + module_name.
             if exists(copy_from) {
-                compile copy_from+".ks" to copy_from+".ksm".
-                copypath(copy_from+".ksm", "").
+                local object_folder is "0:/ksm/".
+                local object_file is object_folder+module_name+".ksm".
+                compile copy_from+".ks" to object_file.
+                copypath(object_file, "").
                 return.
             }
         }
