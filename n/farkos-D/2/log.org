@@ -1,0 +1,54 @@
+* Farkos-D/2 mission
+
+
+- [ ] Gather telemetry during ascent phase
+  - [ ] ascent phase log contains:
+    - [ ] mission elapsed seconds
+    - [ ] altitude in meters
+    - [ ] commanded pitch
+  - [ ] Assure telemetry is Archived
+  - [ ] farkos:st() returns true if file is copied
+
+- [ ] Automate Gathering of Science
+
+- [X] Ability to do EVA
+- [X] fix launchpad to allow 35t spacecraft
+
+- [X] Engine(s) and fuel for deorbit (circ delta-V minus 600 m/s)
+- [X] Engine(s) and fuel for deceleration (400 m/s)
+- [X] Science Experiments present
+- [X] kOS Command Processor
+- [X] Command Capsule
+  - [X] Separator
+  - [X] Heat Shield
+  - [X] Crew Cabin (pilot + tourist)
+- [X] Science Storage (clip into capsule)
+- [X] Parachute
+
+- [ ] Launch phase through clearing the grantry
+- [ ] Ascend along a pitch program
+- [ ] Coast to Apoapsis
+- [ ] Circularize Orbit
+- [ ] Gathering of Science
+- [ ] Do EVA
+- [ ] Transfer Science to Storage
+- [ ] Discard all but landing capsule
+- [ ] Deploy Parachute
+
+
+
+
+
+
+
+
+
+
+
+
+- Able to carry a Tourist
+- Able to collect Science
+- Launch to Space
+- Establish circular orbit
+- Return from Space
+- Land Safely
