@@ -113,10 +113,9 @@ local farkos is import("farkos").
 
     local a is "auto_stage.ks".
     log " " to a.
-    deletepath("auto_stage").
+    deletepath(a).
 
-    log "{ parameter _. // the setstage package object" to a.
-    log "local m is _:m. local e is _:e. local f is _:f." to a.
+    log "{ parameter e, f." to a.
     log " " to a.
     set closebraces to "}".
 
@@ -133,17 +132,16 @@ local farkos is import("farkos").
       // script can return to the mission control script
       // leaving the logic running in the background.
 
-      log "set stage_check_at to time:seconds+2." to a.
-      log "when time:seconds >= stage_check_at" to a.
+      log "set ss_t to time:seconds+2." to a.
+      log "when time:seconds >= ss_t" to a.
 
       // Do not stage if doing so would discard any engines
       // that are not yet in FLAMEOUT, using the list of engines
       // prepared above.
 
-      set n to e[s]:length. 
+      set n to e[s]:length.
       FROM { set i to 0. } UNTIL i >= n STEP { set i to i+1. } DO {
         log "and e["+s+"]["+i+"]:flameout"
-          +"  // "+e[s][i]:title
           to a.
       }
 
@@ -155,7 +153,6 @@ local farkos is import("farkos").
       set i to 0. until i >= n {
         log "and f["+s+"]["+i+"]:mass"
           +" < "+(f[s][i]:drymass + 0.001)
-          +" // "+f[s][i]:title
           to a.
           set i to i+1.
       }
@@ -164,28 +161,27 @@ local farkos is import("farkos").
       // unit of liquid fuel remaining somewhere in the ship,
       // and this last clause is written in such a way that
       // if it fails, the script stops doing work.
-      
+
       log "then if ship:liquidfuel > 1 {" to a.
 
       // Cut warp, and stage.
       // Document the parts that are activated in this stage.
-      log "SET WARP TO 0. WAIT UNTIL STAGE:READY. STAGE. // "+s to a.
-      for p in m[s] {
-      log "// ACTIVATE "+p:title to a. }
+      log "SET WARP TO 0. WAIT UNTIL STAGE:READY. STAGE." to a.
 
       log " " to a.
 
       set closebraces to closebraces + "}".
       set s to s-1.
     }
-    log closebraces+" // end of output from gen_stage." to a.
+    log closebraces to a.
 
     // Downlink the generated script to the Ground Archive.
     farkos:st(a).
+    return a.
   }
 
   // setstage:go() -- generate auto_stage.ks for current ship.
-  
+
   function go {
 
     // assure the lists are clear when we start
@@ -198,7 +194,7 @@ local farkos is import("farkos").
     add_subtree(-1, ship:rootpart).
 
     // generate auto_stage.ks from the list
-    generate_ks().
+    return generate_ks().
   }
 
   // each craft using the "launch" package will import setstage.ks

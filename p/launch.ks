@@ -23,14 +23,13 @@ export({ parameter launch_azimuth.
     farkos:ev("push GO to launch").
   wait until availablethrust > 0.
 
-  farkos:ev("launch ...").
   lock steering to Cs. lock throttle to Ct.
   wait until ship:velocity:surface:mag > 10.
   lock Cs to heading(launch_azimuth, 90).
 
-  ss:go().
-  runpath("auto_stage.ks",ss).
-  deletepath("auto_stage.ks").
+  local a is ss:go().
+  runpath(a,ss:e,ss:f).
+  deletepath(a).
 
   wait until ship:velocity:surface:mag > 100.
 }).
