@@ -1,6 +1,4 @@
 {
-    print "farkos 1.1.0".
-
     local pack is "0:/p/".
     local home is "0:/n/" + ship:name + "/".
     local path is list(home, home + "../", pack).
@@ -8,15 +6,15 @@
     local pending_modules is stack().
     local module_values is lex().
 
-    local module_being_imported is {
+    function module_being_imported {
         return pending_modules:pop().
     }.
 
-    local imported is { parameter module_name.
+    function imported { parameter module_name.
         return module_values:haskey(module_name).
     }.
 
-    local try_copy_from_path is {
+    function try_copy_from_path {
         parameter module_name.
 
         if not homeconnection:isconnected return.
@@ -32,7 +30,7 @@
         }
     }.
 
-    local try_import_from_local is {
+    function try_import_from_local {
         parameter module_name.
 
         if exists(module_name) {
@@ -41,7 +39,7 @@
         }
     }.
 
-    local st is {
+    function st {
         parameter data_file.
 
         if homeconnection:isconnected {
@@ -49,7 +47,7 @@
         }
     }.
 
-    local ev is {
+    function ev {
         parameter message.
 
         hudtext(message,5,2,24,WHITE,true).
@@ -74,5 +72,5 @@
         module_values:add(module_name, module_value).
     }.
 
-    module_values:add("farkos", lex("st",st,"ev",ev)).
+    module_values:add("farkos", lex("st",st@,"ev",ev@)).
 }
