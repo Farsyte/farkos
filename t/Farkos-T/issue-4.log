@@ -1,0 +1,30 @@
+logging test results to 0:/t/Farkos-T/issue-4.log
+PASS: initial presence of unpersisted data
+PASS: value of unpersisted data (default to zero).
+  expected: 0
+  observed: 0
+PASS: value of unpersisted data (default specified).
+  expected: 37
+  observed: 37
+PASS: presence of unpersisted data after get
+PASS: presence of unpersisted data after setting another item
+PASS: get returns set value
+  expected: 42
+  observed: 42
+logging test results to 0:/t/Farkos-T/issue-4.log
+PASS: initial presence of unpersisted data
+PASS: value of unpersisted data (default to zero).
+  expected: 0
+  observed: 0
+PASS: value of unpersisted data (default specified).
+  expected: 37
+  observed: 37
+PASS: presence of unpersisted data after get
+PASS: presence of unpersisted data after setting another item
+PASS: get returns set value
+  expected: 42
+  observed: 42
+PASS: phase is present on startcount 2
+PASS: phase is correct on startcount 2
+  expected: 1
+  observed: 1
