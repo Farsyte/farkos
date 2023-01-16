@@ -5,19 +5,12 @@
         "sync", sync@,
         "set", set@,
         "has", has@,
-        "get", get@,
-        "reset", reset@).
+        "get", get@).
     export(persist).
 
     local filename is "persist.json".
 
     local persisted is choose readjson(filename) if exists(filename) else lex().
-
-    // completely reset all persisted data.
-    function reset {
-        persisted:clear().
-        delete(filename).
-    }
 
     //    Allow modules to have data that persists across reboots.
     //    Using a value that is not SERIALIZABLE is a coding error,
