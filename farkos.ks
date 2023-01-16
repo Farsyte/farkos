@@ -1,4 +1,12 @@
 {
+
+    // Add methods here that SHOULD HAVE BEEN
+    // part of the standard kOS library.
+
+    global clamp is { parameter lo, hi, val.
+        return max(lo, min(hi, val)).
+    }.
+
     local pack is "0:/p/".
     local home is "0:/n/" + ship:name + "/".
     local path is list(home, home + "../", pack).

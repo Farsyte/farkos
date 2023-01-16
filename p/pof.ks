@@ -55,7 +55,7 @@
         lock throttle to Ct. lock steering to Cs.
 
         lock Af to alt:radar / orbit_altitude.
-        lock Cp to min(90, max(0, 90 - 90 * Af^0.5)).
+        lock Cp to 90*(1 - sqrt(Af)).
 
         // we want to thrust along our current orbit at the selected pitch.
         // just in case we have not yet established any horizontal velocity,
@@ -106,10 +106,10 @@
 
             lock Cs to lookdirup(velocity_error,facing:topvector).
 
-            lock twr to max(0.01, maxthrust / mass).
+            lock twr to clamp(0.01, 10, maxthrust / mass).
             lock ae to vang(facing:vector,velocity_error).
-            lock ka to max(0,max_facing_error-ae)/max_facing_error.
-            lock Ct to min(1,max(0,ka*throttle_gain*error_magnitude/twr)).
+            lock ka to clamp(0,1,(max_facing_error-ae)/max_facing_error).
+            lock Ct to clamp(0.01,1,ka*throttle_gain*error_magnitude/twr).
 
             wait until error_magnitude <= good_enough or maxthrust <= 0.
         }
@@ -121,6 +121,13 @@
     }
 
     function pause {
+        parameter duration is 0.
+
+        if duration > 0 {
+            wait duration.
+            return.
+        }
+
         farkos:ev("activate RCS to continue.").
         rcs off.
         wait until rcs.
@@ -141,10 +148,10 @@
         set max_angle_error to 15.
 
         lock angle_error to vang(facing:vector, retrograde:vector).
-        lock angle_error_fraction to angle_error / max_angle_error.
+        lock angle_error_fraction to clamp(0, 1, angle_error / max_angle_error).
 
         lock Cs to retrograde.
-        lock Ct to max(0.01, min(1, 1 - angle_error_fraction)).
+        lock Ct to clamp(0.01, 1, 1 - angle_error_fraction).
 
         wait until maxthrust < 0.01 or periapsis <= desired_periapsis.
 
@@ -172,10 +179,10 @@
         set max_angle_error to 15.
 
         lock angle_error to vang(facing:vector, retrograde:vector).
-        lock angle_error_fraction to angle_error / max_angle_error.
+        lock angle_error_fraction to clamp(0,1,angle_error / max_angle_error).
 
         lock Cs to retrograde.
-        lock Ct to max(0.01, min(1, 1 - angle_error_fraction)).
+        lock Ct to clamp(0.01, 1, 1 - angle_error_fraction).
 
         wait until maxthrust < 0.01 or altitude <= min_alt.
 
@@ -187,23 +194,11 @@
     }
 
     function chute {
-        parameter max_alt is 5000, max_spd is 250.
 
-        // explicit initial control settings
-        global Cs is retrograde. global Ct is 0.
-        lock throttle to Ct. lock steering to Cs.
-
-        lock Cs to retrograde.
-
-        lock spd to ship:velocity:surface:mag.
-
-        wait until altitude < max_alt and spd < max_spd.
         farkos:ev("Reconfiguring for landing.").
         GEAR ON.
-        unlock steering.
-        set Ct to 0.
 
-        until false {
+        until stage:number < 1 {
             wait 2.
             wait until stage:ready. stage.
         }

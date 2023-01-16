@@ -42,3 +42,34 @@ our descent stage until we are ready to activate the parachute.
 - [ ] Gathering of Science including EVA reports
 - [ ] Transfer Science to Storage
 - [ ] Land safely using Parachute
+* Mission Log: Y1, D02, 04:35
+
+Before building spacecraft, 130,872 funds.
+Before launch: 112,620 funds.
+
+| Funds    | 130872 |
+| Science  |   31.3 |
+| Launch   | -17052 |
+| Recover  |   2080 |
+| Orbit    |  31200 |
+| Tourists |    ??? |
+| Funds    | 269100 |
+
+Engineeer's report:
+| Item   |  Craft | Limit |
+|--------+--------+-------|
+| Parts  |     30 |    30 |
+| Mass   | 31.853 |   140 |
+| Height |   18.4 |    36 |
+| Width  |    4.5 |    28 |
+| Length |    3.1 |    28 |
+
+Delta-V:
+| Stage |  Twr | Isp |  Atm |  Vac | Time |
+|-------+------+-----+------+------+------|
+|     2 | 2.38 | 250 | 1917 | 2454 | 73.0 |
+|     3 | 1.49 | 265 |  942 | 1102 | 63.3 |
+|     4 | 1.92 | 175 |  837 | 1005 | 42.2 |
+|-------+------+-----+------+------+------|
+| Total |      |     | 3697 | 4561 |      |
+
