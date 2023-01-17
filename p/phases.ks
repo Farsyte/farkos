@@ -178,19 +178,36 @@
     function pause {
         local duration is persist:get("pause_duration", 0, true).
 
+        local t is time:seconds.
+        local stopat is persist:get("pause_finished", t + duration, true).
+        if t < stopat {
+            set Cs to prograde. set Ct to 0.
+            lock steering to Cs.
+            lock throttle to Ct.
+            return stopat - t.
+        }
+
         if duration > 0 {
-            wait duration.
-            return.
+            mission:next_phase().
+            persist:clr("pause_finished").
+            return 1.
+        }
+
+        // RCS based.
+        if RCS {
+            rcs off.
+            persist:clr("pause_rcs_notified").
+            mission:next_phase().
+            return 0.
+
         }
 
         farkos:ev("activate RCS to continue.").
-        rcs off.
-        wait until rcs.
-        farkos:ev("resuming flight plan.").
-        wait 1.
-        rcs off.
-        mission:next_phase().
-        return 0.
+
+        set Cs to prograde. set Ct to 0.
+        lock steering to Cs.
+        lock throttle to Ct.
+        return 10.
     }
 
     function deorbit {
