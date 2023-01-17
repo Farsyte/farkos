@@ -5,6 +5,8 @@
 
     local phases is lex(
         "_get", _get@,
+        "ascent_log", ascent_log@,
+        "descent_log", descent_log@,
         "launch", launch@,
         "stager", stager@,
         "ascent", ascent@,
@@ -32,6 +34,96 @@
         if phases:haskey(phase_nm) return phases[phase_nm].
         farkos:ev("BAD PHASE: '" + phase_nm + "'.").
         return dummy@.
+    }
+
+    local ascent_log_file is "0:/l/" + ship:name + "/ascent.csv".
+    function ascent_log {
+
+        // if we are descending, stop logging.
+        if verticalspeed < -1 {
+            return -1.
+        }
+
+        // if we are above atmosphere, stop the task.
+        if altitude > ship:body:atm:height {
+            return -1.
+        }
+
+        // If we do not have a connection, try again shortly.
+        if not homeconnection:isconnected {
+            return 1.
+        }
+
+        local t is time:seconds.
+        local t0 is persist:get("t0",t,false).
+
+
+        // if we have not yet launched,
+        // clear the log and try agin soon.
+        if t <= t0 {
+            if exists(ascent_log_file)
+                    deletepath(ascent_log_file).
+            return 1.
+        }
+
+        // if the log file does not exist, provide a header line.
+        if not exists(ascent_log_file)
+            log "MET,RAlt,GSpd,OSpd" to ascent_log_file.
+
+        local MET is round(t-t0).
+        local RAlt is alt:radar.
+        local GSpd is velocity:surface:mag.
+        local OSpd is velocity:orbit:mag.
+
+        log list(MET,RAlt,GSpd,OSpd):join(",") to ascent_log_file.
+
+        // schedule next run at the next MET tick.
+        return 1 - mod(t-t0, 1).
+    }
+
+    local descent_log_file is "0:/l/" + ship:name + "/descent.csv".
+    function descent_log {
+
+        // If we do not have a connection, try again shortly.
+        if not homeconnection:isconnected return 1.
+
+        local t is time:seconds.
+        local t0 is persist:get("t0",t,false).
+
+        local MET is round(t - t0).
+
+        // ignore calls within the first 15 seconds of the launch.
+        if MET < 15 {
+            return 1.
+        }
+
+        local RAlt is alt:radar.
+
+        // if we are resting on the ground, terminate the task.
+        if RAlt < 50 {
+            return -1.
+        }
+
+        // if we are ascending in-atmosphere,
+        // clear the log file (if it exists) and try again shortly.
+
+        if verticalspeed>0 or altitude>ship:body:atm:height {
+            if exists(descent_log_file)
+                deletepath(descent_log_file).
+            return 1.
+        }
+
+        // if the log file does not exist, provide a header line.
+        if not exists(descent_log_file)
+            log "MET,RAlt,GSpd,OSpd" to descent_log_file.
+
+        local GSpd is velocity:surface:mag.
+        local OSpd is velocity:orbit:mag.
+
+        log list(MET,RAlt,GSpd,OSpd):join(",") to descent_log_file.
+
+        // schedule next run at the next MET tick.
+        return 1 - mod(t-t0, 1).
     }
 
     // rebooting resets countdown to 10.
@@ -211,7 +303,6 @@
             persist:clr("pause_rcs_notified").
             mission:next_phase().
             return 0.
-
         }
 
         farkos:ev("activate RCS to continue.").
