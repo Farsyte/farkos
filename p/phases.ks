@@ -167,7 +167,7 @@
         lock twr to clamp(0.01, 10, maxthrust / mass).
         lock ae to vang(facing:vector,velocity_error).
         lock ka to clamp(0,1,(max_facing_error-ae)/max_facing_error).
-        lock Ct to clamp(0.01,1,ka*throttle_gain*error_magnitude/twr).
+        lock Ct to clamp(0,1,ka*throttle_gain*error_magnitude/twr).
 
         lock steering to Cs.
         lock throttle to Ct.
@@ -206,10 +206,10 @@
         set max_angle_error to 15.
 
         lock angle_error to vang(facing:vector, retrograde:vector).
-        lock angle_error_fraction to clamp(0, 1, angle_error / max_angle_error).
+        lock angle_error_fraction to angle_error / max_angle_error.
 
         lock Cs to retrograde.
-        lock Ct to clamp(0.01, 1, 1 - angle_error_fraction).
+        lock Ct to clamp(0, 1, 1 - angle_error_fraction).
         lock steering to Cs.
         lock throttle to Ct.
         return 1.
@@ -237,9 +237,9 @@
         set max_angle_error to 15.
 
         lock angle_error to vang(facing:vector, retrograde:vector).
-        lock angle_error_fraction to clamp(0,1,angle_error / max_angle_error).
+        lock angle_error_fraction to angle_error / max_angle_error.
 
-        lock Ct to clamp(0.01, 1, 1 - angle_error_fraction).
+        lock Ct to clamp(0, 1, 1 - angle_error_fraction).
         lock throttle to Ct.
 
         return 1.
