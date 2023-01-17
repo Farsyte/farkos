@@ -34,6 +34,8 @@
         return dummy@.
     }
 
+    // rebooting resets countdown to 10.
+    local countdown is 10.
     function launch {
         set launch_azimuth to persist:get("launch_azimuth", 90, true).
         set launch_rotate to persist:get("launch_rotate", 100, true).
@@ -41,7 +43,17 @@
 
         local tv is time.
         local t is tv:seconds.
-        local t0 is persist:get("t0", t+9.99, true).
+
+        if NOT persist:has("t0") {
+            // do a ten second countdown.
+            if countdown > 0 {
+                farkos:ev("Launch in T-" + countdown).
+                set countdown to countdown - 1.
+                return 1.
+            }
+        }
+
+        local t0 is persist:get("t0", t, true).
 
         if alt:radar >= launch_rotate {
             set Cs to heading(launch_azimuth, 89).
