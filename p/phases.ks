@@ -61,7 +61,7 @@
         if availablethrust = 0 and stage:ready {
             stage.
             farkos:ev(tv:full + " Launch of " + ship:name).
-            persist:set("t0", t).
+            persist:put("t0", t).
         }
 
         if alt:radar >= launch_clear {

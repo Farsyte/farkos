@@ -20,7 +20,7 @@
         bist:f("presence of unpersisted data after get",
             persist:has("neverset")).
 
-        persist:set("magic", 42).
+        persist:put("magic", 42).
 
         bist:t("presence of unpersisted data after setting another item",
             persist:has("magic")).
@@ -29,11 +29,11 @@
             42, persist:get("magic")).
 
         local startcount is 1 + persist:get("startcount").
-        persist:set("startcount", startcount).
+        persist:put("startcount", startcount).
         print "startcount is " + startcount.
 
         if startcount = 1 {
-            persist:set("phase", 1).
+            persist:put("phase", 1).
             print "persisted phase is set to 1. Please cycle power to continue.".
         } else {
             bist:t("phase is present on startcount " + startcount,
