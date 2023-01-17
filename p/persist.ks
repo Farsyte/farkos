@@ -31,6 +31,8 @@
 
         // persisted:add(name, value).
         sync().
+
+        return value.
     }
 
     // persist:has(name) -- determine if name has a persisted value.
@@ -41,15 +43,18 @@
         return persisted:haskey(name).
     }
 
-    // persist:get(name, default) -- return persisted value for name.
+    // persist:get(name, default, doset) -- return persisted value for name.
     // the optional default argument is the value to return if the name
-    // is not persisted; if unspecified, and no value is stored, this
-    // method will return zero.
+    // is not persisted; if unspecified, and no value is present, this
+    // method will return zero. if the optional third parameter is set
+    // to true, and no value is stored, the default will be persisted.
 
     function get {
-        parameter name, default is 0.
+        parameter name, default is 0, doset is false.
 
-        return choose persisted[name] if has(name) else default.
+        if has(name) return persisted[name].
+        if doset set persisted[name] to default.
+        return default.
     }
 
 }
