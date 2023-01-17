@@ -1,4 +1,7 @@
 {
+    // This package was used by the farkos-D missions.
+    // There is no real reason to remove it.
+
     local farkos is import("farkos").
 
     // pof: phases of flight.
