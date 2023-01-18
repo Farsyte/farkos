@@ -14,6 +14,8 @@
             "end")).
 
         mission:bg("stager").
+        mission:bg("ascent_log").
+        mission:bg("descent_log").
 
         mission:go().
 

@@ -3,7 +3,8 @@
 
     local persist is lex(
         "sync", sync@,
-        "set", set@,
+        "put", put@, "set", put@, // "set" deprecated, use "put"
+        "clr", clr@,
         "has", has@,
         "get", get@).
     export(persist).
@@ -22,17 +23,22 @@
         writejson(persisted, filename).
     }
 
-    // persist:set(name, value) -- set persisted value of name
+    // persist:put(name, value) -- put persisted value of name
 
-    function set {
+    function put {
         parameter name, value.
 
         set persisted[name] to value.
-
-        // persisted:add(name, value).
-        sync().
+        persist:sync().
 
         return value.
+    }
+
+    // persist:clr(name) -- remove persisted value of name
+    function clr {
+        parameter name.
+        persisted:remove(name).
+        persist:sync().
     }
 
     // persist:has(name) -- determine if name has a persisted value.
@@ -46,14 +52,14 @@
     // persist:get(name, default, doset) -- return persisted value for name.
     // the optional default argument is the value to return if the name
     // is not persisted; if unspecified, and no value is present, this
-    // method will return zero. if the optional third parameter is set
+    // method will return zero. if the optional third parameter is put
     // to true, and no value is stored, the default will be persisted.
 
     function get {
         parameter name, default is 0, doset is false.
 
-        if has(name) return persisted[name].
-        if doset set persisted[name] to default.
+        if persist:has(name) return persisted[name].
+        if doset return persist:put(name, default).
         return default.
     }
 

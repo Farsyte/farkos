@@ -41,7 +41,7 @@
     function next_phase {
         local phase_in is persist:get("phase", 0, true).
         set phase_in to phase_in + 1.
-        persist:set("phase", phase_in).
+        persist:put("phase", phase_in).
     }
 
     function go {
@@ -50,7 +50,7 @@
         when time:seconds >= next_mission_event then {
             if abort_flag return false.
             local phase_no is clamp(0, phase_func:length-1, persist:get("phase")).
-            persist:set("phase", phase_no).
+            persist:put("phase", phase_no).
             set next_mission_event to time:seconds
                 + clamp(0, 10, phase_func[phase_no]()).
             return true.
