@@ -139,7 +139,7 @@
         if NOT persist:has("t0") {
             // do a ten second countdown.
             if countdown > 0 {
-                farkos:ev("Launch in T-" + countdown).
+                farkos:ev("Launch in T-" + countdown, false).
                 set countdown to countdown - 1.
                 return 1.
             }
@@ -176,16 +176,18 @@
         return 0.1.
     }
 
+    // simple auto-stager: stage when max thrust is zero.
+    // stop when there is no liquid fuel after the current stage.
     function stager {
-        local p is persist:get("stager_period", 2, true).
-        if alt:radar < 100 return p.
+        if alt:radar<100 return 1.
+        if maxthrust>0 return 1.
+        if stage:number<1 return 0.
+        if not stage:ready return 1.
+        stage.
         local l is stage:resourceslex.
-        local tfuel is ship:LiquidFuel.
-        local sfuel is l:SolidFuel:amount.
-        local lfuel is l:LiquidFuel:amount.
-        if sfuel=0 and lfuel=0 and stage:ready stage.
-        if ship:LiquidFuel > lfuel return p.
-        return -1.
+        local tfuel is round(ship:LiquidFuel).
+        local lfuel is round(l:LiquidFuel:amount).
+        return choose 1 if tfuel>lfuel else 0.
     }
 
     function ascent {
@@ -305,7 +307,7 @@
             return 0.
         }
 
-        farkos:ev("activate RCS to continue.").
+        farkos:ev("activate RCS to continue.", false).
 
         set Cs to prograde. set Ct to 0.
         lock steering to Cs.
