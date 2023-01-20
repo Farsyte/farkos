@@ -6,6 +6,7 @@
         "put", put@, "set", put@, // "set" deprecated, use "put"
         "clr", clr@,
         "has", has@,
+        "is", is@,
         "get", get@).
     export(persist).
 
@@ -31,23 +32,32 @@
     }
 
     // persist:put(name, value) -- put persisted value of name
-
+    // avoid work if the value was persisted and did not change
     function put { parameter name, value.
-        set persisted[name] to value.
-        persist:sync().
+        if not is(name, value) {
+            set persisted[name] to value.
+            persist:sync().
+        }
         return value.
     }
 
     // persist:clr(name) -- remove persisted value of name
     function clr { parameter name.
-        persisted:remove(name).
-        persist:sync().
+        if persisted:haskey(name) {
+            persisted:remove(name).
+            persist:sync().
+        }
     }
 
     // persist:has(name) -- determine if name has a persisted value.
-
     function has { parameter name.
         return persisted:haskey(name).
+    }
+
+    // return true if persisted name is equal to value.
+    function is { parameter name, value.
+        return persisted:haskey(name) and
+               persisted[name]=value.
     }
 
     // persist:get(name, default, doset) -- return persisted value for name.
