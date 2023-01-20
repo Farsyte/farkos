@@ -6,6 +6,8 @@
         "abort_mission", abort_mission@,
         "add_phase", add_phase@,
         "add_phases", add_phases@,
+        "get_phase", get_phase@,
+        "set_phase", set_phase@,
         "next_phase", next_phase@,
         "go", go@, "bg", bg@).
     export(mission).
@@ -38,10 +40,14 @@
         }
     }
 
+    function get_phase {
+        return persist:get("phase", 0, true).
+    }
+    function set_phase { parameter phase.
+        persist:put("phase", phase).
+    }
     function next_phase {
-        local phase_in is persist:get("phase", 0, true).
-        set phase_in to phase_in + 1.
-        persist:put("phase", phase_in).
+        set_phase(get_phase()+1).
     }
 
     function go {
