@@ -23,10 +23,21 @@ function mission_inc {
 // for that phase of flight, and returns (promptly!) how long to wait
 // before the next time a mission phase runs.
 
-function mission_add { parameter arg.
-    if arg:istype("List")
-        for a in arg mission_add(a).
-    else mission_plan:add(arg).
+function mission_add { parameter phase_obj.
+    if phase_obj:istype("List")
+        for a in phase_obj mission_add(a).
+    else if phase_obj:istype("Delegate") or phase_obj:istype("String")
+        mission_plan:add(phase_obj).
+    else
+        say("Bad Phase Data Type: "+phase_obj:typename+" "+phase_obj).
+}
+
+function mission_report_phase { parameter phase_obj, force is false.
+    if NOT phase_obj:istype("String") return.
+    if phase_obj="" return.
+    if phase_obj=persist_get("mission_pname", "") and not force return.
+    say("Phase: "+phase_obj).
+    persist_put("mission_pname", phase_obj).
 }
 
 // MISSION_FG: run the mission plan as a FOREGROUND task.
@@ -39,11 +50,16 @@ function mission_add { parameter arg.
 // MISSION_ABORT is checked at the top of each loop.
 
 function mission_fg {
-
+    mission_report_phase(persist_get("mission_pname", ""), true).
     until mission_abort {
         local phase_no is mission_phase().
-        local phase_fn is mission_plan[phase_no].
-        local dt is phase_fn().
+        local phase_obj is mission_plan[phase_no].
+        local dt is 0.
+        if phase_obj:istype("Delegate")
+            set dt to phase_obj().
+        else if phase_obj:istype("String")
+            mission_report_phase(phase_obj).
+        else say("BAD PHASE: "+phase_obj:typename+" "+phase_obj).
         if dt<=0 mission_inc().
         set next_t to time:seconds + abs(dt).
         wait until mission_abort or time:seconds>next_t.
