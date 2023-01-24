@@ -1,6 +1,12 @@
-local libdir is "0:/lib/".
-local homedir is "0:/home/" + ship:name + "/".
-local dirpath is list(homedir, homedir + "../", libdir).
+global libdir is "0:/lib/".
+global homedir is "0:/home/" + ship:name + "/".
+global dirpath is list(homedir, homedir + "../", libdir).
+local package_ran is UniqueSet().
+function clamp { parameter lo, hi, val.
+    if val > hi set val to hi.
+    if val < lo set val to lo.
+    return val.
+}
 function say {
     parameter message.
     parameter do_echo is true.
@@ -19,5 +25,7 @@ function updatefile { parameter filename.
     return object.
 }
 function loadfile { parameter filename.
+    if package_ran:contains(filename) return.
+    package_ran:add(filename).
     runpath(updatefile(filename)).
 }
