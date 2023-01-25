@@ -1,15 +1,17 @@
+
 say("PROJECT: Jovially Hesitant Request").
 say("Purpose: Tourists to Space").
 
 loadfile("mission").
 loadfile("phases").
+loadfile("persist").
 
 lock steering to facing.
 
 mission_bg(bg_stager@).
 
 local launch_azimuth is persist_get("launch_azimuth", 90, true).
-local launch_altitude is persist_get("launch_altitude", 80_000, true).
+local launch_altitude is persist_get("launch_altitude", 72_000, true).
 
 mission_add(LIST(
     "PREFLIGHT",    { // wait for flight engineer to initiate flight with SPACE.
@@ -24,23 +26,23 @@ mission_add(LIST(
         return 1/10. },
     "ASCENT",       { // until we start descending, gravity turn to the east.
         if apoapsis>launch_altitude return 0.
-        lock Af to altitude/launch_altitude.
-        lock Cp to 90*(1-sqrt(Af)).
-        lock Cb to heading(launch_azimuth,0,0):vector*10.
-        lock Ch to VXCL(up:vector,velocity:surface + Cb).
-        lock Cv to Ch:normalized*cos(Cp)+up:vector*sin(Cp).
-        lock Cs to lookdirup(Cv,up:vector).
+        local Af is altitude/launch_altitude.
+        local Cp is 90*(1-sqrt(Af)).
+        local Cb is heading(launch_azimuth,0,0):vector*50.
+        local Ch is VXCL(up:vector,velocity:surface + Cb).
+        local Cv is Ch:normalized*cos(Cp)+up:vector*sin(Cp).
+        local Cs is lookdirup(Cv,up:vector).
         lock steering to Cs.
         lock throttle to 1.
-        return 1. },
-    "ASCENT",       { // until we leave atmosphere, coast pointing into the wind.
+        return 1/10. },
+    "COAST",       { // until we leave atmosphere, coast pointing into the wind.
         if verticalspeed<=0 return 0.
         if altitude>body:atm:height return 0.
         lock steering to lookdirup(srfprograde:vector,up:vector).
         lock throttle to 0.
         return 1. },
     "SPACE",        { // while we are in space, coast pointing up.
-        if altitude<70000 return 0.
+        if altitude<body:atm:height return 0.
         lock steering to lookdirup(up:vector,facing:upvector).
         lock throttle to 0.
         return 1. },
@@ -54,9 +56,9 @@ mission_add(LIST(
         lock steering to heading(launch_azimuth, 90).
         if stage:ready stage.
         return 1. },
-    "LANDING",      { // until we stop descending, keep the nose pointed directly up.
+    "LANDING",      { // until we stop descending, hang from the parachute(s).
         if verticalspeed >= 0 return 0.
-        lock steering to heading(launch_azimuth, 90).
+        unlock steering.
         return 1. },
     "PARKING",      { // until the cows come home, keep the capsule upright.
         lock steering to heading(launch_azimuth, 90).
