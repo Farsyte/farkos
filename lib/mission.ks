@@ -38,6 +38,7 @@ function mission_report_phase { parameter phase_obj, force is false.
     if phase_obj=persist_get("mission_pname", "") and not force return.
     say("Phase: "+phase_obj).
     persist_put("mission_pname", phase_obj).
+    kuniverse:pause().
 }
 
 // MISSION_FG: run the mission plan as a FOREGROUND task.
