@@ -16,6 +16,7 @@ if exists(pfile)  runpath(pfile).
 function persist_put { parameter name, value.
     set persisted[name] to value.
     persist_to_disk().
+    return value.
 }
 
 // PERSIST_CLR: forget what value this name had.
