@@ -116,5 +116,5 @@ function persist_disk_rewrite {
 
 if exists(persist_disk) {
     runpath(persist_disk).
-    persist_disk_rewrite().
+    // persist_disk_rewrite().
 }
