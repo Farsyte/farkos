@@ -1,6 +1,6 @@
 // PERSIST refactor 1
-// each time we change the persist_lexi value of a name,
-// append a line to the persist_lexi script.
+// each time we change the persisted value of a name,
+// append a line to the persisted script.
 //
 // Benefits:
 // - less time spent deleting and rewriting the whole file
@@ -15,18 +15,18 @@ local persist_disk_lines is 0.
 
 // PERSIST package: remember values across a reboot.
 //
-// Persisted values are saved in a "persist_lexi.ks"
+// Persisted values are saved in a "persisted.ks"
 // script on the vessel. This script is run once
 // if it is seen. As values are changed, we rewrite
 // it so that we can restore values after boot.
 
-// PERSIST_HAS: true if name has a value persist_lexi.
+// PERSIST_HAS: true if name has a value persisted.
 
 function persist_has { parameter name.
     return persist_lexi:haskey(name).
 }
 
-// PERSIST_IS: true if name has this value persist_lexi.
+// PERSIST_IS: true if name has this value persisted.
 // called from mission code that uses the name.
 
 function persist_is { parameter name, value.
@@ -48,10 +48,10 @@ function persist_clr { parameter name.
         persist_disk_clr(name).
 }
 
-// PERSIST_GET: recall the persist_lexi value of name.
+// PERSIST_GET: recall the persisted value of name.
 // If there is no value persisted, return the default.
 // If returning the default and commit is true,
-// store this default value as the persist_lexi value.
+// store this default value as the persisted value.
 
 function persist_get { parameter name, default is 0, commit is false.
     if persist_has(name) return persist_lexi[name].
