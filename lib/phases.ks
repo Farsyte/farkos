@@ -36,7 +36,7 @@ function phase_launch {
 }
 
 function phase_ascent {
-    local orbit_altitude is persist_get("orbit_altitude", 80000, true).
+    local orbit_altitude is persist_get("launch_altitude", 80000, true).
 
     if ship:apoapsis >= orbit_altitude and altitude >= body:atm:height return 0.
 
