@@ -10,7 +10,7 @@
 // - rapidly changing peristed values fill local storage
 
 local persist_lexi is lex().
-local persist_disk is "persist_lexi.ks".
+local persist_disk is "persistent.ks".
 local persist_disk_lines is 0.
 
 // PERSIST package: remember values across a reboot.
