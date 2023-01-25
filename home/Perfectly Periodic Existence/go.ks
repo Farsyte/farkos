@@ -20,7 +20,6 @@ mission_add(LIST(
         }
         if stage:ready stage.
         return 1. },
-    "PREFLIGHT",    phase_preflight@,   // wait for flight engineer to initiate flight with SPACE.
     "LAUNCH",       phase_launch@,      // wait for the rocket to get clear of the launch site.
     "ASCENT",       phase_ascent@,      // until apoapsis is in space, steer upward and east.
     "COAST",        phase_launch@,      // until we are above atmosphere, coast up pointing into the wind.
@@ -29,7 +28,9 @@ mission_add(LIST(
     "PAUSE",        {                   // SPACE WELCOMES TOURISTS. Brifely.
         say("Welcome to Orbit.").
         say("Now go home.").
-        return 30. },
+        lock throttle to 0.
+        lock steering to retrograde.
+        return -30. },
     "DEORBIT",      phase_deorbit@,     // until our periapsis is low enough, burn retrograde.
     "FALL",         phase_fall@,        // fall to half of the atmosphere height.
     "DECEL",        phase_decel@,       // decelerate to 1/4th of atmosphere height.
