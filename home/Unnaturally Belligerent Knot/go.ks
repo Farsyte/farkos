@@ -8,19 +8,19 @@ local throttle_pct is 0.
 local accel_gain is -5.
 
 // print "Alas, this requires Custom Action Groups.".
-// 
+//
 // on AG1 {
 //     set commanded_speed to clamp(0,10,0).
 //     say("SPEED: "+commanded_speed).
 //     return true.
 // } print "AG1: stop vehicle.".
-// 
+//
 // on AG2 {
 //     set commanded_speed to clamp(0,10,commanded_speed - 5).
 //     say("SPEED: "+commanded_speed).
 //     return true.
 // } print "AG2: decrease speed.".
-// 
+//
 // on AG3 {
 //     set commanded_speed to clamp(0,10,commanded_speed + 5).
 //     say("SPEED: "+commanded_speed).
@@ -30,7 +30,7 @@ local accel_gain is -5.
 on RCS {
     if RCS {
         if LIGHTS {
-            set commanded_speed to 20.
+            set commanded_speed to 10.
         } else {
             set commanded_speed to 5.
         }
@@ -60,7 +60,8 @@ on LIGHTS {
 
 // very simple autothrottle.
 
-lock twr to maxthrust / ship:mass.
+lock thrust_to_mass_ratio to maxthrust / ship:mass.
+
 lock current_speed to velocity:surface:mag.
 lock speed_error to current_speed - commanded_speed.
 lock commanded_accel to speed_error * accel_gain.
@@ -72,7 +73,7 @@ when speed_error < 0 then { brakes off. return true. }
 
 mission_bg({
     print " ".
-    print "twr:                    " + twr.
+    print "thrust_to_mass_ratio:                    " + thrust_to_mass_ratio.
     print "current_speed:          " + current_speed.
     print "speed_error:            " + speed_error.
     print "commanded_accel:        " + commanded_accel.
@@ -84,4 +85,3 @@ mission_bg({
 lock throttle to clamp(0.1,1.0,commanded_throttle).
 
 wait until false.
-
