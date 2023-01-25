@@ -10,7 +10,7 @@ lock steering to facing.
 
 mission_bg(bg_stager@).
 
-local launch_azimuth is persist_get("launch_azimuth", 90, true).
+local launch_azimuth is persist_get("launch_azimuth", 0, true).
 local launch_altitude is persist_get("launch_altitude", 72_000, true).
 
 mission_add(LIST(
@@ -25,30 +25,24 @@ mission_add(LIST(
         lock throttle to 1.
         return 1/10. },
     "ASCENT",       { // until we start descending, gravity turn to the east.
-        if apoapsis>launch_altitude return 0.
-        local Af is altitude/launch_altitude.
-        local Cp is 90*(1-sqrt(Af)).
-        local Cb is heading(launch_azimuth,0,0):vector*50.
-        local Ch is VXCL(up:vector,velocity:surface + Cb).
-        local Cv is Ch:normalized*cos(Cp)+up:vector*sin(Cp).
-        local Cs is lookdirup(Cv,up:vector).
-        lock steering to Cs.
+        if apoapsis>launch_altitude { print "excess solid fuel: "+ship:solidfuel. return 0. }
+        lock steering to heading(launch_azimuth, 90).
         lock throttle to 1.
         return 1/10. },
     "COAST",       { // until we leave atmosphere, coast pointing into the wind.
         if verticalspeed<=0 return 0.
         if altitude>body:atm:height return 0.
-        lock steering to lookdirup(srfprograde:vector,up:vector).
+        lock steering to heading(launch_azimuth, 90).
         lock throttle to 0.
         return 1. },
     "SPACE",        { // while we are in space, coast pointing up.
         if altitude<body:atm:height return 0.
-        lock steering to lookdirup(up:vector,facing:upvector).
+        lock steering to heading(launch_azimuth, 90).
         lock throttle to 0.
         return 1. },
     "DESCENT",      { // until we are safe to deploy the chute, hold descent attitude.
         if alt:radar<3000 and airspeed<300 return 0.
-        lock steering to srfretrograde.
+        lock steering to heading(launch_azimuth, 90).
         lock throttle to 0.
         return 1. },
     "PARACHUTES",   { // until we have only stage zero remaining, stage (deploy parachutes).
@@ -59,6 +53,7 @@ mission_add(LIST(
     "LANDING",      { // until we stop descending, hang from the parachute(s).
         if verticalspeed >= 0 return 0.
         unlock steering.
+        gear on.
         return 1. },
     "PARKING",      { // until the cows come home, keep the capsule upright.
         lock steering to heading(launch_azimuth, 90).
