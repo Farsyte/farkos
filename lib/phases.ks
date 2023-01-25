@@ -87,8 +87,8 @@ function phase_circ {
     local desired_throttle is clamp(0,1,desired_force/availablethrust).
 
     local facing_error is vang(facing:vector,desired_velocity_change).
-    local ascent_gain is clamp(0,1,1-facing_error/max_facing_error).
-    local discounted_throttle is clamp(0,1,ascent_gain*desired_throttle).
+    local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
+    local discounted_throttle is clamp(0,1,facing_error_factor*desired_throttle).
 
     lock throttle to discounted_throttle.
 

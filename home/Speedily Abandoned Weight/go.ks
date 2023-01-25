@@ -4,7 +4,7 @@ say("Purpose: Orbital Science").
 loadfile("mission").
 loadfile("phases").
 
-local launch_azimuth is persist_get("launch_azimuth", 0, true).
+local launch_azimuth is persist_get("launch_azimuth", -10, true).
 local launch_altitude is persist_get("launch_altitude", 80_000, true).
 
 mission_bg(bg_stager@).
