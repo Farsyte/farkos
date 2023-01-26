@@ -35,6 +35,7 @@ mission_add(LIST(
     "FALL",         phase_fall@,        // fall to half of the atmosphere height.
     "DECEL",        phase_decel@,       // decelerate to 1/4th of atmosphere height.
     "PSAFE",        phase_psafe@,       // fall until safe for parachutes
+    "UNWARP",       { set warp to 0. return 0. },
     "CHUTE",        phase_chute@,       // fall until safe for parachutes
     "GEAR",         phase_gear@,        // extend landing gear.
     "LAND",         phase_land@,        // until we stop descending, keep the nose pointed directly up.
