@@ -42,7 +42,6 @@ function phase_match_apo {
     return 5.
 }
 
-local rv_incline_deadzone is true.
 global match_steering is facing.
 global match_throttle is 0.
 
@@ -52,7 +51,10 @@ function pr { parameter name, value.
 
 // phase_match_incl: match orbital plane
 // matches both inclination and longitude of ascending node
+local phase_match_incl_report_time is 0.
 function phase_match_incl {
+
+    local warprate is kuniverse:timewarp:rate.
 
     local b is body.                        // pr("b",b).              // print "Orbiting: "+b.
 
@@ -116,7 +118,7 @@ function phase_match_incl {
     local b_force is b_accel*ship:mass.         // pr("b_force",b_force).
     local b_throt is b_force/maxthrust.         // pr("b_throt",b_throt).
 
-    local next_dt is 10.        // default to slow period
+    local next_dt is 5.         // default to slow period
     local next_Ct is b_throt.   // default to computed throttle
     local next_Cs is h_s.       // default to upward normal
 
@@ -137,16 +139,17 @@ function phase_match_incl {
         set next_Ct to 0.
     }
 
-    if b_time < 30*kuniverse:timewarp:rate {
-        print "b_time is "+b_time.
-        kuniverse:timewarp:cancelwarp().
+    if warprate>1 and b_time<0 and b_time>-30*warprate {
+        print "cancel "+warprate+"x timewarp: b_time is "+b_time.
+        phase_unwarp().
+        set warprate to 1.
     }
 
-    if next_ct > 0.01 {
+    if next_ct > 0.1 {
         set next_dt to 1/10.
-        if kuniverse:timewarp:rate > 1 {
-            print "phase_match_incl: cancel warp!".
-            set warp to 0.
+        if warprate > 1 {
+            print "phase_match_incl: cancel "+warprate+"x timewarp, next_ct="+next_ct.
+            phase_unwarp().
         }
     }
 
@@ -170,6 +173,18 @@ function phase_match_incl {
     // TODO apply angle-based roll-off of thrust.
     if next_Ct>0 and vang(next_Cs,facing:vector)>30 {
         set next_Ct to 0.
+    }
+
+    if match_throttle=0 and next_Ct>0 {
+        print "phase_match_incl: throttle up to "+next_Ct.
+    }
+
+    if time:seconds>phase_match_incl_report_time and warprate<=1 {
+        set phase_match_incl_report_time to time:seconds+5.
+        // print "rv_incline in progress".
+        // print "  i_r is "+i_r.
+        // print "  b_time is "+b_time.
+        // print "  next_ct is "+next_ct.
     }
 
     // carefully copy the final values of the commands
