@@ -1,34 +1,14 @@
-say("Quickly Concerned Tramp/A01").
+say("Quickly Concerned Tramp").
 say("Contract Satellite Delivery").
 
 loadfile("mission").
 loadfile("phases").
 loadfile("match").
+loadfile("contract").
+
 
 local launch_azimuth is persist_get("launch_azimuth", 90, true).
 local launch_altitude is persist_get("launch_altitude", 80_000, true).
-
-// displayed numbers on contract sheet:
-// | Periapsis                   | 4332992 | m |
-// | Apoapsis                    | 4557075 | m |
-// | Inclination                 |     1.3 | ° |
-// | Longitude of Ascending Node |     269 | ° |
-
-// Contract sheet does NOT specify AOP.
-// HYPOTHESIS: contract may be satisfied if the
-// above values are matched.
-
-persist_get("match_peri", 4332992, true).
-persist_get("match_apo", 4557075, true).
-persist_get("match_inc", 1.3, true).
-persist_get("match_lan", 269, true).
-
-// exact numbers from the save file:
-// | lan                 |  268.97516678505372 |
-// | inclination         |  1.3391382173595772 |
-// | argumentOfPeriapsis |  130.42710157596741 |
-// | sma                 |  5044998.4300980354 |
-// | eccentricity        | 0.02221545390963647 |
 
 mission_bg(bg_stager@).
 
@@ -53,12 +33,24 @@ mission_add(LIST(
     "COAST",        phase_coast@,       // until we are near our apoapsis, coast up pointing prograde.
     "CIRC",         phase_circ@,        // until our periapsis is in space, burn prograde.
     "MATCH_INCL",   phase_match_incl@,  // orbit matching phase 2: approach apoapsis
-    // TODO match periapsis of more eccentric orbits
-    // TODO may need to match argument of periapsis
-    "PARK",       { // no further operations are needed.
-        say(ship:name).
-        say("on station "+round(periapsis/1000)+"x"+round(apoapsis/1000)).
-        return 5. },
+    // TODO match argument of periapsis
+    // TODO match periapsis
+    "")).
+
+// Set up contract parameters.
+// This may include adding steps to the mission plan.
+set_contract().
+
+// Add a standard satellite trailing plan,
+// which is to just say "yes, I'm here."
+mission_add(LIST(
+    "PARK",       { // report we are parked. release controls.
+        say(LIST(
+            ship:name,
+            "Parked at "+round(periapsis/1000)+"x"+round(apoapsis/1000),
+            "Inclined "+round(obt:inclination,1)+"° at "+round(obt:lan)+"°")).
+        unlock throttle. unlock steering.
+        return 10. },
     "")).
 
 mission_bg({    // remind flight engineer to use SPACE to launch.
