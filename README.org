@@ -60,8 +60,48 @@ Dunbaratu responds:
 > that like it does when you pass a position into, say,
 > body:geopositionof(vector).
 
+** LOCK is not just GLOBAL
 
+Historically, LOCK STEERING and LOCK THROTTLE have always operated
+to set the global steering and throttle. This is part of a more
+general mechanism where LOCK IDENTIFER TO EXPRESSION actually
+makes IDENTIFIER a function, available at global scope, that
+evaluates the expression when called.
 
+This is all context.
+
+It turns out that if one function says
+    LOCK MAXF TO <expression>.
+and, later, another function says
+    LOCAL MAXF IS <expression>.
+    ...
+    LOCAL something is somevalue/MAXF.
+things do not go well.
+
+When the second bit of code uses MAXF in an expression, the compiler
+attempts to call MAXF as a function -- as if it were a LOCK -- but
+in this case it is just a value. So, bad times.
+
+One approach is to always decorate the names of LOCK identifiers.
+
+Another approach is to explicitly use
+
+    LOCAL IDENTIFIER is { return <expression>. }.
+and explicitly use it as
+    LOCAL newthing is IDENTIFIER() * foo.
+
+Decorating names to assure they are unique not just in the global
+namespace but also do not conflict with any other locals is going
+to drive me crazy. So will explicitly setting up delegates, but
+that seems more tractable.
+
+The downside is if we have a delegate _FOO, and four different
+delegates all call _FOO(), then we absolutely know from our code
+that we are executing the _FOO code four times.
+
+I'm not sure whether LOCK has this problem or not!
+
+Anyway, this triggered a LOT of code changes.
 
 * Unfortunate Loss of [save 1]
 
@@ -172,4 +212,3 @@ once, while connected to the archive, before they might reboot. This
 can and should be done before launch, as the process of loading
 modules may take some time, during which kOS will not be otherwise
 running code managing the mission.
-
