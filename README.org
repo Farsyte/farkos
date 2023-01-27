@@ -32,6 +32,37 @@ symbol names where appropriate.
 Expect lots of {adverb} {adjective} {object} style names. The name may
 or may not relate to the mission or the vessel.
 
+* Notable Gotchas in KSP and/or kOS
+I started this list when I stumbled over the CREATEORBIT one.
+
+** CREATEORBIT(P,V,Body,T) axes messed up
+
+See https://github.com/KSP-KOS/KOS/issues/3009
+
+Janismac reports:
+
+> From this line I would expect the output 90.
+>     print createorbit(V(1,1234567,1), V(100,100,100), Kerbin, 0):inclination.
+> But the output is 135.
+>
+> Here the output is 45 instead of 90.
+>     print createorbit(V(1,1234567,1), V(-100,100,100), Kerbin, 0):inclination.
+>
+> It seems that CREATEORBIT() uses a different coordinate system where
+> Z is the body rotation axis, instead of the usual Y.
+
+Dunbaratu responds:
+
+> I had a look and yup, you're right. It calls the KSP method
+> Orbit.UpdateFromStateVectors() which apparently uses the same messed
+> up Y/Z axis-swap that KSP sometimes uses for other body-relative
+> calls like in geopositions, and the kOS code doesn't compensate for
+> that like it does when you pass a position into, say,
+> body:geopositionof(vector).
+
+
+
+
 * Unfortunate Loss of [save 1]
 
 The KSP save file that I was using for development is lost.
