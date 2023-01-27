@@ -6,6 +6,13 @@ function phase_unwarp {
     wait until kuniverse:timewarp:issettled.
 }
 
+function phase_decwarp {
+    local warpstep is kuniverse:timewarp:warp.
+    if warpstep<1 return.
+    set kunvierse:timewarp:warp to warpstep-1.
+    wait until kuniverse:timewarp:issettled.
+}
+
 function phase_apowarp {
     wait until kuniverse:timewarp:issettled.
 
@@ -80,43 +87,39 @@ function phase_ascent_old {
 
 function phase_ascent {
 
-    phase_unwarp().
-
     local orbit_altitude is persist_get("launch_altitude", 80000, true).
     local launch_azimuth is persist_get("launch_azimuth", 90, true).
     local ascent_gain is persist_get("ascent_gain", 10, true).
     local max_facing_error is persist_get("ascent_max_facing_error", 90, true).
+    local ascent_apo_grace is persist_get("ascent_apo_grace", 0.5).
 
-    local ra is round(apoapsis).
+    if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height return 0.
 
-    if ra >= orbit_altitude and ra >= body:atm:height return 0.
+    local _steering is {        // simple pitch program
+        local altitude_fraction is clamp(0,1,altitude / orbit_altitude).
+        local pitch_wanted is 90*(1 - sqrt(altitude_fraction)).
+        return heading(launch_azimuth,pitch_wanted,0). }.
 
-    lock altitude_fraction to clamp(0,1,altitude / orbit_altitude).
-    lock pitch_wanted to 90*(1 - sqrt(altitude_fraction)).
+    local _throttle is {        // P conttroller to stop at target apoapsis
+        local current_speed is velocity:orbit:mag.
+        local desired_speed is visviva_v(altitude,orbit_altitude,periapsis).
+        local speed_change_wanted is desired_speed - current_speed.
+        local accel_wanted is speed_change_wanted * ascent_gain.
+        local force_wanted is mass * accel_wanted.
+        local max_thrust is max(0.01, availablethrust).
+        local throttle_wanted is force_wanted / max_thrust.
+        local throttle_wanted_clamped is clamp(0,1,throttle_wanted).
+        local facing_error is vang(facing:vector,steering:vector).
+        local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
+        return throttle_wanted_clamped*facing_error_factor. }.
 
-    lock steering_direction to heading(launch_azimuth,pitch_wanted,0).
-    lock steering to steering_direction.
-
-    // handle time spent staging gracefully.
-    set maxf to max(0.01, availablethrust).
-
-    lock current_speed to velocity:orbit:mag.
-    lock vvvec to visviva_vec(altitude,orbit_altitude,periapsis).
-    lock desired_speed to vvvec:mag.
-    lock speed_change_wanted to desired_speed - current_speed.
-    lock accel_wanted to speed_change_wanted * ascent_gain.
-    lock force_wanted to mass * accel_wanted.
-    lock throttle_wanted to force_wanted / maxf.
-    lock throttle_clamped to clamp(0,1,throttle_wanted).
-
-    lock facing_error to vang(facing:vector,steering_direction:vector).
-    lock facing_error_factor to clamp(0,1,1-facing_error/max_facing_error).
-    lock discounted_throttle to clamp(0,1,facing_error_factor*throttle_clamped).
-
-    lock throttle to discounted_throttle.
+    phase_unwarp().
+    lock steering to _steering().
+    lock throttle to _throttle().
 
     return 5.
 }
+
 
 function phase_coast {
     if verticalspeed<0 return 0.
@@ -138,40 +141,45 @@ function phase_circ {
     local max_facing_error is persist_get("circ_max_facing_error", 5, true).
     local good_enough is persist_get("circ_good_enough", 1, true).
 
-    if ship:LiquidFuel <= 0 { say("Circularize: no fuel.").
-        lock steering to prograde.
-        lock throttle to 0.
-    }
+    if ship:LiquidFuel <= 0 {   // deal with "no fuel" case.
+        say("Circularize: no fuel.").
+        local steering is prograde.
+        local throttle is 0. }
 
-    lock vvvec to visviva_vec(altitude).
-    lock desired_lateral_speed to vvvec:z.
-    lock lateral_direction to vxcl(up:vector,velocity:orbit):normalized.
-    lock desired_velocity to lateral_direction*desired_lateral_speed.
-    lock desired_velocity_change to desired_velocity - velocity:orbit.
+    local _delta_v is {         // compute desired velocity change.
+        local desired_lateral_speed is visviva_v(altitude).
+        local lateral_direction is vxcl(up:vector,velocity:orbit):normalized.
+        local desired_velocity is lateral_direction*desired_lateral_speed.
+        return desired_velocity - velocity:orbit. }.
 
-    if desired_velocity_change:mag <= good_enough {
-        say("circularization complete").
-        print "apoapsis-periapsis spread: "+(apoapsis-periapsis)+" m.".
-        print "final speed error: "+desired_velocity_change:mag+" m/s.".
+    {   // check termination condition.
+        local desired_velocity_change is _delta_v():mag.
+        if desired_velocity_change <= good_enough {
+            say("circularization complete").
+            print "apoapsis-periapsis spread: "+(apoapsis-periapsis)+" m.".
+            print "final speed error: "+desired_velocity_change+" m/s.".
 
-        lock steering to prograde.
-        lock throttle to 0.
-        return 0.
-    }
+            local steering is prograde.
+            local throttle is 0.
+            return 0. } }
 
-    lock desired_steering to lookdirup(desired_velocity_change,facing:topvector).
-    lock steering to desired_steering.
+    local _steering is {        // steer in direction of delta-v
+        return lookdirup(_delta_v(),facing:topvector). }.
 
-    lock maxf to max(0.01, availablethrust).
-    lock desired_accel to throttle_gain * desired_velocity_change:mag.
-    lock desired_force to mass * desired_accel.
-    lock desired_throttle to clamp(0,1,desired_force/maxf).
+    local _throttle is {        // throttle proportional to delta-v
+        local desired_velocity_change is _delta_v().
 
-    lock facing_error to vang(facing:vector,desired_velocity_change).
-    lock facing_error_factor to clamp(0,1,1-facing_error/max_facing_error).
-    lock discounted_throttle to clamp(0,1,facing_error_factor*desired_throttle).
+        local desired_accel is throttle_gain * desired_velocity_change:mag.
+        local desired_force is mass * desired_accel.
+        local max_thrust is max(0.01, availablethrust).
+        local desired_throttle is clamp(0,1,desired_force/max_thrust).
 
-    lock throttle to discounted_throttle.
+        local facing_error is vang(facing:vector,desired_velocity_change).
+        local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
+        return clamp(0,1,facing_error_factor*desired_throttle). }.
+
+    lock steering to _steering().
+    lock throttle to _throttle().
 
     return 5.
 }
