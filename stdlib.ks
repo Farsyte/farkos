@@ -23,6 +23,12 @@ function clamp { parameter lo, hi, val.
     return max(lo,min(hi,val)).
 }
 
+function sgn { parameter v.
+    if v>0 return 1.
+    if v<0 return -1.
+    return 0.
+}
+
 function say {
     parameter message.
     parameter do_echo is true.
