@@ -37,31 +37,65 @@ function get_orbit_to_match {
 // select the launch time based on the longitude of the
 // ascending node of the target orbit.
 
-function phase_match_launch {
-    local target_longitude is persist_get("match_lan", 0).
-    local zero_lon is solarprime_vector.
-    local east_lon is vcrs(zero_lon,body:north).
+function phase_match_lan {
+    local inc is persist_get("match_inc", 0).
+    local match_lan is persist_get("match_lan", 0).
+    local match_lon_lead is persist_get("match_lon_lead", 1).
 
+    if abs(inc)<45 {
+        say("PADHOLD not needed:").
+        say("  inc is "+inc).
+        return 0.
+    }
+
+    if kuniverse:timewarp:rate > 1 return 1.
+    if not kuniverse:timewarp:issettled return 1.
+
+    local launch_lon is ua(match_lan - match_lon_lead).
+
+    local ship_lonvec is vxcl(body:north:vector,up:vector).
+    local ship_coslon is vdot(ship_lonvec,solarprimevector).
+    local ship_sinlon is vdot(ship_lonvec,vcrs(solarprimevector,body:north:vector)).
+    local ship_lon is ua(arctan2(ship_sinlon, ship_coslon)).
+    local delta_lon is ua(launch_lon - ship_lon).
+    local delta_sec is delta_lon * body:rotationperiod/360.
+
+    if delta_sec < 11 {
+        say("PADHOLD released:").
+        say("  delta_lon is "+delta_lon).
+        say("  delta_sec is "+delta_sec).
+        return 0.
+    }
+    if delta_sec > 30 {
+        say("PADHOLD warping:").
+        say("  delta_lon is "+delta_lon).
+        say("  delta_sec is "+delta_sec).
+        kuniverse:timewarp:warpto(time:seconds+delta_sec-15).
+    }
+    return 1.
 }
 
-// phase_match_apo: raise apoapsis to target apoapsis.
+// phase_match_apo: raise apoapsis to target semi-major axis.
 function phase_match_apo {
 
     local match_apo is persist_get("match_apo", 500000, true).
+    local match_peri is persist_get("match_peri", 500000, true).
     local match_gain is persist_get("match_gain", 1, true).
     local match_max_facing_error is persist_get("match_max_facing_error", 15, true).
     local match_apo_grace is persist_get("match_apo_grace", 0.5, true).
 
+    local target_apo is (match_peri+match_apo)/2.
+
     local _delta_v is {     // compute desired change in velocity magnitutde
-        local desired_speed is visviva_v(altitude,match_apo,periapsis).
+        local desired_speed is visviva_v(altitude,target_apo,periapsis).
         local current_speed is velocity:orbit:mag.
         return desired_speed - current_speed. }.
 
     {   // check termination condition.
-        if apoapsis >= match_apo - match_apo_grace {    // SUCCESS.
+        if apoapsis >= target_apo - match_apo_grace {    // SUCCESS.
             lock throttle to 0. lock steering to prograde.
             say("phase_match_apo complete").
-            print "final apoapsis error: "+abs(apoapsis-match_apo)+" m.".
+            print "final apoapsis error: "+abs(apoapsis-target_apo)+" m.".
             print "final speed error: "+abs(_delta_v())+" m/s.".
             return 0. } }
 
@@ -90,6 +124,7 @@ local match_throttle_prev is 0.
 local phase_match_incl_debug is false.
 
 function phase_match_incl {
+
     // TODO consider the case: vdot(h_s,h_t) <= 0
     // ... current logic may end up going the wrong way.
 
@@ -181,7 +216,7 @@ function phase_match_incl {
         // If the time is getting too small for our current time warp rate,
         // then reduce the time warp step.
 
-        if ws>0 and kuniverse:timewarp:rate>1 and b_time<0 and b_time>-30*kuniverse:timewarp:rate {
+        if ws>0 and kuniverse:timewarp:rate>1 and b_time<0 and b_time>-10*kuniverse:timewarp:rate {
             set ws to ws-1.
             print "phase_match_incl: reducing timewarp to step "+ws.
             set kuniverse:timewarp:warp to ws.
