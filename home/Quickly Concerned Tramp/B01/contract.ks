@@ -4,21 +4,19 @@ say(LIST(
     "Satellite to 14,443x13,694 km",
     "Inclined +90° at 258.7°")).
 
-    // Wow. This is higher than The Mun.
-    // Antenna, can generate Power,
-    // has Mystery Goo Unit
-
 loadfile("persist").
 
-// It will be important to carefully pick our launch window
-// to minimize the plane change.
-//
-// Launch at Y001 D05 04:00 gives a -8.54° relative inclination.
-
-local launch_azimuth is persist_get("launch_azimuth", 0, true).
-local launch_altitude is persist_get("launch_altitude", 80_000, true).
+// Establish launch path, if not already persisted.
+// This happens during loadpath("contract") which
+// is before the vessel class GO script will
+// provide values (if unset).
+persist_get("launch_azimuth", -10, true).
+persist_get("launch_altitude", 80_000, true).
 
 function set_contract {
+
+    // Establish contract parameters, if not persisted.
+
     persist_get("match_peri", 13694409, true).
     persist_get("match_apo", 14443787, true).
     persist_get("match_inc", 90.0, true).
@@ -39,4 +37,6 @@ function set_contract {
             return 10.  // refresh banner on hud every 10 seconds.
         }
     )).
+
+    
 }

@@ -20,6 +20,7 @@ mission_bg(bg_stager@).
 
 local countdown is 10.
 mission_add(LIST(
+    "PADHOLD",      phase_match_lan@,   // PADHOLD if highly inclined until good launch time.
     "AUTOLAUNCH", { // initiate unmanned flight.
         if availablethrust>0 return 0.
         lock throttle to 1.
