@@ -29,6 +29,17 @@ function sgn { parameter v.
     return 0.
 }
 
+function ua { parameter ang. // map ang into the 0..360 range.
+    return mod(360+mod(ang, 360),360).
+}
+
+function sa { parameter ang. // map ang into the -180..+180 range
+    set ang to mod(ang, 360).
+    if ang < 180 set ang to ang + 180.
+    if ang > 180 set ang to ang - 180.
+    return ang.
+}
+
 function say {
     parameter message.
     parameter do_echo is true.
