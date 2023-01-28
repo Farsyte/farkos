@@ -6,9 +6,15 @@ loadfile("phases").
 loadfile("match").
 loadfile("contract").
 
-
 local launch_azimuth is persist_get("launch_azimuth", 90, true).
 local launch_altitude is persist_get("launch_altitude", 80_000, true).
+
+function say_banner {
+//    say(LIST(
+//        ship:name,
+//        "Parked at "+round(periapsis/1000)+"x"+round(apoapsis/1000),
+//        "Inclined "+round(obt:inclination,1)+"° at "+round(obt:lan)+"°")).
+}
 
 mission_bg(bg_stager@).
 
@@ -45,10 +51,7 @@ set_contract().
 // which is to just say "yes, I'm here."
 mission_add(LIST(
     "PARK",       { // report we are parked. release controls.
-        say(LIST(
-            ship:name,
-            "Parked at "+round(periapsis/1000)+"x"+round(apoapsis/1000),
-            "Inclined "+round(obt:inclination,1)+"° at "+round(obt:lan)+"°")).
+        say_banner().
         unlock throttle. unlock steering.
         return 10. },
     "")).

@@ -1,42 +1,4 @@
 
-// phase_match_apo: raise apoapsis to target apoapsis.
-function phase_match_apo {
-
-    local match_apo is persist_get("match_apo", 500000, true).
-    local match_gain is persist_get("match_gain", 1, true).
-    local match_max_facing_error is persist_get("match_max_facing_error", 5, true).
-    local match_apo_grace is persist_get("match_apo_grace", 0.5, true).
-
-    local _delta_v is {     // compute desired change in velocity magnitutde
-        local desired_speed is visviva_v(altitude,match_apo,periapsis).
-        local current_speed is velocity:orbit:mag.
-        return desired_speed - current_speed. }.
-
-    {   // check termination condition.
-        if apoapsis >= match_apo - match_apo_grace {    // SUCCESS.
-            lock throttle to 0. lock steering to prograde.
-            say("phase_match_apo complete").
-            print "final apoapsis error: "+abs(apoapsis-match_apo)+" m.".
-            print "final speed error: "+abs(_delta_v())+" m/s.".
-            return 0. } }
-
-    local _throttle is {    // compute throttle setting
-        local accel_wanted is match_gain * _delta_v().
-        local force_wanted is mass * accel_wanted.
-        local max_thrust is max(0.01, availablethrust).
-        local des_throt is  force_wanted /  max_thrust.
-        local throt_clamp is clamp(0,1, des_throt).
-        local facing_error is vang(facing:vector,steering:vector).
-        local facing_error_factor is clamp(0,1,1- facing_error/match_max_facing_error).
-        return clamp(0,1, facing_error_factor* throt_clamp). }.
-
-    phase_unwarp().
-    lock steering to prograde.
-    lock throttle to _throttle().
-
-    return 5.
-}
-
 // get_orbit_to_match: Convert the target orbit parameters from a contract
 // into an actual orbit structure. The target orbit is defined by values
 // placed in persistent storage.
@@ -71,10 +33,61 @@ function get_orbit_to_match {
     return o_t.
 }
 
+// phase_match_launch: pick the launch time
+// select the launch time based on the longitude of the
+// ascending node of the target orbit.
+
+function phase_match_launch {
+    local target_longitude is persist_get("match_lan", 0).
+    local zero_lon is solarprime_vector.
+    local east_lon is vcrs(zero_lon,body:north).
+
+}
+
+// phase_match_apo: raise apoapsis to target apoapsis.
+function phase_match_apo {
+
+    local match_apo is persist_get("match_apo", 500000, true).
+    local match_gain is persist_get("match_gain", 1, true).
+    local match_max_facing_error is persist_get("match_max_facing_error", 15, true).
+    local match_apo_grace is persist_get("match_apo_grace", 0.5, true).
+
+    local _delta_v is {     // compute desired change in velocity magnitutde
+        local desired_speed is visviva_v(altitude,match_apo,periapsis).
+        local current_speed is velocity:orbit:mag.
+        return desired_speed - current_speed. }.
+
+    {   // check termination condition.
+        if apoapsis >= match_apo - match_apo_grace {    // SUCCESS.
+            lock throttle to 0. lock steering to prograde.
+            say("phase_match_apo complete").
+            print "final apoapsis error: "+abs(apoapsis-match_apo)+" m.".
+            print "final speed error: "+abs(_delta_v())+" m/s.".
+            return 0. } }
+
+    local _throttle is {    // compute throttle setting
+        local accel_wanted is match_gain * _delta_v().
+        local force_wanted is mass * accel_wanted.
+        local max_thrust is max(0.01, availablethrust).
+        local des_throt is  force_wanted /  max_thrust.
+        local throt_clamp is clamp(0,1, des_throt).
+        local facing_error is vang(facing:vector,steering:vector).
+        // what if the engine has a MINIMUM THROTTLE?
+        local facing_error_factor is clamp(0,1,1- facing_error/match_max_facing_error).
+        return clamp(0,1, facing_error_factor* throt_clamp). }.
+
+    phase_unwarp().
+    lock steering to prograde.
+    lock throttle to _throttle().
+
+    return 5.
+}
+
 // phase_match_incl: match orbital plane
 // matches both inclination and longitude of ascending node
 local phase_match_incl_report_time is 0.
 local match_throttle_prev is 0.
+local phase_match_incl_debug is false.
 
 function phase_match_incl {
     // TODO consider the case: vdot(h_s,h_t) <= 0
@@ -95,12 +108,12 @@ function phase_match_incl {
     local _v_s is {     // velocity of SHIP relative to BODY
         return velocity:orbit. }.
 
-    local _h_s is {     // angular momentum of ship around its orbit
+    local _h_s is {     // direction of angular momentum of ship around its orbit
         local v_s is _v_s().                    // velocity of SHIP relative to BODY
         local p_s is _p_s().                    // position from BODY to SHIP
         return vcrs(v_s,p_s):normalized. }.
 
-    local _h_t is {     // angular momentum in TARGET ORBIT around BODY
+    local _h_t is {     // direction of angular momentum in TARGET ORBIT around BODY
         local p_t is o_t:position-b:position.   // position from BODY to TARGET
         local v_t is o_t:velocity:orbit.        // velocity of TARGET relative to BODY
         return vcrs(v_t,p_t):normalized. }.
@@ -146,14 +159,16 @@ function phase_match_incl {
 
     local _b_throt is {     // desired throttle command
         local b_time is _b_time().              // b_time: time from intercept to now
-        local b_accel is _p_rate()/b_time.      // b_accel: the required acceleration
+        if b_time>0 return 0.                   // ... moving away: no throttle.
+        local p_rate is _p_rate().              // p_rate: how fast we are approaching
+        local b_accel is p_rate/b_time.         // b_accel: the required acceleration
         local b_force is b_accel*ship:mass.     // b_force: the required force
         local max_force is max(0.01, availablethrust). // max force, protect against zero.
         return b_force/max_force. }.             // b_throt: throttle setting to get that force
 
     local _raw_Ct is {      // raw throttle command based on b_throt above
         local b_throt is _b_throt().            // throttle setting to get desired force
-        return min(1,abs(_b_throt())). }.
+        return min(1,abs(b_throt)). }.
 
     {   // logic to maybe drop out of time warp (b_time, raw_Ct)
 
@@ -178,7 +193,8 @@ function phase_match_incl {
         if raw_Ct>0.1 and wr>1 {
             print "phase_match_incl: cancel timewarp".
             kuniverse:timewarp:cancelwarp().
-            return 1/10. } }
+            return 1/10. }
+    }
 
     local _steering is {    // All steering computations.
         local h_s is _h_s().                    // angular momentum direction of SHIP
@@ -205,7 +221,7 @@ function phase_match_incl {
         set match_throttle_prev to clamp(0,1,facing_error_factor*next_Ct).
         return match_throttle_prev. }.
 
-    {   // periodic printing (taking TIMEWARP into account)
+    if phase_match_incl_debug {   // periodic printing (taking TIMEWARP into account)
 
         if time:seconds > (phase_match_incl_report_time+5*kuniverse:timewarp:rate) {
             set phase_match_incl_report_time to time:seconds.
