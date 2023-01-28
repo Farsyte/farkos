@@ -65,26 +65,6 @@ function phase_launch {
     return 1/10.
 }
 
-function phase_ascent_old {
-    local orbit_altitude is persist_get("launch_altitude", 80000, true).
-
-    if ship:apoapsis >= orbit_altitude and altitude >= body:atm:height return 0.
-
-    local ascent_gain is persist_get("ascent_gain", 2, true).
-    local increase_wanted is orbit_altitude-ship:apoapsis.
-    local throttle_wanted is sqrt(clamp(0,1,increase_wanted*ascent_gain)).
-
-    local launch_azimuth is persist_get("launch_azimuth", 90, true).
-
-    local altitude_fraction to clamp(0,1,altitude / orbit_altitude).
-    local pitch_wanted to 90*(1 - sqrt(altitude_fraction)).
-
-    lock throttle to clamp(0,1,throttle_wanted).
-    lock steering to heading(launch_azimuth,pitch_wanted,0).
-
-    return 1/10.
-}
-
 function phase_ascent {
 
     local orbit_altitude is persist_get("launch_altitude", 80000, true).
@@ -119,7 +99,6 @@ function phase_ascent {
 
     return 5.
 }
-
 
 function phase_coast {
     if verticalspeed<0 return 0.
