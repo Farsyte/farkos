@@ -28,9 +28,20 @@ function persist_has { parameter name.
 
 // PERSIST_IS: true if name has this value persisted.
 // called from mission code that uses the name.
+//
+// TODO: beware floating point comparisons!
+// The values do not perfectly roundtrip.
 
 function persist_is { parameter name, value.
-    return persist_has(name) and persist_lexi[name]=value.
+    if not persist_has(name) return false.
+    local stored is persist_lexi[name].
+    if stored:typename = value:typename {
+        if stored = value return true.
+        if not value:istype("Scalar") return false.
+        local d is abs(stored-value). local m is max(abs(stored),abs(value)).
+        return d*1e12 < m.
+    }
+    return false.
 }
 
 // PERSIST_PUT: remember that this name has this value.
