@@ -42,12 +42,6 @@ function phase_match_lan {
     local match_lan is persist_get("match_lan", 0).
     local match_lon_lead is persist_get("match_lon_lead", 1).
 
-    if abs(inc)<45 {
-        say("PADHOLD not needed:").
-        say("  inc is "+inc).
-        return 0.
-    }
-
     if kuniverse:timewarp:rate > 1 return 1.
     if not kuniverse:timewarp:issettled return 1.
 
