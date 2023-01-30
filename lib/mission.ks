@@ -11,10 +11,15 @@ function mission_phase {
     return clamp(0, mission_plan:length-1, persist_get("mission_phase")).
 }
 
+// MISSION_JUMP: set the mission phase to a specific phase number.
+function mission_jump { parameter to_phase.
+    persist_put("mission_phase", to_phase).
+}
+
 // MISSION_INC: moves the mission phase to the next phase.
 
 function mission_inc {
-    persist_put("mission_phase", 1 + mission_phase()).
+    mission_jump(1 + mission_phase()).
 }
 
 // MISSION_ADD: Add a phase (or a list of phases) to the mission plan.
