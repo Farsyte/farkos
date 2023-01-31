@@ -181,21 +181,6 @@ function plan_xfer {                    // construct initial transfer maneuver
         print "step_size="+step_size+", fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]". }
     print "final fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]".
     print "evaluated "+eval_count+" burn vectors.".
-    return 0. }
-function exec_xfer { // execute the maneuver to get into the transfer orbit.
-
-    // if the node is missing, rebuild it.
-    if not hasnode {
-        mission_jump(persist_get("phase_plan_xfer", mission_phase()-2)).
-        return 0.
-    }
-
-    if not rcs {
-        say("activate RCS to continue.", false).
-        return 5.
-    }
-    rcs off.
-
     local n is nextnode.
     local o is n:orbit.
     local Xfer_T0 is time:seconds + n:eta.
@@ -203,25 +188,50 @@ function exec_xfer { // execute the maneuver to get into the transfer orbit.
     persist_put("xfer_start_time", Xfer_T0).
     persist_put("xfer_final_time", Xfer_TF).
     persist_put("xfer_corr_time", (Xfer_T0+Xfer_TF)/2).
-    print "mnv_time: "+maneuver:time(n:deltav:mag).
-    print "mnv_eta: "+TimeSpan(n:eta):full.
+    return 0. }
+function rescue_abort {
+    parameter m.
+    say(m).
+    // alternately we might want to just deorbit since we
+    // are not going to be carrying huge amounts of fuel.
+    mission_jump(persist_get("rescue_retry_phase")).
+    return 0. }
+function plan_corr {                    // plan a mid-course correction.
+
+    local xfer_start_time is persist_get("xfer_start_time").
+    local xfer_final_time is persist_get("xfer_final_time").
+    local xfer_corr_time is persist_get("xfer_corr_time").
+
+    if xfer_final_time < time:seconds+10
+        return rescue_abort("overshot allowable planning time").
+
+    if not rcs {
+        say("activate RCS to continue.", false).
+        return 5.
+    }
+    rcs off.
+
+    // if we overshot, we may need to re-circularize at the ready orbit.
+    say("TBD: plan mid-transfer correction").
+    say("ETA: "+round(xfer_corr_time - time:seconds, 1)).
+    return 5. }
+function exec_node { // execute the next maneuver node.
+
+    // if the node is missing, rewind to our upward coast.
+    if not hasnode
+        return rescue_abort("maneuver node is missing").
+
+    if not rcs {
+        say("activate RCS to continue.", false).
+        return 5.
+    }
+    rcs off.
+
     print "triggering mnv_exec.".
     maneuver:exec(true).
     print "maneuver:exec complete.".
     return 0.
 }
-function plan_corr {                    // plan a mid-course correction.
-    local xfer_start_time is persist_get("xfer_start_time").
-    local xfer_final_time is persist_get("xfer_final_time").
-    local xfer_corr_time is persist_get("xfer_corr_time").
-    // if we overshot, we may need to re-circularize at the ready orbit.
-    say("TBD: plan mid-transfer correction").
-    say("ETA: "+round(xfer_corr_time - time:seconds, 1)).
-    return 5. }
-function exec_corr {                    // plan a mid-course correction.
-    // if we overshot, we may need to re-circularize at the ready orbit.
-    say("TBD: exec mid-transfer correction").
-    return 5. }
 //
 // Mission Plan
 //
@@ -230,13 +240,15 @@ mission_add(LIST(
     "COUNTDOWN",    phase_countdown@,    // initiate unmanned flight.
     "LAUNCH",       phase_launch@,      // wait for the rocket to get clear of the launch site.
     "ASCENT",       phase_ascent@,      // until apoapsis is in space, steer upward and east.
+    {   // set a rewind point to use when we have to retry.
+        persist_put("rescue_retry_phase", mission_phase()). },
     "COAST",        phase_coast@,       // until we are near our orbit, coast up pointing prograde.
     "CIRC",         phase_circ@,        // until our periapsis is in space, burn prograde.
     "MATCH_INCL",   phase_match_incl@,  // match inclination of rescue target
     "PLAN_XFER",    plan_xfer@,         // create maneuver node for starting transfer.
-    "EXEC_XFER",    exec_xfer@,         // execute the maneuver to inject into the transfer orbit.
+    "EXEC_XFER",    exec_node@,         // execute the maneuver to inject into the transfer orbit.
     "PLAN_CORR",    plan_corr@,         // plan mid-transfer correction
-    "EXEC_CORR",    exec_corr@,         // execute the mid-transfer correction.
+    "EXEC_CORR",    exec_node@,         // execute the mid-transfer correction.
     // TODO mid-transfer course correction
     // TODO match rescue target
     "TBD", {        // further steps are TBD.
