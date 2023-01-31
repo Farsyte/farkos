@@ -6,271 +6,226 @@ loadfile("phases").
 loadfile("match").
 loadfile("rescue").
 loadfile("visviva").
+loadfile("hillclimb").
+loadfile("maneuver").
 
-set target to persist_get("rescue_target", "").
+local pi is constant:pi.
+{   // Rescue Target Selection
+    set target to persist_get("rescue_target", "").
+    global rescue_target is target.
+    global rescue_orbit is rescue_target:orbit.
+    global rescue_alt is (rescue_orbit:periapsis + rescue_orbit:apoapsis) / 2.
+    say("Rescue Target: "+rescue_target:name). }
+{   // Set parameters for MATCH package.
+    persist_put("match_peri", rescue_orbit:periapsis).
+    persist_put("match_apo", rescue_orbit:apoapsis).
+    persist_put("match_inc", rescue_orbit:inclination).
+    persist_put("match_lan", rescue_orbit:lan). }
+{   // Set parameters for LAUNCH phases
+    persist_put("launch_azimuth", 90-rescue_orbit:inclination).
+    persist_put("launch_altitude",
+        choose 250000 if rescue_alt < 180000 else 120000). }
+//
+mission_bg(bg_stager@).                 // Start the auto-stager running in the background.
+//
+function plan_xfer {                    // construct initial transfer maneuver
 
-global rescue_target is target.
-global rescue_orbit is rescue_target:orbit.
-global rescue_sma is (rescue_orbit:periapsis + rescue_orbit:apoapsis) / 2.
+    persist_put("phase_plan_xfer", mission_phase()).
 
-say("Rescue Target: "+rescue_target:name).
+    set target to rescue_target.        // assure target is selected
+    set targ to target.                 // cache the target Vessel or Body object
 
-persist_put("match_peri", rescue_orbit:periapsis).
-persist_put("match_apo", rescue_orbit:apoapsis).
-persist_put("match_inc", rescue_orbit:inclination).
-persist_put("match_lan", rescue_orbit:lan).
+    // Operation is UNDEFINED if the target is not in orbit around
+    // the same body as the ship.
 
-persist_put("launch_azimuth", 90-rescue_orbit:inclination).
+    local mu is body:mu.
+    local r0 is body:radius.
 
-// pick a starting orbit that is distinct from the target orbit.
-if rescue_sma < 180000 {
-    persist_put("launch_altitude", 250000).
-} else {
-    persist_put("launch_altitude", 120000).
-}
-
-function pv { parameter name, value.
-    if value:istype("Vector") set value to "("+value:mag+") "+value.
-    print name+": "+value.
-}
-
-    // if we were to hohmann transfer to the target orbit,
-    // where would the target vessel be when we go there?
-
-function initial_xfer { parameter t0.
-
-    if hasnode and nextnode:eta>60 return nextnode.
-
-    local b is body.
-    local r0 is b:radius.
-    local body_center is b:position.
-    local targ is rescue_target.
-
-    until not hasnode {
-        remove nextnode.
-        wait 0.
-    }
-
-    // create an approximate hohmann at time t0.
-
-    local xfer_v1 is visviva_v(altitude, targ:altitude).                        // pv("xfer_v1", xfer_v1).
-    local xfer_dv1 is xfer_v1 - velocity:orbit:mag.                             // pv("xfer_dv1", xfer_dv1).
-    local node_h1 is node(t0, 0, 0, xfer_dv1).                                  // pv("node_h1", node_h1).
-    add node_h1.
-    wait 0.
-    return node_h1.
-}
-
-function approach_error {
-    parameter node_h1 is nextnode.
-    wait 0.
-
-    local targ is rescue_target.
-
-    local b is body.
-    local body_center is b:position.
-
-    local h1_orbit is node_h1:orbit.
-    local xfer_dt is h1_orbit:period/2.                                         // pv("xfer_dt", xfer_dt).
-    local xfer_tF is time:seconds + node_h1:eta + xfer_dt.                      // pv("xfer_tF", xfer_tF).
-    local pos_targ_tF is positionat(targ, xfer_tF) - body_center.               // pv("pos_targ_tF", pos_targ_tF).
-    local pos_ship_tF is positionat(ship, xfer_tF) - body_center.               // pv("pos_ship_tF", pos_ship_tF).
-    local error_total is pos_ship_tF - pos_targ_tF.                             // pv("error_total", error_total).
-    return error_total:mag.
-}
-
-function until_better {
-    parameter iter.
-    parameter eval.
-    local curr is eval().
-    until false {
-        iter().
-        local prev is curr.
-        set curr to eval().
-        if curr < prev return.
-    }
-}
-
-function until_worse {
-    parameter iter.
-    parameter eval.
-    local curr is eval().
-    until false {
-        iter().
-        local prev is curr.
-        set curr to eval().
-        if curr > prev return curr.
-    }
-}
-
-function find_local_min {
-    parameter incr.
-    parameter decr.
-    parameter eval.
-    until_worse(incr, eval).
-    until_worse(decr, eval).
-    incr().
-}
-
-function optimize_h1_min {
-    persist_put("optimize_rewind", mission_phase()-1).
-
-    local dt is 300.                                                            // pv("dt",dt).
-    local t0 is time:seconds + dt.                                              // pv("t0",t0).
-    local node_h1 is initial_xfer(t0).                                          // pv("node_h1", node_h1).
-
-    // it is possible that downhill leads back in time past now,
-    // so push forward until it is improving again.
-
-    until_better({ set node_h1:time to node_h1:time+60. }, approach_error@).
-
-    // move forward by 60 sec until we are past the minimum,
-    // then backward by 60 sec until we are past the minimum,
-    // then forward again to our best candidate.
-    find_local_min(
-        { set node_h1:time to node_h1:time+60. },
-        { set node_h1:time to node_h1:time-60. },
-        approach_error@).
-
-    return -1.
-}
-
-function optimize_rewind {
-    say("optimize: node missing").
-    say("  re-optimizing.").
+    // This function does not play well with existing
+    // planned maneuvers.
     until not hasnode { remove nextnode. wait 0. }
-    mission_jump(persist_get("optimize_rewind", 0)).
-    return 1.
-}
 
-function optimize_h1_10s {
-    if not hasnode return optimize_rewind().
-    local node_h1 is nextnode.
+    // we want to create the initial transfer as a "broad stroke"
+    // to go from our orbit to the target orbit, then find the
+    // approximate start time that roughly matches the target at
+    // the end, then iterate the math so ending time and radius
+    // converge properly.
 
-    // move forward by 10 sec until we are past the minimum,
-    // then backward by 10 sec until we are past the minimum,
-    // then forward again to our best candidate.
-    find_local_min(
-        { set node_h1:time to node_h1:time+10. },
-        { set node_h1:time to node_h1:time-10. },
-        approach_error@).
+    // Start with a transfer in five minutes,
+    // which ends at the rescue orbit's semi-major axis.
+    local Xfer_T0 is time:seconds + 300.
+    local Xfer_RF is r0 + rescue_alt.
+    //
+    // Hohmann Computation Related Functions
+    local Ship_P0 is {                  // Body->Ship vector at T0
+        local ret is positionat(ship, Xfer_T0) - body:position.
+        return ret. }.
+    local Xfer_R0 is {                  // Xfer start radius
+        local ret is Ship_P0():mag.
+        return ret. }.
+    local Xfer_A is {                   // Xfer semi-major axis
+        local ret is (Xfer_R0()+Xfer_RF)/2.
+        return ret. }.
+    local Xfer_T is {                   // Xfer transfer time
+        local ret is pi*sqrt(Xfer_A()^3/mu).
+        return ret. }.
+    local Xfer_TF is {                  // final time for transfer
+        local ret is Xfer_T0 + Xfer_T().
+        return ret. }.
+    local Ship_PF is {                  // Body->Ship vector at TF
+        local ret is -Ship_P0():normalized*Xfer_RF.
+        return ret. }.
+    local Targ_PF is {                  // Body->Targ vector at TF
+        local ret is positionat(targ, Xfer_TF()) - body:position.
+        return ret. }.
+    local Error_PF is {                 // Targ->Ship vector at TF
+        local tpf is Targ_PF().
+        local spf is Ship_PF().
+        // FOR DEBUG show me angles and Targ_VF
+        local ang is vang(tpf, spf).
+        local ret is tpf - spf.
+        return ret. }.
+    // DEV NOTE: can peek at the initial transfer here.
+    local Curr_E is Error_PF():mag.
+    local Prev_E is 0.
+    local Xfer_Tune is {                // transfer tuning function.
+        parameter done.                 // delegate: when to stop
+        until done() { } }.
+    local Xfer_dt_try is { parameter dt.
+        set Prev_E to Curr_E.           // previous error, for comparison.
+        set Prev_T0 to Xfer_T0.         // previous time, for rewind.
+        set Xfer_T0 to Xfer_T0 + dt.
+        set Curr_E to Error_PF():mag.                                           }.
+    local Xfer_dt_rew is {
+        set Xfer_T0 to Prev_T0.
+        Xfer_dt_try(0).                                                         }.
+    local Xfer_dt_until_better is { parameter dt. Xfer_dt_try(dt). return Curr_E < Prev_E. }.
+    local Xfer_dt_until_worse is { parameter dt. Xfer_dt_try(dt). return Curr_E > Prev_E. }.
+    // Find the first feasible solution:
+    {   // Increase T0 by big jumps until we are beyond a maximum.
+        local dt is 300.
+        Xfer_Tune(Xfer_dt_until_better:bind(dt)). }
+    {   // Increase T0 by big jumps until we are beyond a minimum.
+        local dt is 300.
+        Xfer_Tune(Xfer_dt_until_worse:bind(dt)). }
+    {   // Tune Xfer_T0 until we believe we have our best start time
+        // within a small enough fraction of a second.
+        local dt is 300.
+        until abs(dt) < 1e-4 {
+            set dt to -dt/10.
+            Xfer_Tune(Xfer_dt_until_worse:bind(dt)).
+            Xfer_dt_rew(). }                                                    }
+    // BURN VECTOR: (time, prograde, radial, normal)
+    //
+    // HILLCLIMB to get the best prograde burn.
+    //
+    // Buring NORMAL when we are 180 degrees away is massively inefficient.
+    // The code is set up here so that if the list does not have a 4th
+    // element, then we do not try to burn normal.
+    //
+    // I want to see how well we can do with just a prograde burn.
+    //
+    function initial_burn {     // construct the initial list defining the burn.
+        local Xfer_H0 is Xfer_R0() - r0.
+        local Xfer_HF is Xfer_RF - r0.
+        local Xfer_S0 is visviva_v(Xfer_H0, Xfer_HF).
+        local Xfer_dV is xfer_S0 - visviva_v(Xfer_H0).
+        // if we add a 3rd value, we hillclimb the radial burn as well.
+        // if we add a 4th value, we hillclimb the normal burn as well.
+        return list(Xfer_T0, Xfer_dV).
+        } local burn is initial_burn.
 
-    return -1.
-}
+    {   // create the initial maneuver node.
+        // note that all of its parameters will get rewritten.
+        add node(time:seconds+300, 0, 0, 0).
+        wait 0. }
 
-function optimize_h1_sec {
-    if not hasnode return optimize_rewind().
-    local node_h1 is nextnode.
+    local set_burn is {         // set the maneuver node to the burn state given.
+        parameter burn.
+        local n1 is nextnode.
+        if burn:length > 0 and fp_differs(n1:time, burn[0]) set n1:time to burn[0].
+        if burn:length > 1 and fp_differs(n1:prograde, burn[1]) set n1:prograde to burn[1].
+        if burn:length > 2 and fp_differs(n1:radialout, burn[2]) set n1:radialout to burn[2].
+        if burn:length > 3 and fp_differs(n1:normal, burn[3]) set n1:normal to burn[3].
+        wait 0.  }.
+    local eval_count is 0.
+    local fitness_fn is {       // fitness, for hillclimbing. More positive is better.
+        parameter burn.
+        set_burn(burn).
+        local n1 is nextnode.
+        local xo is n1:orbit.
+        local tf is time:seconds+n1:eta+xo:period/2.
+        local sp is positionat(ship, tf) - body:position.
+        local tp is positionat(targ, tf) - body:position.
+        local pe is (tp-sp):mag.
+        set eval_count to eval_count + 1.
+        return -pe. }.
 
-    // move forward by 1 sec until we are past the minimum,
-    // then backward by 1 sec until we are past the minimum,
-    // then forward again to our best candidate.
-    find_local_min(
-        { set node_h1:time to node_h1:time+1. },
-        { set node_h1:time to node_h1:time-1. },
-        approach_error@).
+    print "initial fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]".
 
-    return -1.
-}
-
-function twoprobe { parameter eval, dv, incr.
-    set base to eval().
-    incr(dv).
-    set imp_pp to eval()-base.
-    incr(-2*dv).
-    set imp_pn to eval()-base.
-    incr(dv).
-    if imp_pp>=0 and imp_pn>=0 return 0.
-    local imp_ppn is imp_pp-imp_pn.
-    // print "twoprobe: pp="+imp_pp+" pn="+imp_pn+" net="+imp_ppn.
-    return imp_ppn.
-}
-
-function optimize_h1_burn {
-    if not hasnode return optimize_rewind().
-    local node_h1 is nextnode.
-
-    set base to approach_error().
-    set original to base.
-    local probe_dv is 10.
-    until probe_dv < 0.005 {
-        local chg_v is V(0,0,0).
-        until false {
-            // consider the effects of burns in each direction,
-            // positive and negative. if we can get an improvement,
-            // consruct a burn in the gradient direction.
-            local chg_p is twoprobe(approach_error@, probe_dv, { parameter dv. set node_h1:prograde to node_h1:prograde+dv. }).
-            local chg_r is twoprobe(approach_error@, probe_dv, { parameter dv. set node_h1:radialout to node_h1:radialout+dv. }).
-            local chg_n is twoprobe(approach_error@, probe_dv, { parameter dv. set node_h1:normal to node_h1:normal+dv. }).
-
-            set chg_v to V(chg_p,chg_r,chg_n).
-            if chg_v:mag <= 0 break.
-            set chg_v to -chg_v:normalized*probe_dv.
-            set node_h1:prograde to node_h1:prograde+chg_v:x.
-            set node_h1:radialout to node_h1:radialout+chg_v:y.
-            set node_h1:normal to node_h1:normal+chg_v:z.
-            local cand is approach_error().
-
-            if cand>=base break.
-            set base to cand.
-        }
-        set node_h1:prograde to node_h1:prograde-chg_v:x.
-        set node_h1:radialout to node_h1:radialout-chg_v:y.
-        set node_h1:normal to node_h1:normal-chg_v:z.
-        set base to approach_error().
-        set probe_dv to probe_dv / 1.6.
+    local step_size is 300.
+    until step_size < 1 {    // hillclimb for smaller and smaller step sizes.
+        set step_size to step_size / 10.
+        set burn to hillclimb:seek(burn, fitness_fn, step_size).
+        set_burn(burn).
+        print "step_size="+step_size+", fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]". }
+    print "final fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]".
+    print "evaluated "+eval_count+" burn vectors.".
+    return 0. }
+function exec_xfer { // execute the maneuver to get into the transfer orbit.
+    // if the node is missing, rebuild it.
+    if not hasnode {
+        mission_jump(persist_get("phase_plan_xfer", mission_phase()-2)).
+        return 0.
     }
-
-    set original to round(original,1).
-    set base to round(base, 1).
-
-    if original > base
-        print "improved by "+(original-base)+" from "+original+" to "+base.
+    local n is nextnode.
+    local o is n:orbit.
+    local Xfer_T0 is time:seconds + n:eta.
+    local Xfer_TF is Xfer_T0 + o:period/2.
+    persist_put("xfer_start_time", Xfer_T0).
+    persist_put("xfer_final_time", Xfer_TF).
+    persist_put("xfer_corr_time", (Xfer_T0+Xfer_TF)/2).
+    print "mnv_time: "+maneuver:time(n:deltav:mag).
+    print "mnv_eta: "+TimeSpan(n:eta):full.
+    print "triggering mnv_exec.".
+    maneuver:exec(true).
+    print "maneuver:exec complete.".
     return 0.
 }
-
-function ready_h1 {
-    if not hasnode return optimize_rewind().
-    local node_h1 is nextnode.
-
-    say("next node eta: "+round(node_h1:eta,2)).
-    return 5.
-}
-
-function autolaunch {
-    if availablethrust>0 return 0.
-    lock throttle to 1.
-    lock steering to facing.
-    if countdown > 0 {
-        say("T-"+countdown, false).
-        set countdown to countdown - 1.
-        return 1.
-    }
-    if stage:ready stage.
-    return 1. }
-
-mission_bg(bg_stager@).
-
-local countdown is 10.
+function plan_corr {                    // plan a mid-course correction.
+    local xfer_start_time is persist_get("xfer_start_time").
+    local xfer_final_time is persist_get("xfer_final_time").
+    local xfer_corr_time is persist_get("xfer_corr_time").
+    // if we overshot, we may need to re-circularize at the ready orbit.
+    say("TBD: plan mid-transfer correction").
+    say("ETA: "+round(xfer_corr_time - time:seconds, 1)).
+    return 5. }
+function exec_corr {                    // plan a mid-course correction.
+    // if we overshot, we may need to re-circularize at the ready orbit.
+    say("TBD: exec mid-transfer correction").
+    return 5. }
+//
+// Mission Plan
+//
 mission_add(LIST(
     "PADHOLD",      phase_match_lan@,   // PADHOLD until we can match target ascending node.
-    "AUTOLAUNCH",   autolaunch@,        // initiate unmanned flight.
+    "COUNTDOWN",    phase_countdown@,    // initiate unmanned flight.
     "LAUNCH",       phase_launch@,      // wait for the rocket to get clear of the launch site.
     "ASCENT",       phase_ascent@,      // until apoapsis is in space, steer upward and east.
     "COAST",        phase_coast@,       // until we are near our orbit, coast up pointing prograde.
     "CIRC",         phase_circ@,        // until our periapsis is in space, burn prograde.
     "MATCH_INCL",   phase_match_incl@,  // match inclination of rescue target
-
-    "OPTIMIZE_H1",  optimize_h1_min@,   // move forward by 60s until we find a local minimum
-                    optimize_h1_10s@,   // hunt around by 10s to find local minimum
-                    optimize_h1_sec@,   // hunt around by 1s to find local minimum
-                    optimize_h1_burn@,  // fine tune the burn.
-
-    "READY_H1",     ready_h1@,
-
-    "TBD", {
+    "PLAN_XFER",    plan_xfer@,         // create maneuver node for starting transfer.
+    "EXEC_XFER",    exec_xfer@,         // execute the maneuver to inject into the transfer orbit.
+    "PLAN_CORR",    plan_corr@,         // plan mid-transfer correction
+    "EXEC_CORR",    exec_corr@,         // execute the mid-transfer correction.
+    // TODO mid-transfer course correction
+    // TODO match rescue target
+    "TBD", {        // further steps are TBD.
         say("TBD", false). return 5. },
     "")).
-
+//
+// Now go do it.
+//
 mission_fg().
 wait until false.
