@@ -55,15 +55,15 @@ function phase_match_lan {
     local delta_sec is delta_lon * body:rotationperiod/360.
 
     if delta_sec < 11 {
-        say("PADHOLD released:").
-        say("  delta_lon is "+delta_lon).
-        say("  delta_sec is "+delta_sec).
+        say("PAD HOLD released:", false).
+        say("  delta_lon is "+delta_lon, false).
+        say("  delta_sec is "+delta_sec, false).
         return 0.
     }
     if delta_sec > 30 {
-        say("PADHOLD warping:").
-        say("  delta_lon is "+delta_lon).
-        say("  delta_sec is "+delta_sec).
+        say("PAD HOLD warping:", false).
+        say("  delta_lon is "+delta_lon, false).
+        say("  delta_sec is "+delta_sec, false).
         kuniverse:timewarp:warpto(time:seconds+delta_sec-15).
     }
     return 1.
