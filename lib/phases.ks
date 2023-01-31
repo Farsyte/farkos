@@ -51,6 +51,18 @@ function bg_stager {
     return 1.
 }
 
+local countdown is 10.
+function phase_countdown {
+    if availablethrust>0 return 0.
+    lock throttle to 1.
+    lock steering to facing.
+    if countdown > 0 {
+        say("T-"+countdown, false).
+        set countdown to countdown - 1.
+        return 1. }
+    if stage:ready stage.
+    return 1. }
+
 function phase_preflight {
     if availablethrust>0 return 0.
     lock steering to facing.
