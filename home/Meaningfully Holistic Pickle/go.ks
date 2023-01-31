@@ -137,7 +137,7 @@ function plan_xfer {                    // construct initial transfer maneuver
     //
     function initial_burn {     // construct the initial list defining the burn.
         local r1 is Xfer_R0().
-        local r2 is Xfer_HF.
+        local r2 is Xfer_RF.
         local Xfer_S0 is visviva_v(r1, r2).
         local Xfer_dV is xfer_S0 - visviva_v(r1).
         // if we add a 3rd value, we hillclimb the radial burn as well.
