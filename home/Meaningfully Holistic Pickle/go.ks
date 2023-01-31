@@ -30,6 +30,12 @@ mission_bg(bg_stager@).                 // Start the auto-stager running in the 
 //
 function plan_xfer {                    // construct initial transfer maneuver
 
+    if not rcs {
+        say("activate RCS to continue.", false).
+        return 5.
+    }
+    rcs off.
+
     persist_put("phase_plan_xfer", mission_phase()).
 
     set target to rescue_target.        // assure target is selected
@@ -109,12 +115,14 @@ function plan_xfer {                    // construct initial transfer maneuver
         local dt is 300.
         Xfer_Tune(Xfer_dt_until_worse:bind(dt)). }
     {   // Tune Xfer_T0 until we believe we have our best start time
-        // within a small enough fraction of a second.
+        // within a small enough fraction of a second. This saves a
+        // lot of time in HILLCLIMB later.
         local dt is 300.
         until abs(dt) < 1e-4 {
             set dt to -dt/10.
             Xfer_Tune(Xfer_dt_until_worse:bind(dt)).
             Xfer_dt_rew(). }                                                    }
+    //
     // BURN VECTOR: (time, prograde, radial, normal)
     //
     // HILLCLIMB to get the best prograde burn.
@@ -164,7 +172,7 @@ function plan_xfer {                    // construct initial transfer maneuver
     print "initial fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]".
 
     local step_size is 300.
-    until step_size < 1 {    // hillclimb for smaller and smaller step sizes.
+    until step_size < 0.01 {    // hillclimb for smaller and smaller step sizes.
         set step_size to step_size / 10.
         set burn to hillclimb:seek(burn, fitness_fn, step_size).
         set_burn(burn).
@@ -173,6 +181,12 @@ function plan_xfer {                    // construct initial transfer maneuver
     print "evaluated "+eval_count+" burn vectors.".
     return 0. }
 function exec_xfer { // execute the maneuver to get into the transfer orbit.
+    if not rcs {
+        say("activate RCS to continue.", false).
+        return 5.
+    }
+    rcs off.
+
     // if the node is missing, rebuild it.
     if not hasnode {
         mission_jump(persist_get("phase_plan_xfer", mission_phase()-2)).
