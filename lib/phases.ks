@@ -14,16 +14,16 @@ function phase_decwarp {
 }
 
 function phase_apowarp {
-    wait until kuniverse:timewarp:issettled.
+    if not kuniverse:timewarp:issettled return.
 
-    if kuniverse:timewarp:rate < 5 return.
+    if kuniverse:timewarp:rate>1 {
+        kuniverse:timewarp:cancelwarp().
+        return.
+    }
 
-    kuniverse:timewarp:cancelwarp().
-    wait until kuniverse:timewarp:issettled.
+    if eta:apoapsis<20 return.
 
-    if eta:apoapsis<60 return.
-
-    kuniverse:timewarp:warpto(time:seconds+eta:apoapsis-60).
+    kuniverse:timewarp:warpto(time:seconds+eta:apoapsis-10).
     wait 5.
     wait until kuniverse:timewarp:rate <= 1.
     wait until kuniverse:timewarp:issettled.
