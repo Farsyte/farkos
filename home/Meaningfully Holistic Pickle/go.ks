@@ -11,7 +11,61 @@ loadfile("maneuver").
 
 term(132,66).
 
+//
+// State prediction in BODY-RAW coordinates
+local ship_pos_at is {         // predict Body->Ship vector at time t
+    parameter t.
+    return positionat(ship, t) - body:position. }.
+local ship_vel_at is {         // predict Body-relative Ship velocity at time t
+    parameter t.
+    return velocityat(ship, t). }.
+local targ_pos_at is {         // predict Body->Target vector at time t
+    parameter t.
+    return positionat(target, t) - body:position. }.
+local targ_vel_at is {         // predict Body-relative Target velocity at time t
+    parameter t.
+    return velocityat(target, t). }.
+//
+// HILLCLIMB support
+local burn_into_hohmann is {
+    parameter t0, r1, r2.
+    return list(t0, visviva_v(r1, r2) - visviva_v(r1)). }.
+local set_burn is {         // set the maneuver node to the burn state given.
+    parameter burn.
+    if not hasnode add node(time:seconds+30, 0, 0, 0).
+    local n1 is nextnode.
+    if burn:length > 0 and fp_differs(n1:time, burn[0]) set n1:time to burn[0].
+    if burn:length > 1 and fp_differs(n1:prograde, burn[1]) set n1:prograde to burn[1].
+    if burn:length > 2 and fp_differs(n1:radialout, burn[2]) set n1:radialout to burn[2].
+    if burn:length > 3 and fp_differs(n1:normal, burn[3]) set n1:normal to burn[3].
+    wait 0.  }.
+local hillclimb_loop is {
+    parameter burn, fitness_fn, step_sizes.
+    print "initial fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]".
+    for step_size in step_sizes {
+        set burn to hillclimb:seek(burn, fitness_fn, step_size).
+        set_burn(burn).
+        print "step_size="+step_size+", fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]". }
+    print "final fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]". }.
+local hillclimb_burn is {
+    parameter burn, step_sizes.
+    local eval_count is 0.
+    local fitness_fn is {       // fitness, for hillclimbing. More positive is better.
+        parameter burn.
+        set_burn(burn).
+        local n1 is nextnode.
+        local xo is n1:orbit.
+        local tf is persist_get("xfer_final_time", time:seconds+n1:eta+xo:period/2).
+        local sp is ship_pos_at(tf).
+        local tp is targ_pos_at(tf).
+        local pe is (tp-sp):mag.
+        set eval_count to eval_count + 1.
+        return -pe. }.
+    hillclimb_loop(burn, fitness_fn, step_sizes).
+    print "evaluated "+eval_count+" burn vectors.". }.
+//
 local pi is constant:pi.
+//
 {   // Rescue Target Selection
     set target to persist_get("rescue_target", "").
     global rescue_target is target.
@@ -30,15 +84,27 @@ local pi is constant:pi.
 //
 mission_bg(bg_stager@).                 // Start the auto-stager running in the background.
 //
-function plan_xfer {                    // construct initial transfer maneuver
+function rescue_abort {
+    parameter m.
+    say(m).
+    // alternately we might want to just deorbit since we
+    // are not going to be carrying huge amounts of fuel.
+    mission_jump(persist_get("rescue_retry_phase")).
+    return 0. }
+//
+function plan_xfer {    // construct initial transfer maneuver
+    lock throttle to 0.
+    lock steering to prograde.
 
     if not rcs {
         say("activate RCS to continue.", false).
-        return 5.
-    }
+        return 5. }
     rcs off.
 
     persist_put("phase_plan_xfer", mission_phase()).
+    persist_clr("xfer_start_time").
+    persist_clr("xfer_final_time").
+    persist_clr("xfer_corr_time").
 
     set target to rescue_target.        // assure target is selected
     set targ to target.                 // cache the target Vessel or Body object
@@ -61,54 +127,44 @@ function plan_xfer {                    // construct initial transfer maneuver
 
     // Start with a transfer in five minutes,
     // which ends at the rescue orbit's semi-major axis.
+
     local Xfer_T0 is time:seconds + 300.
     local Xfer_RF is r0 + rescue_alt.
     //
     // Hohmann Computation Related Functions
-    local Ship_P0 is {                  // Body->Ship vector at T0
-        local ret is positionat(ship, Xfer_T0) - body:position.
-        return ret. }.
-    local Xfer_R0 is {                  // Xfer start radius
-        local ret is Ship_P0():mag.
-        return ret. }.
-    local Xfer_A is {                   // Xfer semi-major axis
-        local ret is (Xfer_R0()+Xfer_RF)/2.
-        return ret. }.
-    local Xfer_T is {                   // Xfer transfer time
-        local ret is pi*sqrt(Xfer_A()^3/mu).
-        return ret. }.
-    local Xfer_TF is {                  // final time for transfer
-        local ret is Xfer_T0 + Xfer_T().
-        return ret. }.
-    local Ship_PF is {                  // Body->Ship vector at TF
-        local ret is -Ship_P0():normalized*Xfer_RF.
-        return ret. }.
-    local Targ_PF is {                  // Body->Targ vector at TF
-        local ret is positionat(targ, Xfer_TF()) - body:position.
-        return ret. }.
-    local Error_PF is {                 // Targ->Ship vector at TF
-        local tpf is Targ_PF().
-        local spf is Ship_PF().
-        // FOR DEBUG show me angles and Targ_VF
-        local ang is vang(tpf, spf).
-        local ret is tpf - spf.
-        return ret. }.
-    // DEV NOTE: can peek at the initial transfer here.
+    local Ship_P0 is { return ship_pos_at(Xfer_T0). }.                          // Body->Ship vector at T0
+    local Xfer_R0 is { return Ship_P0():mag. }.                                 // Xfer start radius
+    local Xfer_A  is { return (Xfer_R0()+Xfer_RF)/2. }.                         // Xfer semi-major axis
+    local Xfer_T  is { return pi*sqrt(Xfer_A()^3/mu). }.                        // Xfer transfer time
+    local Xfer_TF is { return Xfer_T0 + Xfer_T(). }.                            // final time for transfer
+    local Ship_PF is { return -Ship_P0():normalized*Xfer_RF. }.                 // Body->Ship vector at TF
+    local Targ_PF is { return targ_pos_at(Xfer_TF()). }.                        // Body->Targ vector at TF
+    //
+    local Error_PF is { return Targ_PF() - Ship_PF(). }.                        // Targ->Ship vector at TF
+    //
     local Curr_E is Error_PF():mag.
     local Prev_E is 0.
     local Xfer_Tune is {                // transfer tuning function.
         parameter done.                 // delegate: when to stop
-        until done() { } }.
-    local Xfer_dt_try is { parameter dt.
+        wait until done(). }.
+    local Xfer_dt_try is {
+        parameter dt.
         set Prev_E to Curr_E.           // previous error, for comparison.
         set Prev_T0 to Xfer_T0.         // previous time, for rewind.
         set Xfer_T0 to Xfer_T0 + dt.
-        set Curr_E to Error_PF():mag.                                           }.
+        set Curr_E to Error_PF():mag. }.
     local Xfer_dt_rew is {
         set Xfer_T0 to Prev_T0.
-        Xfer_dt_try(0).                                                         }.
-    local Xfer_dt_until_better is { parameter dt. Xfer_dt_try(dt). return Curr_E < Prev_E. }.
-    local Xfer_dt_until_worse is { parameter dt. Xfer_dt_try(dt). return Curr_E > Prev_E. }.
+        Xfer_dt_try(0). }.
+    local Xfer_dt_until_better is {
+          parameter dt.
+          Xfer_dt_try(dt).
+          return Curr_E < Prev_E. }.
+    local Xfer_dt_until_worse is {
+          parameter dt.
+          Xfer_dt_try(dt).
+          return Curr_E > Prev_E. }.
+    //
     // Find the first feasible solution:
     {   // Increase T0 by big jumps until we are beyond a maximum.
         local dt is 300.
@@ -125,97 +181,41 @@ function plan_xfer {                    // construct initial transfer maneuver
             Xfer_Tune(Xfer_dt_until_worse:bind(dt)).
             Xfer_dt_rew(). }                                                    }
     //
-    // BURN VECTOR: (time, prograde, radial, normal)
+    hillclimb_burn(burn_into_hohmann(Xfer_T0, Xfer_R0(), Xfer_RF),
+            list(30, 10, 3, 1, 0.3, 0.1, 0.03,0.01)).
     //
-    // HILLCLIMB to get the best prograde burn.
+    {   // persist timestamps for xfer start, final, and corr
+        local n is nextnode.
+        local o is n:orbit.
+        local Xfer_T0 is time:seconds + n:eta.
+        local Xfer_TF is Xfer_T0 + o:period/2.
+        persist_put("xfer_start_time", Xfer_T0).
+        persist_put("xfer_final_time", Xfer_TF).
+        persist_put("xfer_corr_time", (Xfer_T0+Xfer_TF)/2). }
     //
-    // Buring NORMAL when we are 180 degrees away is massively inefficient.
-    // The code is set up here so that if the list does not have a 4th
-    // element, then we do not try to burn normal.
-    //
-    // I want to see how well we can do with just a prograde burn.
-    //
-    function initial_burn {     // construct the initial list defining the burn.
-        local r1 is Xfer_R0().
-        local r2 is Xfer_RF.
-        local Xfer_S0 is visviva_v(r1, r2).
-        local Xfer_dV is xfer_S0 - visviva_v(r1).
-        // if we add a 3rd value, we hillclimb the radial burn as well.
-        // if we add a 4th value, we hillclimb the normal burn as well.
-        return list(Xfer_T0, Xfer_dV).
-        } local burn is initial_burn.
-
-    {   // create the initial maneuver node.
-        // note that all of its parameters will get rewritten.
-        add node(time:seconds+300, 0, 0, 0).
-        wait 0. }
-
-    local set_burn is {         // set the maneuver node to the burn state given.
-        parameter burn.
-        local n1 is nextnode.
-        if burn:length > 0 and fp_differs(n1:time, burn[0]) set n1:time to burn[0].
-        if burn:length > 1 and fp_differs(n1:prograde, burn[1]) set n1:prograde to burn[1].
-        if burn:length > 2 and fp_differs(n1:radialout, burn[2]) set n1:radialout to burn[2].
-        if burn:length > 3 and fp_differs(n1:normal, burn[3]) set n1:normal to burn[3].
-        wait 0.  }.
-    local eval_count is 0.
-    local fitness_fn is {       // fitness, for hillclimbing. More positive is better.
-        parameter burn.
-        set_burn(burn).
-        local n1 is nextnode.
-        local xo is n1:orbit.
-        local tf is time:seconds+n1:eta+xo:period/2.
-        local sp is positionat(ship, tf) - body:position.
-        local tp is positionat(targ, tf) - body:position.
-        local pe is (tp-sp):mag.
-        set eval_count to eval_count + 1.
-        return -pe. }.
-
-    print "initial fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]".
-
-    local step_size is 300.
-    until step_size < 0.5 {    // hillclimb for smaller and smaller step sizes.
-        set step_size to step_size / 10.
-        set burn to hillclimb:seek(burn, fitness_fn, step_size).
-        set_burn(burn).
-        print "step_size="+step_size+", fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]". }
-    print "final fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]".
-    print "evaluated "+eval_count+" burn vectors.".
-    local n is nextnode.
-    local o is n:orbit.
-    local Xfer_T0 is time:seconds + n:eta.
-    local Xfer_TF is Xfer_T0 + o:period/2.
-    persist_put("xfer_start_time", Xfer_T0).
-    persist_put("xfer_final_time", Xfer_TF).
-    persist_put("xfer_corr_time", (Xfer_T0+Xfer_TF)/2).
     return 0. }
-function rescue_abort {
-    parameter m.
-    say(m).
-    // alternately we might want to just deorbit since we
-    // are not going to be carrying huge amounts of fuel.
-    mission_jump(persist_get("rescue_retry_phase")).
-    return 0. }
-function plan_corr {                    // plan a mid-course correction.
+function plan_corr {    // plan a mid-course correction.
+    lock throttle to 0.
+    lock steering to prograde.
 
     local xfer_start_time is persist_get("xfer_start_time").
     local xfer_final_time is persist_get("xfer_final_time").
     local xfer_corr_time is persist_get("xfer_corr_time").
 
-    if xfer_final_time < time:seconds+10
+    if xfer_final_time < time:seconds+10    // check for overshoot.
         return rescue_abort("overshot allowable planning time").
 
-    if not rcs {
+    if not rcs {                            // wait for RCS enable.
         say("activate RCS to continue.", false).
-        return 5.
-    }
+        return 5. }
     rcs off.
 
-    // if we overshot, we may need to re-circularize at the ready orbit.
-    say("TBD: plan mid-transfer correction").
-    say("ETA: "+round(xfer_corr_time - time:seconds, 1)).
-    return 5. }
-function exec_node { // execute the next maneuver node.
+    hillclimb_burn(list(xfer_corr_time, 0, 0, 0),
+        list(0.3, 0.1, 0.03, 0.01, 0.003)).
+    return 0. }
+function exec_node {    // execute the next maneuver node.
+    lock throttle to 0.
+    lock steering to prograde.
 
     // if the node is missing, rewind to our upward coast.
     if not hasnode
@@ -230,8 +230,7 @@ function exec_node { // execute the next maneuver node.
     print "triggering mnv_exec.".
     maneuver:exec(true).
     print "maneuver:exec complete.".
-    return 0.
-}
+    return 0. }
 //
 // Mission Plan
 //
