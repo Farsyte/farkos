@@ -49,7 +49,7 @@
     if autowarp { warpto(starttime - 30). }
 
     wait until time:seconds >= starttime.
-    lock throttle to min(mnv_time(n:burnvector:mag), 1).
+    lock throttle to sqrt(max(0,min(1,mnv_time(n:burnvector:mag)))).
 
     wait until vdot(n:burnvector, v) < 0.
     lock throttle to 0.

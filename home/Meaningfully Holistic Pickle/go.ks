@@ -174,7 +174,7 @@ function plan_xfer {                    // construct initial transfer maneuver
     print "initial fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]".
 
     local step_size is 300.
-    until step_size < 0.01 {    // hillclimb for smaller and smaller step sizes.
+    until step_size < 0.5 {    // hillclimb for smaller and smaller step sizes.
         set step_size to step_size / 10.
         set burn to hillclimb:seek(burn, fitness_fn, step_size).
         set_burn(burn).
@@ -183,17 +183,19 @@ function plan_xfer {                    // construct initial transfer maneuver
     print "evaluated "+eval_count+" burn vectors.".
     return 0. }
 function exec_xfer { // execute the maneuver to get into the transfer orbit.
-    if not rcs {
-        say("activate RCS to continue.", false).
-        return 5.
-    }
-    rcs off.
 
     // if the node is missing, rebuild it.
     if not hasnode {
         mission_jump(persist_get("phase_plan_xfer", mission_phase()-2)).
         return 0.
     }
+
+    if not rcs {
+        say("activate RCS to continue.", false).
+        return 5.
+    }
+    rcs off.
+
     local n is nextnode.
     local o is n:orbit.
     local Xfer_T0 is time:seconds + n:eta.
