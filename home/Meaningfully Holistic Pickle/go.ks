@@ -9,6 +9,8 @@ loadfile("visviva").
 loadfile("hillclimb").
 loadfile("maneuver").
 
+term(132,66).
+
 local pi is constant:pi.
 {   // Rescue Target Selection
     set target to persist_get("rescue_target", "").
