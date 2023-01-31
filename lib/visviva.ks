@@ -14,22 +14,9 @@
 // NOTE: this is velocity ALONG the orbit.
 
 function visviva_v {
-    parameter h1.           // current altitude.
-    parameter h2 is h1.     // periapsis (or apoapsis) altitude.
-    parameter h3 is h1.     // apoapsis (or periapsis) altitude.
-    parameter b is body.    // which body we are orbiting.
-
-    // KSP (and kOS) use ALTITUDE, but math needs RADIUS,
-    // so we have to add the radius of the body.
-    local r0 is b:radius.
-
-    // Math wants current radius.
-    local r is r0 + h1.           // current radius
-
-    // Math wants Semi-Major Axis,
-    // which is half of the periapsis plus apoapsis radii.
-    local a is r0 + (h2+h3)/2.    // semi-major axis
-
-    // Compute the velocity at r
-    return sqrt(abs(b:mu*(2/r - 1/a))).
+    parameter r1.               // current radius.
+    parameter r2 is r1.         // periapsis (or apoapsis) radius.
+    parameter r3 is r1.         // apoapsis (or periapsis) radius.
+    parameter mu is body:mu.    // gravitational field strength
+    return sqrt(abs(2*mu*(1/r1 - 1/(r2+r3)))).
 }

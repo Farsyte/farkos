@@ -136,10 +136,10 @@ function plan_xfer {                    // construct initial transfer maneuver
     // I want to see how well we can do with just a prograde burn.
     //
     function initial_burn {     // construct the initial list defining the burn.
-        local Xfer_H0 is Xfer_R0() - r0.
-        local Xfer_HF is Xfer_RF - r0.
-        local Xfer_S0 is visviva_v(Xfer_H0, Xfer_HF).
-        local Xfer_dV is xfer_S0 - visviva_v(Xfer_H0).
+        local r1 is Xfer_R0().
+        local r2 is Xfer_HF.
+        local Xfer_S0 is visviva_v(r1, r2).
+        local Xfer_dV is xfer_S0 - visviva_v(r1).
         // if we add a 3rd value, we hillclimb the radial burn as well.
         // if we add a 4th value, we hillclimb the normal burn as well.
         return list(Xfer_T0, Xfer_dV).

@@ -72,6 +72,8 @@ function phase_match_lan {
 // phase_match_apo: raise apoapsis to target semi-major axis.
 function phase_match_apo {
 
+    local r0 is body:radius.
+
     local match_apo is persist_get("match_apo", 500000, true).
     local match_peri is persist_get("match_peri", 500000, true).
     local match_gain is persist_get("match_gain", 1, true).
@@ -81,7 +83,7 @@ function phase_match_apo {
     local target_apo is (match_peri+match_apo)/2.
 
     local _delta_v is {     // compute desired change in velocity magnitutde
-        local desired_speed is visviva_v(altitude,target_apo,periapsis).
+        local desired_speed is visviva_v(r0+altitude,r0+target_apo,r0+periapsis).
         local current_speed is velocity:orbit:mag.
         return desired_speed - current_speed. }.
 

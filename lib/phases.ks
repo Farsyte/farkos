@@ -79,6 +79,8 @@ function phase_launch {
 
 function phase_ascent {
 
+    local r0 is body:radius.
+
     local orbit_altitude is persist_get("launch_altitude", 80000, true).
     local launch_azimuth is persist_get("launch_azimuth", 90, true).
     local ascent_gain is persist_get("ascent_gain", 10, true).
@@ -94,7 +96,7 @@ function phase_ascent {
 
     local _throttle is {        // P conttroller to stop at target apoapsis
         local current_speed is velocity:orbit:mag.
-        local desired_speed is visviva_v(altitude,orbit_altitude,periapsis).
+        local desired_speed is visviva_v(r0+altitude,r0+orbit_altitude,r0+periapsis).
         local speed_change_wanted is desired_speed - current_speed.
         local accel_wanted is speed_change_wanted * ascent_gain.
         local force_wanted is mass * accel_wanted.
@@ -128,6 +130,8 @@ function phase_circ {
 
     phase_unwarp().
 
+    local r0 is body:radius.
+
     local throttle_gain is persist_get("circ_throttle_gain", 5, true).
     local max_facing_error is persist_get("circ_max_facing_error", 5, true).
     local good_enough is persist_get("circ_good_enough", 1, true).
@@ -138,7 +142,7 @@ function phase_circ {
         local throttle is 0. }
 
     local _delta_v is {         // compute desired velocity change.
-        local desired_lateral_speed is visviva_v(altitude).
+        local desired_lateral_speed is visviva_v(r0+altitude).
         local lateral_direction is vxcl(up:vector,velocity:orbit):normalized.
         local desired_velocity is lateral_direction*desired_lateral_speed.
         return desired_velocity - velocity:orbit. }.
