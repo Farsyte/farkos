@@ -19,6 +19,11 @@ global dirpath is list(homedir, homedir + "../", libdir).
 
 local package_ran is UniqueSet().
 
+function fp_differs {
+    parameter a, b, eps is 1e-12.
+    return abs(a-b) > eps*(abs(a)+abs(b)).
+}
+
 function clamp { parameter lo, hi, val.
     return max(lo,min(hi,val)).
 }
