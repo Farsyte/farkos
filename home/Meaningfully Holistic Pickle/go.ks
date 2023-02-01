@@ -9,8 +9,6 @@ loadfile("visviva").
 loadfile("hillclimb").
 loadfile("maneuver").
 
-term(132,66).
-
 //
 // State prediction in BODY-RAW coordinates
 local ship_pos_at is {         // predict Body->Ship vector at time t
@@ -98,11 +96,6 @@ function rescue_abort {
 function plan_xfer {    // construct initial transfer maneuver
     lock throttle to 0.
     lock steering to facing.
-
-    if not rcs {
-        say("activate RCS to continue.", false).
-        return 5. }
-    rcs off.
 
     persist_put("phase_plan_xfer", mission_phase()).
     persist_clr("xfer_start_time").
@@ -209,14 +202,151 @@ function plan_corr {    // plan a mid-course correction.
     if xfer_final_time < time:seconds+10    // check for overshoot.
         return rescue_abort("overshot allowable planning time").
 
-    if not rcs {                            // wait for RCS enable.
-        say("activate RCS to continue.", false).
-        return 5. }
-    rcs off.
-
     hillclimb_burn(list(xfer_corr_time, 0, 0, 0),
         burn_fitness_fn, list(3, 1, 0.3, 0.1, 0.03)).
     return 0. }
+function wait_near {
+    if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
+    if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+
+    lock throttle to 0.
+    lock steering to retrograde.
+
+    local xfer_final_time is persist_get("xfer_final_time").
+    local stop_warp_at is xfer_final_time - 30.
+    local wait_for is stop_warp_at - time:seconds.
+
+    // print "wait_for = "+wait_for.
+
+    if wait_for<=0 return 0.
+    if wait_for<30 return wait_for.
+    wait 3.
+    warpto(stop_warp_at).
+    return wait_for. }
+
+function approach {
+    if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
+    if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+
+    lock steering to retrograde.
+
+    // pv("","").
+    local dir is prograde:vector.                               // pv("dir", dir).
+
+    local t_p is target:position.                               // pv("t_p", t_p).
+    local t_v is target:velocity:orbit.                         // pv("t_v", t_v).
+    local s_v is ship:velocity:orbit.                           // pv("s_v", s_v).
+
+    local d is vdot(t_p, dir).                                  // pv("d", d).
+    local v is vdot(s_v - t_v, dir).                            // pv("v", v).
+
+    {   // Plan to burn at a constant acceleration A, such that
+        // the burn reduces our position and velocity to zero at some
+        // future time T=0. Solve for that acceleration A and
+        // for the T for right now which will be negaitive.
+        //     V = A T                   X = A T^2 / 2
+        // Solve for time by eliminating A from the X equation:
+        //     A = V / T                 X = (V/T) T^2 2 = V T/2
+        //     T = 2 X / V
+        // Compute T, then compute A as seen above.
+    }
+    local p_dist is d.                                          // pv("p_dist", p_dist).
+    local p_rate is v.                                          // pv("p_rate", p_rate).
+
+    // computed time until X=0 V=0 at constant A
+    // NOTE: once things are nearly linear, and
+    // until we start thrusting, b_time will go down
+    // twice as fast as time is progressing.
+
+    local b_time is 2*p_dist/p_rate.                            // pv("b_time", b_time).
+
+    if b_time < 0 {
+        // print "target is behind us.".
+        set throttle to 0.
+        return 0. }
+
+    // b_accel: the required acceleration
+    local b_accel is p_rate/b_time.                             // pv("b_accel", b_accel).
+
+    // b_force: the required force
+    local b_force is b_accel*ship:mass.                         // pv("b_force", b_force).
+
+    // desired throttle command
+    local b_throt is b_force/availablethrust.                   // pv("b_throt", b_throt).
+
+    if throttle>0 or b_throt>0.5
+        set throttle to b_throt.
+
+    if throttle=0 and b_throt<0.2
+        return 1.
+
+    return 1/100. }
+
+local holding_for_rescue is false.
+function rescue {
+    if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
+    if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+    if abort return 0.
+
+    local k_t is 2.                     // TODO make tunable, find good value.
+    local max_facing_error is 15.        // TODO make tunable, find good value.
+
+    // pv("","").
+    local t_p is target:position.                               // pv("t_p", t_p).
+    local t_v is target:velocity:orbit.                         // pv("t_v", t_v).
+    local s_v is ship:velocity:orbit.                           // pv("s_v", s_v).
+    local r_v is t_v - s_v.                                     // pv("r_v", r_v).
+
+    // if we are already in the rescue pose,
+    // do not change pose unless we are more than 100m
+    // from the target or our relative velocity
+    // exceeds 0.1 m/s.
+
+    if holding_for_rescue {
+        if t_p:mag < 100 and r_v:mag < 0.1 {
+            lock steering to lookdirup(body:north:vector, t_p:normalized).
+            lock throttle to 0.
+            say("Activate ABORT to return home.").
+            return 5.
+        }
+        set holding_for_rescue to false.
+    }
+
+    // if we are within 10m of the target and our
+    // speed is within 0.1 m/s of the target, then
+    // enter the rescule pose.
+    if t_p:mag < 10 and r_v:mag < 0.1 {
+        set holding_for_rescue to true.
+        lock steering to lookdirup(body:north:vector, t_p:normalized).
+        lock throttle to 0.
+        return 1.
+    }
+
+    // if more than 10m from the target,
+    // match a velocity toward the target
+    // of 1 m/s per 10 m of distance.
+
+    if t_p:mag > 10
+        set r_v to r_v + t_p/10.
+
+    set steering to lookdirup(r_v, facing:topvector).
+
+    local desired_delta_v to r_v:mag.                           // pv("desired_delta_v", desired_delta_v).
+    if desired_delta_v < 0.01 { set throttle to 0. return 1. }
+    local desired_accel to desired_delta_v * 2.                 // pv("desired_accel", desired_accel).
+    local desired_force is ship:mass * desired_accel.           // pv("desired_force", desired_force).
+    local desired_throttle is desired_force / availablethrust.  // pv("desired_throttle", desired_throttle).
+    local clamped_throttle is clamp(0,1,desired_throttle).      // pv("clamped_throttle", clamped_throttle).
+
+    local facing_error is vang(facing:vector,steering:vector).  // pv("facing_error", facing_error).
+    local fefac is facing_error/max_facing_error.               // pv("fefac", fefac).
+    local facing_error_factor is clamp(0,1,1-fefac).            // pv("facing_error_factor", facing_error_factor).
+
+    set throttle to clamp(0,1,facing_error_factor*clamped_throttle).
+
+    return 1/100.
+}
+
 //
 // Mission Plan
 //
@@ -229,20 +359,30 @@ mission_add(LIST(
         persist_put("rescue_retry_phase", mission_phase()). },
     "COAST",        phase_coast@,       // until we are near our orbit, coast up pointing prograde.
     "CIRC",         phase_circ@,        // until our periapsis is in space, burn prograde.
+    //
+    // In READY orbit.
+    //
     "MATCH_INCL",   phase_match_incl@,  // match inclination of rescue target
     "PLAN_XFER",    plan_xfer@,         // create maneuver node for starting transfer.
     "EXEC_XFER",    maneuver:step@,     // execute the maneuver to inject into the transfer orbit.
     "PLAN_CORR",    plan_corr@,         // plan mid-transfer correction
     "EXEC_CORR",    maneuver:step@,     // execute the mid-transfer correction.
-    {       // report residual error after maneuvers.
-        local tf is get_xfer_final_time().
-        local fe is ship_targ_error_at(tf).
-        say("residual error: "+fe).
-        return 0. },
-    // TODO mid-transfer course correction
-    // TODO match rescue target
-    "TBD", {        // further steps are TBD.
-        say("TBD", false). return 5. },
+    "WAIT_NEAR",    wait_near@,         // wait (or warp) until time to rendezvous
+    "APPROACH",     approach@,          // come to a stop near the target
+    "RESCUE",       rescue@,            // maintain position near target
+    //
+    // Normal deorbit, descent, and landing process.
+    //
+    "UNABORT",      { abort off. return 0. },
+    "DEORBIT",      phase_deorbit@,     // until our periapsis is low enough, burn retrograde.
+    "FALL",         phase_fall@,        // fall to half of the atmosphere height.
+    "DECEL",        phase_decel@,       // decelerate to 1/4th of atmosphere height.
+    "PSAFE",        phase_psafe@,       // fall until safe for parachutes
+    "UNWARP",       { set warp to 0. return 0. },
+    "CHUTE",        phase_chute@,       // fall until safe for parachutes
+    "GEAR",         phase_gear@,        // extend landing gear.
+    "LAND",         phase_land@,        // until we stop descending, keep the nose pointed directly up.
+    "PARK",         phase_park@,        // until the cows come home, keep the capsule upright.
     "")).
 //
 // Now go do it.
