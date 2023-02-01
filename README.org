@@ -60,6 +60,40 @@ Dunbaratu responds:
 > that like it does when you pass a position into, say,
 > body:geopositionof(vector).
 
+** ANGULARMOMENTUM axis correction
+
+see https://www.reddit.com/r/Kos/comments/wicvgy/trouble_with_shipangularmomentum/
+
+Nummgreat comments:
+
+> The :ANGULARMOMENTUM vector is an exception to almost all other
+> vectors in kOS in that it is not in the normal SHIP-RAW frame of
+> reference that all other vectors are. Instead it is in it's own
+> somewhat custom frame of reference as I think the vector was missed
+> when adding in the code needed to get all vectors into the same
+> frame of reference.
+>
+> The vector's origin is the ship's COM and it purly describes how the
+> vessel is rotating and nothing to do with orbital motion. It's axis
+> are defined as follows if I remember the vector correctly
+>
+>     x =pitch(w = pos, s = neg)
+>     y = roll(q = pos, e = neg)
+>     z =  yaw(a = pos, d = neg)
+>
+> with the given keys increasing that axis in the described positive
+> or negative direction.
+>
+> EDIT: To get the vector into the normal SHIP-RAW frame you would
+> need a function like this
+>
+>     FUNCTION angularmomentum_in_raw {
+>       LOCAL am IS SHIP:ANGULARMOMENTUM.
+>       SET am TO v(am:X,-am:Z,am:Y).
+>       RETURN am * SHIP:FACING.
+>     }
+
+
 ** LOCK is not just GLOBAL
 
 Historically, LOCK STEERING and LOCK THROTTLE have always operated
