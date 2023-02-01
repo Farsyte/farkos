@@ -115,10 +115,9 @@ function phase_match_apo {
 
 // phase_match_incl: match orbital plane
 // matches both inclination and longitude of ascending node
-local phase_match_incl_report_time is 0.
 local match_throttle_prev is 0.
-local phase_match_incl_debug is false.
 
+// same thing without locks and delegates.
 function phase_match_incl {
 
     // TODO consider the case: vdot(h_s,h_t) <= 0
@@ -127,50 +126,33 @@ function phase_match_incl {
     local max_facing_error is persist_get("match_incl_max_facing_error", 15).
     local max_i_r is persist_get("match_incl_within", 0.01).
 
-    if not kuniverse:timewarp:issettled return 1/10.    // if timewarp rate is changing, try again shortly.
+    if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
 
-    local o_t is get_orbit_to_match().                  // get Orbit for contract
+    local b is body.
+    local o_t is get_orbit_to_match().                          // get Orbit for contract
 
-    local b is body.    // TODO: fail if in orbit around the wrong body.
+    // TODO: fail if in orbit around the wrong body.
 
-    local _p_s is {     // position from BODY to SHIP
-        return -b:position. }.
+    local p_t is o_t:position-b:position.                       // position from BODY to TARGET
+    local v_t is o_t:velocity:orbit.                            // velocity of TARGET relative to BODY
+    local h_t is vcrs(v_t,p_t):normalized.                      // direction of angular momentum in TARGET ORBIT around BODY
 
-    local _v_s is {     // velocity of SHIP relative to BODY
-        return velocity:orbit. }.
+    local p_s is -b:position.                                   // position from BODY to SHIP
+    local v_s is velocity:orbit.                                // velocity of SHIP relative to BODY
+    local h_s is vcrs(v_s,p_s):normalized.                      // direction of angular momentum of ship around its orbit
 
-    local _h_s is {     // direction of angular momentum of ship around its orbit
-        local v_s is _v_s().                    // velocity of SHIP relative to BODY
-        local p_s is _p_s().                    // position from BODY to SHIP
-        return vcrs(v_s,p_s):normalized. }.
+    local i_r is vang(h_s, h_t).                                // compute relative inclination
 
-    local _h_t is {     // direction of angular momentum in TARGET ORBIT around BODY
-        local p_t is o_t:position-b:position.   // position from BODY to TARGET
-        local v_t is o_t:velocity:orbit.        // velocity of TARGET relative to BODY
-        return vcrs(v_t,p_t):normalized. }.
+    if i_r <= max_i_r {                     // termination condition
+        print "phase_match_incl: final i_r is "+i_r.
+        set throttle to 0.
+        set steering to prograde.
+        return 0. }
 
-    local _i_r is {     // compute relative inclination
-        local h_s is _h_s().                    // angular momentum direction of SHIP
-        local h_t is _h_t().                    // angular momentum vector of TARGET
-        return vang(h_s, h_t). }.
+    if availablethrust <= 0 return 1/10.                        // no thrust, try again later.
 
-    {   // check termination condition.
-        local i_r is _i_r().                    // relative inclination
-        if i_r <= max_i_r {                     // termination condition
-            print "phase_match_incl: final i_r is "+i_r.
-            lock throttle to 0.
-            lock steering to prograde.
-            return 0. } }
-
-    local _p_dist is {  // p_dist: distance to the target orbital plane
-        local p_s is _p_s().                    // position from BODY to SHIP
-        local h_t is _h_t().
-        return vdot(h_t, p_s). }.
-
-    local _p_rate is {  // p_rate: speed along target plane normal
-        local v_s is _v_s().                    // velocity of SHIP relative to BODY
-        local h_t is _h_t().
-        return vdot(h_t, v_s). }.
+    local p_dist is vdot(h_t, p_s).                             // p_dist: distance to the target orbital plane
+    local p_rate is vdot(h_t, v_s).                             // p_rate: speed along target plane normal
 
     {   // Plan to burn at a constant acceleration A, such that
         // the burn reduces our position and velocity to zero at some
@@ -183,101 +165,53 @@ function phase_match_incl {
         // Compute T, then compute A as seen above.
     }
 
-    local _b_time is {      // computed time until X=0 V=0 at constant A
-        local p_dist is _p_dist().
-        local p_rate is _p_rate().
-        return 2*p_dist/p_rate. }.
+    local b_time is 2*p_dist/p_rate.                            // computed time until X=0 V=0 at constant A
+    if b_time >= 0 {
+        set throttle to 0.
+        set steering to prograde.
+        return 5. }
 
-    local _b_throt is {     // desired throttle command
-        local b_time is _b_time().              // b_time: time from intercept to now
-        if b_time>0 return 0.                   // ... moving away: no throttle.
-        local p_rate is _p_rate().              // p_rate: how fast we are approaching
-        local b_accel is p_rate/b_time.         // b_accel: the required acceleration
-        local b_force is b_accel*ship:mass.     // b_force: the required force
-        local max_force is max(0.01, availablethrust). // max force, protect against zero.
-        return b_force/max_force. }.             // b_throt: throttle setting to get that force
+    local b_accel is p_rate/b_time.                             // b_accel: the required acceleration
+    local b_force is b_accel*ship:mass.                         // b_force: the required force
+    local b_throt is b_force/availablethrust.                   // desired throttle command
 
-    local _raw_Ct is {      // raw throttle command based on b_throt above
-        local b_throt is _b_throt().            // throttle setting to get desired force
-        return min(1,abs(b_throt)). }.
+    local next_Ct is min(1,abs(b_throt)).                        // raw throttle command based on b_throt above
 
-    {   // logic to maybe drop out of time warp (b_time, raw_Ct)
+    {   // logic to maybe drop out of time warp (b_time, next_Ct)
 
         local ws is kuniverse:timewarp:warp.
         local wr is kuniverse:timewarp:rate.
 
-        local b_time is _b_time().              // b_time: time from intercept to now
-        local raw_Ct is _raw_Ct().
-
         // If the time is getting too small for our current time warp rate,
         // then reduce the time warp step.
 
-        if ws>0 and kuniverse:timewarp:rate>1 and b_time<0 and b_time>-10*kuniverse:timewarp:rate {
+        if ws>0 and kuniverse:timewarp:rate>1 and b_time>-10*kuniverse:timewarp:rate {
             set ws to ws-1.
-            print "phase_match_incl: reducing timewarp to step "+ws.
             set kuniverse:timewarp:warp to ws.
             return 1/10. }
 
         // If we computed that we need 10% throttle or more,
         // cancel any remaining timewarp.
 
-        if raw_Ct>0.1 and wr>1 {
-            print "phase_match_incl: cancel timewarp".
+        if next_Ct>0.1 and wr>1 {
             kuniverse:timewarp:cancelwarp().
             return 1/10. }
     }
 
-    local _steering is {    // All steering computations.
-        local h_s is _h_s().                    // angular momentum direction of SHIP
-        local b_throt is _b_throt().
-        local next_Cs is h_s*sgn(b_throt).      // pick upward or downward normal
-        return lookdirup(next_Cs,facing:topvector). }.
+    local next_Cs is h_s*sgn(b_throt).      // pick upward or downward normal
+    local local_s is lookdirup(next_Cs,facing:topvector).
+    set steering to local_s.
 
-    local _next_Ct is {
-        local raw_Ct is _raw_Ct().
+    if match_throttle_prev=0 {
+        set throttle to 0.
+        if next_ct<0.1 return 1.
+        if next_ct<0.4 return 1/100.
+    }
+    set match_throttle_prev to next_Ct.
 
-        // If the engine is NOT currently burning, and the computed
-        // throttle is less than 60%, then do not turn it on.
-        if match_throttle_prev=0 and raw_Ct<0.6 return 0.
-        return raw_Ct.
-    }.
+    local facing_error is vang(facing:vector,steering:vector).
+    local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
+    set throttle to clamp(0,1,facing_error_factor*next_Ct).
 
-    local _throttle is {    // All throttle computations.
-        local next_Ct is _next_Ct().
-
-        // Reduce engine thrust if we are pointed the wrong way.
-        local facing_error is vang(facing:vector,steering:vector).
-        local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
-
-        set match_throttle_prev to clamp(0,1,facing_error_factor*next_Ct).
-        return match_throttle_prev. }.
-
-    if phase_match_incl_debug {   // periodic printing (taking TIMEWARP into account)
-
-        if time:seconds > (phase_match_incl_report_time+5*kuniverse:timewarp:rate) {
-            set phase_match_incl_report_time to time:seconds.
-
-            local i_r is _i_r().                // relative inclination
-            local b_time is _b_time().              // b_time: time from intercept to now
-            local b_throt is _b_throt().            // throttle setting to get desired force
-            local facing_error is vang(facing:vector,steering:vector).
-            local next_Ct is _next_Ct().
-
-            print " ".
-            print "phase_match_incl running".
-            print "  i_r = "+i_r.
-            print "  b_time = "+b_time.
-            print "  b_throt = "+b_throt.
-            print "  f_error = "+facing_error.
-            print "  next_Ct = "+next_Ct.
-            print "  throttle = "+throttle. } }
-
-    // These two LOCK statements will cause kOS to evaluate all of
-    // those delegates we just constructed above, each cycle when
-    // it applies THROTTLE and STEERING controls.
-
-    lock throttle to _throttle().
-    lock steering to _steering().
-
-    return 5.
+    return 1/100.
 }
