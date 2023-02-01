@@ -20,11 +20,55 @@
   global maneuver is lex(
     "time", mnv_time@,
     "v_e", mnv_v_e@,
+    "step", mnv_step@,
     "exec", mnv_exec@
   ).
 
   local e is constant:e.
   local G0 is constant:G0. // converion factor for Isp
+
+  // MANEUVER:STEP()
+  // Do a single step adjust of vessel state to meet the
+  // needs of the next maneuiver node. Returns how long to
+  // wait before calling it again.
+  local mnv_step_s is V(0,0,0).
+  local mnv_step_t is 0.
+  function mnv_step {
+    if not hasnode return 0.
+    if kuniverse:timewarp:rate>1 return 1.
+    if not kuniverse:timewarp:issettled return 1.
+
+    local n is nextnode.
+    local v is n:burnvector.
+
+    if 0=mnv_step_t                     set mnv_step_t to time:seconds + n:eta - mnv_time(v:mag)/2.
+    if 0=mnv_step_s:mag                 set mnv_step_s to v:normalized.
+
+    local calc_dv is {                  // remaining DV in original thrust direction
+      return vdot(mnv_step_s, n:burnvector). }.
+
+    if calc_dv() <= 0 {                  // termination condition
+      lock throttle to 0.
+      lock steering to facing.
+      remove nextnode.
+      set mnv_step_s to V(0,0,0).
+      set mnv_step_t to 0.
+      return 0. }
+
+    // steering setting
+    lock steering to lookdirup(mnv_step_s, facing:topvector).
+
+    local th is {         // throttle setting computation
+      local wt is mnv_step_t - time:seconds.    if wt > 0 return 0.
+      local dv is calc_dv().                    if dv <= 0 return 0.
+      local dt is mnv_time(dv).                 if dt >= 1 return 1.
+      return sqrt(dt). }.                       lock throttle to th().
+
+    local wt is mnv_step_t - time:seconds.
+    if wt>0 and wt<2            return wt.
+    if wt>60                    warpto(time:seconds + wt - 30).
+    return 1.
+  }
 
   // MANEUVER:EXEC(autowarp)
   //   autowarp         if true, autowarp to the node.

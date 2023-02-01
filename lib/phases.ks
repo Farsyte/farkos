@@ -90,13 +90,13 @@ function phase_ascent {
     if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height return 0.
 
     local _steering is {        // simple pitch program
-        local altitude_fraction is clamp(0,1,altitude / orbit_altitude).
+        local altitude_fraction is clamp(0,1,altitude / min(80000,orbit_altitude)).
         local pitch_wanted is 90*(1 - sqrt(altitude_fraction)).
         return heading(launch_azimuth,pitch_wanted,0). }.
 
     local _throttle is {        // P conttroller to stop at target apoapsis
         local current_speed is velocity:orbit:mag.
-        local desired_speed is visviva_v(r0+altitude,r0+orbit_altitude,r0+periapsis).
+        local desired_speed is visviva_v(r0+altitude,r0+orbit_altitude+1,r0+periapsis).
         local speed_change_wanted is desired_speed - current_speed.
         local accel_wanted is speed_change_wanted * ascent_gain.
         local force_wanted is mass * accel_wanted.
