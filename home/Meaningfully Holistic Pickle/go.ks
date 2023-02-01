@@ -38,31 +38,34 @@ local set_burn is {         // set the maneuver node to the burn state given.
     if burn:length > 1 and fp_differs(n1:prograde, burn[1]) set n1:prograde to burn[1].
     if burn:length > 2 and fp_differs(n1:radialout, burn[2]) set n1:radialout to burn[2].
     if burn:length > 3 and fp_differs(n1:normal, burn[3]) set n1:normal to burn[3].
-    wait 0.  }.
+    wait 0. return burn. }.
 local hillclimb_loop is {
     parameter burn, fitness_fn, step_sizes.
-    print "initial fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]".
-    for step_size in step_sizes {
+    for step_size in step_sizes
         set burn to hillclimb:seek(burn, fitness_fn, step_size).
-        set_burn(burn).
-        print "step_size="+step_size+", fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]". }
-    print "final fitness="+fitness_fn(burn)+", burn=["+burn:join(" ")+"]". }.
+    return set_burn(burn). }.
 local hillclimb_burn is {
-    parameter burn, step_sizes.
-    local eval_count is 0.
-    local fitness_fn is {       // fitness, for hillclimbing. More positive is better.
-        parameter burn.
-        set_burn(burn).
-        local n1 is nextnode.
-        local xo is n1:orbit.
-        local tf is persist_get("xfer_final_time", time:seconds+n1:eta+xo:period/2).
-        local sp is ship_pos_at(tf).
-        local tp is targ_pos_at(tf).
-        local pe is (tp-sp):mag.
-        set eval_count to eval_count + 1.
-        return -pe. }.
-    hillclimb_loop(burn, fitness_fn, step_sizes).
-    print "evaluated "+eval_count+" burn vectors.". }.
+    parameter burn, fitness_fn, step_sizes.
+    set burn to hillclimb_loop(burn, fitness_fn, step_sizes).
+    return burn. }.
+local get_xfer_final_time is {
+    if persist_has("xfer_final_time")
+        return persist_get("xfer_final_time").
+    local n1 is nextnode.
+    local xo is n1:orbit.
+    local tf is time:seconds+n1:eta+xo:period/2.
+    return tf. }.
+local ship_targ_error_at is {
+    parameter tf.
+    local sp is ship_pos_at(tf).
+    local tp is targ_pos_at(tf).
+    local pe is (tp-sp):mag.
+    return pe. }.
+local burn_fitness_fn is {       // fitness, for hillclimbing. More positive is better.
+    parameter burn.
+    set_burn(burn).
+    local tf is get_xfer_final_time().
+    return -ship_targ_error_at(tf). }.
 //
 local pi is constant:pi.
 //
@@ -94,7 +97,7 @@ function rescue_abort {
 //
 function plan_xfer {    // construct initial transfer maneuver
     lock throttle to 0.
-    lock steering to prograde.
+    lock steering to facing.
 
     if not rcs {
         say("activate RCS to continue.", false).
@@ -144,9 +147,6 @@ function plan_xfer {    // construct initial transfer maneuver
     //
     local Curr_E is Error_PF():mag.
     local Prev_E is 0.
-    local Xfer_Tune is {                // transfer tuning function.
-        parameter done.                 // delegate: when to stop
-        wait until done(). }.
     local Xfer_dt_try is {
         parameter dt.
         set Prev_E to Curr_E.           // previous error, for comparison.
@@ -165,6 +165,10 @@ function plan_xfer {    // construct initial transfer maneuver
           Xfer_dt_try(dt).
           return Curr_E > Prev_E. }.
     //
+    local Xfer_Tune is {                // transfer tuning function.
+        parameter done.                 // delegate: when to stop
+        wait until done(). }.
+    //
     // Find the first feasible solution:
     {   // Increase T0 by big jumps until we are beyond a maximum.
         local dt is 300.
@@ -182,7 +186,7 @@ function plan_xfer {    // construct initial transfer maneuver
             Xfer_dt_rew(). }                                                    }
     //
     hillclimb_burn(burn_into_hohmann(Xfer_T0, Xfer_R0(), Xfer_RF),
-            list(30, 10, 3, 1, 0.3, 0.1, 0.03,0.01)).
+            burn_fitness_fn, list(30, 10, 3, 1, 0.3, 0.1, 0.03)).
     //
     {   // persist timestamps for xfer start, final, and corr
         local n is nextnode.
@@ -196,7 +200,7 @@ function plan_xfer {    // construct initial transfer maneuver
     return 0. }
 function plan_corr {    // plan a mid-course correction.
     lock throttle to 0.
-    lock steering to prograde.
+    lock steering to facing.
 
     local xfer_start_time is persist_get("xfer_start_time").
     local xfer_final_time is persist_get("xfer_final_time").
@@ -211,25 +215,7 @@ function plan_corr {    // plan a mid-course correction.
     rcs off.
 
     hillclimb_burn(list(xfer_corr_time, 0, 0, 0),
-        list(0.3, 0.1, 0.03, 0.01, 0.003)).
-    return 0. }
-function exec_node {    // execute the next maneuver node.
-    lock throttle to 0.
-    lock steering to prograde.
-
-    // if the node is missing, rewind to our upward coast.
-    if not hasnode
-        return rescue_abort("maneuver node is missing").
-
-    if not rcs {
-        say("activate RCS to continue.", false).
-        return 5.
-    }
-    rcs off.
-
-    print "triggering mnv_exec.".
-    maneuver:exec(true).
-    print "maneuver:exec complete.".
+        burn_fitness_fn, list(3, 1, 0.3, 0.1, 0.03)).
     return 0. }
 //
 // Mission Plan
@@ -245,9 +231,14 @@ mission_add(LIST(
     "CIRC",         phase_circ@,        // until our periapsis is in space, burn prograde.
     "MATCH_INCL",   phase_match_incl@,  // match inclination of rescue target
     "PLAN_XFER",    plan_xfer@,         // create maneuver node for starting transfer.
-    "EXEC_XFER",    exec_node@,         // execute the maneuver to inject into the transfer orbit.
+    "EXEC_XFER",    maneuver:step@,     // execute the maneuver to inject into the transfer orbit.
     "PLAN_CORR",    plan_corr@,         // plan mid-transfer correction
-    "EXEC_CORR",    exec_node@,         // execute the mid-transfer correction.
+    "EXEC_CORR",    maneuver:step@,     // execute the mid-transfer correction.
+    {       // report residual error after maneuvers.
+        local tf is get_xfer_final_time().
+        local fe is ship_targ_error_at(tf).
+        say("residual error: "+fe).
+        return 0. },
     // TODO mid-transfer course correction
     // TODO match rescue target
     "TBD", {        // further steps are TBD.
