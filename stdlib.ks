@@ -45,17 +45,6 @@ function sa { parameter ang. // map ang into the -180..+180 range
     return ang.
 }
 
-// term(w,h): open the console terminal.
-// optional parameters can be used to set the size.
-function term {
-    parameter w is terminal:width.
-    parameter h is terminal:height.
-    set terminal:height to h.
-    set terminal:width to w.
-    if career():candoactions
-        core:doAction("open terminal", true).
-}
-
 function say {
     parameter message.
     parameter do_echo is true.
