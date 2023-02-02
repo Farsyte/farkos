@@ -63,7 +63,7 @@ local burn_fitness_fn is {       // fitness, for hillclimbing. More positive is 
     parameter burn.
     set_burn(burn).
     local tf is get_xfer_final_time().
-    return -ship_targ_error_at(tf). }.
+    return -round(ship_targ_error_at(tf),1). }.
 //
 local pi is constant:pi.
 //
@@ -88,14 +88,15 @@ mission_bg(bg_stager@).                 // Start the auto-stager running in the 
 function rescue_abort {
     parameter m.
     say(m).
-    // alternately we might want to just deorbit since we
-    // are not going to be carrying huge amounts of fuel.
-    mission_jump(persist_get("rescue_retry_phase")).
+    say("ABORT MISSION.").
+    abort on.
     return 0. }
 //
 function plan_xfer {    // construct initial transfer maneuver
+    if abort return 0.
     lock throttle to 0.
     lock steering to facing.
+    if not hastarget set target to rescue_target.
 
     persist_put("phase_plan_xfer", mission_phase()).
     persist_clr("xfer_start_time").
@@ -192,8 +193,10 @@ function plan_xfer {    // construct initial transfer maneuver
     //
     return 0. }
 function plan_corr {    // plan a mid-course correction.
+    if abort return 0.
     lock throttle to 0.
     lock steering to facing.
+    if not hastarget set target to rescue_target.
 
     local xfer_start_time is persist_get("xfer_start_time").
     local xfer_final_time is persist_get("xfer_final_time").
@@ -206,8 +209,10 @@ function plan_corr {    // plan a mid-course correction.
         burn_fitness_fn, list(3, 1, 0.3, 0.1, 0.03)).
     return 0. }
 function wait_near {
+    if abort return 0.
     if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
     if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+    if not hastarget set target to rescue_target.
 
     lock throttle to 0.
     lock steering to retrograde.
@@ -225,8 +230,10 @@ function wait_near {
     return wait_for. }
 
 function approach {
+    if abort return 0.
     if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
     if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+    if not hastarget set target to rescue_target.
 
     lock steering to retrograde.
 
@@ -284,9 +291,16 @@ function approach {
 
 local holding_for_rescue is false.
 function rescue {
+    if abort {
+        lock steering to retrograde.
+        lock throttle to 0.
+        // wait 1.
+        // say(LIST("Home Again,","Home Again,","Jiggity-Jig.")).
+        wait 3.
+        return 0. }
     if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
     if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
-    if abort return 0.
+    if not hastarget set target to rescue_target.
 
     local k_t is 2.                     // TODO make tunable, find good value.
     local max_facing_error is 15.        // TODO make tunable, find good value.
@@ -300,17 +314,15 @@ function rescue {
     // if we are already in the rescue pose,
     // do not change pose unless we are more than 100m
     // from the target or our relative velocity
-    // exceeds 0.1 m/s.
+    // exceeds 1.0 m/s.
 
     if holding_for_rescue {
-        if t_p:mag < 100 and r_v:mag < 0.1 {
+        if t_p:mag < 100 and r_v:mag < 1.0 {
             lock steering to lookdirup(body:north:vector, t_p:normalized).
             lock throttle to 0.
-            say("Activate ABORT to return home.").
-            return 5.
-        }
-        set holding_for_rescue to false.
-    }
+            say("Activate ABORT to return home.", false).
+            return 5. }
+        set holding_for_rescue to false. }
 
     // if we are within 10m of the target and our
     // speed is within 0.1 m/s of the target, then
@@ -319,8 +331,7 @@ function rescue {
         set holding_for_rescue to true.
         lock steering to lookdirup(body:north:vector, t_p:normalized).
         lock throttle to 0.
-        return 1.
-    }
+        return 1. }
 
     // if more than 10m from the target,
     // match a velocity toward the target
@@ -344,8 +355,7 @@ function rescue {
 
     set throttle to clamp(0,1,facing_error_factor*clamped_throttle).
 
-    return 1/100.
-}
+    return 1/100. }
 
 //
 // Mission Plan
@@ -355,30 +365,33 @@ mission_add(LIST(
     "COUNTDOWN",    phase_countdown@,    // initiate unmanned flight.
     "LAUNCH",       phase_launch@,      // wait for the rocket to get clear of the launch site.
     "ASCENT",       phase_ascent@,      // until apoapsis is in space, steer upward and east.
-    {   // set a rewind point to use when we have to retry.
-        persist_put("rescue_retry_phase", mission_phase()). },
     "COAST",        phase_coast@,       // until we are near our orbit, coast up pointing prograde.
     "CIRC",         phase_circ@,        // until our periapsis is in space, burn prograde.
     //
     // In READY orbit.
     //
+    { set mapview to true. },
     "MATCH_INCL",   phase_match_incl@,  // match inclination of rescue target
     "PLAN_XFER",    plan_xfer@,         // create maneuver node for starting transfer.
     "EXEC_XFER",    maneuver:step@,     // execute the maneuver to inject into the transfer orbit.
     "PLAN_CORR",    plan_corr@,         // plan mid-transfer correction
     "EXEC_CORR",    maneuver:step@,     // execute the mid-transfer correction.
+    { set mapview to false. },
     "WAIT_NEAR",    wait_near@,         // wait (or warp) until time to rendezvous
     "APPROACH",     approach@,          // come to a stop near the target
     "RESCUE",       rescue@,            // maintain position near target
     //
     // Normal deorbit, descent, and landing process.
     //
-    "UNABORT",      { abort off. return 0. },
+    { abort off. return 0. },
     "DEORBIT",      phase_deorbit@,     // until our periapsis is low enough, burn retrograde.
+    { if altitude>body:atm:height set warp to 3. return 0. },
+    { if altitude>body:atm:height return 1. },
+    { set warp to 3. return 0. },
     "FALL",         phase_fall@,        // fall to half of the atmosphere height.
     "DECEL",        phase_decel@,       // decelerate to 1/4th of atmosphere height.
     "PSAFE",        phase_psafe@,       // fall until safe for parachutes
-    "UNWARP",       { set warp to 0. return 0. },
+    { set warp to 0. return 0. },
     "CHUTE",        phase_chute@,       // fall until safe for parachutes
     "GEAR",         phase_gear@,        // extend landing gear.
     "LAND",         phase_land@,        // until we stop descending, keep the nose pointed directly up.

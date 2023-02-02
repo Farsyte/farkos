@@ -38,6 +38,8 @@ function get_orbit_to_match {
 // ascending node of the target orbit.
 
 function phase_match_lan {
+    if abort return 0.
+
     local inc is persist_get("match_inc", 0).
     local match_lan is persist_get("match_lan", 0).
     local match_lon_lead is persist_get("match_lon_lead", 1).
@@ -71,6 +73,7 @@ function phase_match_lan {
 
 // phase_match_apo: raise apoapsis to target semi-major axis.
 function phase_match_apo {
+    if abort return 0.
 
     local r0 is body:radius.
 
@@ -119,6 +122,7 @@ local match_throttle_prev is 0.
 
 // same thing without locks and delegates.
 function phase_match_incl {
+    if abort return 0.
 
     // TODO consider the case: vdot(h_s,h_t) <= 0
     // ... current logic may end up going the wrong way.
@@ -144,7 +148,7 @@ function phase_match_incl {
     local i_r is vang(h_s, h_t).                                // compute relative inclination
 
     if i_r <= max_i_r {                     // termination condition
-        print "phase_match_incl: final i_r is "+i_r.
+        // print "phase_match_incl: final i_r is "+i_r.
         set throttle to 0.
         set steering to prograde.
         return 0. }
@@ -167,6 +171,7 @@ function phase_match_incl {
 
     local b_time is 2*p_dist/p_rate.                            // computed time until X=0 V=0 at constant A
     if b_time >= 0 {
+        if kuniverse:timewarp:rate=1 set warp to 4.
         set throttle to 0.
         set steering to prograde.
         return 5. }
@@ -177,15 +182,30 @@ function phase_match_incl {
 
     local next_Ct is min(1,abs(b_throt)).                        // raw throttle command based on b_throt above
 
-    {   // logic to maybe drop out of time warp (b_time, next_Ct)
+    {   // logic to manage timewarp (b_time, next_Ct)
 
         local ws is kuniverse:timewarp:warp.
         local wr is kuniverse:timewarp:rate.
 
+        // if we clearly have time, increase our timewarp.
+
+        if ws=0 and wr=1 and b_time<-10*20 {
+            print "phase_match_incl: timewarp 2".
+            set warp to 2.
+            return 1/10. }
+        if ws=0 and wr=1 and b_time<-10*100 {
+            print "phase_match_incl: timewarp 3".
+            set warp to 3.
+            return 1/10. }
+        if ws=0 and wr=1 and b_time<-10*200 {
+            print "phase_match_incl: timewarp 4".
+            set warp to 4.
+            return 1/10. }
+
         // If the time is getting too small for our current time warp rate,
         // then reduce the time warp step.
 
-        if ws>0 and kuniverse:timewarp:rate>1 and b_time>-10*kuniverse:timewarp:rate {
+        if ws>0 and wr>1 and b_time>-10*wr {
             set ws to ws-1.
             set kuniverse:timewarp:warp to ws.
             return 1/10. }

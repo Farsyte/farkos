@@ -39,15 +39,15 @@ function phase_apowarp {
 
 function bg_stager {
     if alt:radar<100 and availablethrust<=0 return 1.
-    local s is stage:number. if s<1 return 0.
+    // current convention is that stage 0 has the parachutes.
+    // we do not trigger parachutes with the autostager.
+    local s is stage:number. if s<2 return 0.
     list engines in engine_list.
-    if engine_list:length<1 return 0.
+    // if engine_list:length<1 return 0.
     for e in engine_list
-        if e:decoupledin=s-1
-            if not e:flameout
-                return 1.
-    if stage:ready
-        stage.
+        if e:decoupledin=s-1 and not e:flameout
+            return 1.
+    if stage:ready stage.
     return 1.
 }
 
@@ -78,6 +78,7 @@ function phase_launch {
 }
 
 function phase_ascent {
+    if abort return 0.
 
     local r0 is body:radius.
 
@@ -115,6 +116,7 @@ function phase_ascent {
 }
 
 function phase_coast {
+    if abort return 0.
     if verticalspeed<0 return 0.
 
     phase_apowarp().
@@ -127,6 +129,7 @@ function phase_coast {
 }
 
 function phase_circ {
+    if abort return 0.
 
     phase_unwarp().
 
@@ -150,9 +153,9 @@ function phase_circ {
     {   // check termination condition.
         local desired_velocity_change is _delta_v():mag.
         if desired_velocity_change <= good_enough {
-            say("circularization complete").
-            print "apoapsis-periapsis spread: "+(apoapsis-periapsis)+" m.".
-            print "final speed error: "+desired_velocity_change+" m/s.".
+            // say("circularization complete").
+            // print "apoapsis-periapsis spread: "+(apoapsis-periapsis)+" m.".
+            // print "final speed error: "+desired_velocity_change+" m/s.".
 
             local steering is prograde.
             local throttle is 0.
@@ -180,16 +183,23 @@ function phase_circ {
 }
 
 function phase_hold_brakes_to_deorbit {
-    if BRAKES return 0.
+    if abort return 0.
 
-    say("Hold BRAKES on to continue.", false).
+    say("Activate ABORT to deorbit.", false).
     lock steering to retrograde.
     lock throttle to 0.
     return 5.
 }
 
 function phase_deorbit {
-    if periapsis < body:atm:height/2 return 0.
+    if abort abort off.
+    if periapsis < 0 {
+        lock throttle to 0.
+        lock steering to retrograde.
+        wait 3.
+        if altitude > body:atm:height
+            set warp to 3.
+        return 0. }
 
     phase_unwarp().
     lock steering to retrograde.
@@ -198,6 +208,7 @@ function phase_deorbit {
 }
 
 function phase_fall {
+    abort off.
     if body:atm:height<10000 return 0.
     if altitude<body:atm:height/2 return 0.
 
@@ -207,32 +218,45 @@ function phase_fall {
 }
 
 function phase_decel {
+    abort off.
+    if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
     if body:atm:height < 10000 return 0.
     if altitude < body:atm:height/4 return 0.
     list engines in engine_list.
     if engine_list:length < 1 return 0.
 
-    phase_unwarp().
+    if kuniverse:timewarp:rate>1 {
+        phase_unwarp().
+        return 1/10. }
+
     lock steering to srfretrograde.
     lock throttle to 1.
     return 1/10.
 }
 
 function phase_psafe {
+    abort off.
     // this is a decent rule of thumb for most parachutes
     // descending into Kerbin's atmosphere ...
     if altitude < 5000 and airspeed < 300 return 0.
+    if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+    if kuniverse:timewarp:rate>1 {
+        phase_unwarp().
+        return 1/10. }
 
-    phase_unwarp().
     lock steering to srfretrograde.
     lock throttle to 0.
     return 1/10.
 }
 
 function phase_chute {
+    abort off.
     if stage:number<1 return 0.
 
-    phase_unwarp().
+    if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+    if kuniverse:timewarp:rate>1 {
+        phase_unwarp().
+        return 1/10. }
     if stage:ready stage.
     unlock steering.
     unlock throttle.
@@ -240,10 +264,12 @@ function phase_chute {
 }
 
 function phase_gear {
+    abort off.
     gear on. return 0.
 }
 
 function phase_land {
+    abort off.
     if verticalspeed>=0 return 0.
 
     phase_unwarp().
@@ -253,6 +279,7 @@ function phase_land {
 }
 
 function phase_park {
+    abort off.
     unlock steering.
     unlock throttle.
     return 10.

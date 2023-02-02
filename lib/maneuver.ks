@@ -34,6 +34,7 @@
   local mnv_step_s is V(0,0,0).
   local mnv_step_t is 0.
   function mnv_step {
+    if abort return 0.
     if not hasnode return 0.
     if kuniverse:timewarp:rate>1 return 1.
     if not kuniverse:timewarp:issettled return 1.
@@ -82,6 +83,7 @@
   function mnv_exec {
     parameter autowarp is false.
 
+    if abort return.
     if not hasnode return.
 
     local n is nextnode.
@@ -92,10 +94,10 @@
 
     if autowarp { warpto(starttime - 30). }
 
-    wait until time:seconds >= starttime.
+    wait until time:seconds >= starttime or abort.
     lock throttle to sqrt(max(0,min(1,mnv_time(n:burnvector:mag)))).
 
-    wait until vdot(n:burnvector, v) < 0.
+    wait until vdot(n:burnvector, v) < 0 or abort.
     lock throttle to 0.
     unlock steering.
     remove nextnode.

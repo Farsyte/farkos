@@ -35,6 +35,7 @@
     until fitness_fn(next_data) <= fitness_fn(data) {
       set data to next_data.
       set next_data to best_neighbor(data, fitness_fn, step_size).
+      if abort return data.
     }
     return data.
   }
@@ -47,7 +48,7 @@
   // The BEST_NEIGHBOR method uses NEIGHBORS to construct the state
   // vectors that neighbor the given data vector, evaluates each one
   // for fitness, and returns the one whose fitness is best.
-  //  
+  //
   function best_neighbor {
     parameter data, fitness_fn, step_size.
     local best_fitness is -INFINITY.
@@ -58,6 +59,7 @@
         set best to neighbor.
         set best_fitness to fitness.
       }
+      if abort return best.
     }
     return best.
   }
@@ -74,7 +76,7 @@
   //
   // The neighbors are appended to the result list, which
   // is returned.
-  // 
+  //
   function neighbors {
     parameter data, step_size, results is list().
     for i in range(0, data:length) {
