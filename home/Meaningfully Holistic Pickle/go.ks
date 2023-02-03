@@ -154,15 +154,10 @@ function plan_xfer {    // construct initial transfer maneuver
             set   Curr_E  to Error_P:mag.       // pv("Curr_E", Curr_E). // Targ->Ship vector at TF
             return Curr_E. }
         //
-        local Prev_T0 is Xfer_T0.                   // storage for "previous time"
         local Xfer_dt_try is {                      // evaluate transfer dt seconds later than last try
             parameter dt.
-            set Prev_T0 to Xfer_T0.
             set Xfer_T0 to Xfer_T0 + dt.
             return trial_xfer(). }.
-        local Xfer_dt_rew is {                      // undo latest dt change
-            set Xfer_T0 to Prev_T0.
-            return Xfer_dt_try(0). }.
         local Xfer_dt_until_better is {             // move forward past a minimum
             parameter dt.
             local Prev_E is Curr_E.
@@ -183,7 +178,7 @@ function plan_xfer {    // construct initial transfer maneuver
             local burn is list(Xfer_T0).
             function burn_fit { parameter burn.
                 set Xfer_T0 to burn[0].
-                return -Xfer_dt_try(0). }
+                return -trial_xfer(). }
             for step_size in list(30, 10, 3, 1, 0.3, 0.1, 0.03, 0.01)
                 set burn to hillclimb:seek(burn, burn_fit@, step_size).
             set Xfer_T0 to burn[0]. } }
@@ -202,7 +197,9 @@ function plan_xfer {    // construct initial transfer maneuver
         set burn to list(Xfer_DV).
         for step_size in list(30, 10, 3, 1, 0.3, 0.1, 0.03, 0.01)
             set burn to hillclimb:seek(burn, burn_fit@,  step_size).
-        set nextnode:prograde to burn[0]. wait 0. }
+        // MUST call burn_fit to assure this burn is in the maneuver node.
+        set Curr_E to burn_fit(burn).
+        print "Curr_E for intercept insertion burn: "+round(Curr_E,1).}
     //
     {   // persist timestamps for xfer start, final, and corr
         local n is nextnode.
@@ -238,7 +235,8 @@ function plan_corr {    // plan a mid-course correction.
     //
     for step_size in list(30, 10, 3, 1, 0.3, 0.1, 0.03, 0.01)
         set burn to hillclimb:seek(burn, burn_fit@,  step_size).
-    burn_fit(burn).
+    set Curr_E to burn_fit(burn).
+    print "Curr_E for intercept correction burn: "+round(Curr_E,1).
     return 0. }
 function wait_near {
     if abort return 0.
@@ -396,7 +394,7 @@ function rescue {
 //
 mission_add(LIST(
     "PADHOLD",      phase_match_lan@,   // PADHOLD until we can match target ascending node.
-    "COUNTDOWN",    phase_countdown@,    // initiate unmanned flight.
+    "COUNTDOWN",    phase_countdown@,   // initiate unmanned flight.
     "LAUNCH",       phase_launch@,      // wait for the rocket to get clear of the launch site.
     "ASCENT",       phase_ascent@,      // until apoapsis is in space, steer upward and east.
     "COAST",        phase_coast@,       // until we are near our orbit, coast up pointing prograde.
