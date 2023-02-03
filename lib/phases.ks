@@ -197,8 +197,10 @@ function phase_deorbit {
         lock throttle to 0.
         lock steering to retrograde.
         wait 3.
-        if altitude > body:atm:height
+        if altitude > body:atm:height {
+            wait 3.
             set warp to 3.
+        }
         return 0. }
 
     phase_unwarp().
