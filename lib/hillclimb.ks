@@ -10,11 +10,11 @@
 // Changes:
 // - added attribution comment above
 // - added limited documentation of the API
+// - added support for ABORT
+// - trivial refactoring
+// - mangled the formatting to pander to VS Code "block hide"
 
 {
-    local INFINITY is 2^64.
-    local DEFAULT_STEP_SIZE is 1.
-
     global hillclimb is lex(
         "version", "0.1.0",
         "seek", seek@ ).
@@ -29,12 +29,11 @@
     // the best neighbor is not better than the current state.
     //
     function seek {
-        parameter data, fitness_fn, step_size is DEFAULT_STEP_SIZE.
+        parameter data, fitness_fn, step_size.
         until abort {
             local next_data is best_neighbor(data, fitness_fn, step_size).
-            if fitness_fn(next_data) <= fitness_fn(data) break.
-            set data to next_data.  }
-        return data. }
+            if fitness_fn(next_data) <= fitness_fn(data) return data.
+            set data to next_data. } }
 
     // HILLCLIMB:BEST_NEIGHBOR(data, fitness_fn, step_size)
     //   data             current state vector
@@ -49,8 +48,8 @@
     //
     function best_neighbor {
         parameter data, fitness_fn, step_size.
-        local best_fitness is -INFINITY.
         local best is data.
+        local best_fitness is fitness_fn(best).
         for neighbor in neighbors(data, step_size) {
             local fitness is fitness_fn(neighbor).
             if fitness > best_fitness {
