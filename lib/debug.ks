@@ -10,19 +10,20 @@ function term {
         core:doAction("open terminal", true).
 }
 
-term(132,66).
+term().
 
 // debug print conversions for various types.
-local pr_d is dict().
-set pr_d["String"] to { parameter value. return return char(34)+value+char(34). }.
-set pr_t["Scalar"] to { parameter value.
+local pr_d is lex().
+set pr_d["String"] to { parameter value.
+    return char(34)+value+char(34). }.
+set pr_d["Scalar"] to { parameter value.
     if abs(value)>=10 return round(value, 3).
     return value. }.
-set pr_t["List"] to { parameter value.
+set pr_d["List"] to { parameter value.
     local ret is list().
     for e in value ret:add(pr(e)).
     return "["+ret:join(" ")+"]". }.
-set pr_t["Vector"] to { parameter value.
+set pr_d["Vector"] to { parameter value.
     local n is value:normalized.
     return pr(value:mag)+"*"+pr(list(n:x, n:y, n:z)). }.
 
