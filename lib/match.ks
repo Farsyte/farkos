@@ -190,15 +190,12 @@ function phase_match_incl {
         // if we clearly have time, increase our timewarp.
 
         if ws=0 and wr=1 and b_time<-10*20 {
-            print "phase_match_incl: timewarp 2".
             set warp to 2.
             return 1/10. }
         if ws=0 and wr=1 and b_time<-10*100 {
-            print "phase_match_incl: timewarp 3".
             set warp to 3.
             return 1/10. }
         if ws=0 and wr=1 and b_time<-10*200 {
-            print "phase_match_incl: timewarp 4".
             set warp to 4.
             return 1/10. }
 
