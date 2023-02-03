@@ -90,7 +90,8 @@ function persist_disk_add { parameter name, value.
 // must be global because the persisted value script calls it.
 
 function p_del { parameter name.
-    persist_lexi:delete(name).
+    if persist_lexi:haskey(name)
+        persist_lexi:remove(name).
 }
 
 // PERSIST_DISK_CLR: [INTERNAL] update persisted value which has changed
