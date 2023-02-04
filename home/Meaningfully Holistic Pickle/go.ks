@@ -338,6 +338,7 @@ function rescue {
     local max_facing_error is 15.        // TODO make tunable, find good value.
 
     // pv("","").
+    local s_p is -body:position.                                // pv("s_p", s_p).
     local t_p is target:position.                               // pv("t_p", t_p).
     local t_v is target:velocity:orbit.                         // pv("t_v", t_v).
     local s_v is ship:velocity:orbit.                           // pv("s_v", s_v).
@@ -350,7 +351,7 @@ function rescue {
 
     if holding_for_rescue {
         if t_p:mag < 100 and r_v:mag < 1.0 {
-            lock steering to lookdirup(body:north:vector, t_p:normalized).
+            lock steering to lookdirup(body:north:vector, -s_p:normalized).
             lock throttle to 0.
             say("Activate ABORT to return home.", false).
             return 5. }
@@ -361,7 +362,7 @@ function rescue {
     // enter the rescule pose.
     if t_p:mag < 20 and r_v:mag < 0.01 {
         set holding_for_rescue to true.
-        lock steering to lookdirup(body:north:vector, t_p:normalized).
+        lock steering to lookdirup(body:north:vector, -s_p:normalized).
         lock throttle to 0.
         return 1. }
 

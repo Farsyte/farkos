@@ -267,6 +267,7 @@ function phase_chute {
 
 function phase_gear {
     abort off.
+    sas on.
     gear on. return 0.
 }
 

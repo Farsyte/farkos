@@ -25,17 +25,42 @@ mission_add(LIST(
     "COAST",        phase_launch@,      // until we are above atmosphere, coast up pointing into the wind.
     "COAST",        phase_coast@,       // until we are near our orbit, coast up pointing orbital-prograde.
     "CIRC",         phase_circ@,        // until our periapsis is in space, burn prograde.
-    "PAUSE",        {                   // SPACE WELCOMES TOURISTS. Brifely.
+    {
         say("Welcome to Orbit.").
+        say("Please Enjoy the View.").
+        set warp to 0.
+        wait 1.
+        set kuniverse:timewarp:mode to "RAILS".
+        wait 1.
+        warpto(time:seconds + ship:orbit:period * 1.5).
+        lock throttle to 0.
+        lock steering to lookdirup(body:north:vector, body:position).
+        return 0. },
+    {
+        if abort { kuniverse:timewarp:cancelwarp(). return 1. }.
+        if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
+        if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+        return 0. },
+    {
+        abort off.
         say("Now go home.").
         lock throttle to 0.
         lock steering to retrograde.
-        return -30. },
+        return 0. },
     "DEORBIT",      phase_deorbit@,     // until our periapsis is low enough, burn retrograde.
+    {   wait 1.
+        set kuniverse:timewarp:mode to "PHYSICS".
+        wait 1.
+        set warp to 4.
+        return 0. },
     "FALL",         phase_fall@,        // fall to half of the atmosphere height.
     "DECEL",        phase_decel@,       // decelerate to 1/4th of atmosphere height.
     "PSAFE",        phase_psafe@,       // fall until safe for parachutes
-    "UNWARP",       { set warp to 0. return 0. },
+    {   kuniverse:timewarp:cancelwarp(). return 0. },
+    {   if kuniverse:timewarp:rate>1 return 1/10.                      // timewarp active, come back later.
+        if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+        return 0.
+    },
     "CHUTE",        phase_chute@,       // fall until safe for parachutes
     "GEAR",         phase_gear@,        // extend landing gear.
     "LAND",         phase_land@,        // until we stop descending, keep the nose pointed directly up.

@@ -189,6 +189,8 @@ function phase_match_incl {
 
         // if we clearly have time, increase our timewarp.
 
+        if kuniverse:timewarp:mode = "PHYSICS"
+            set kuniverse:timewarp:mode to "RAILS".
         if ws=0 and wr=1 and b_time<-10*20 {
             set warp to 2.
             return 1/10. }
