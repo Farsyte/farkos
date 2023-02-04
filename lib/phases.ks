@@ -21,12 +21,28 @@ function phase_apowarp {
         return.
     }
 
-    if eta:apoapsis<20 return.
+    if eta:apoapsis<60 return.
 
-    kuniverse:timewarp:warpto(time:seconds+eta:apoapsis-10).
+    if kuniverse:timewarp:mode = "PHYSICS" {
+        set kuniverse:timewarp:mode to "RAILS".
+        wait 1.
+    }
+    kuniverse:timewarp:warpto(time:seconds+eta:apoapsis-30).
     wait 5.
     wait until kuniverse:timewarp:rate <= 1.
     wait until kuniverse:timewarp:issettled.
+}
+
+function phase_pose {
+    // pose for a selfie.
+    // if we are far away or rotating fast, RCS ON.
+    // if we are close and rotating slow, RCS OFF.
+    lock throttle to 0.
+    lock steering to lookdirup(body:north:vector, -body:position).
+    set rcs to ship:angularvel:mag>0.2
+        or 5<vang(facing:forevector, steering:forevector)
+        or 5<vang(facing:topvector, steering:topvector).
+    return 0.
 }
 
 // BG_STAGER: A background task for automatic staging.
@@ -41,11 +57,11 @@ function bg_stager {
     if alt:radar<100 and availablethrust<=0 return 1.
     // current convention is that stage 0 has the parachutes.
     // we do not trigger parachutes with the autostager.
-    local s is stage:number. if s<2 return 0.
+    local s is stage:number. if s<1 return 0.
     list engines in engine_list.
-    // if engine_list:length<1 return 0.
+    if engine_list:length<1 return 0.
     for e in engine_list
-        if e:decoupledin=s-1 and not e:flameout
+        if e:decoupledin=s-1 and e:ignition and not e:flameout
             return 1.
     if stage:ready stage.
     return 1.
@@ -84,6 +100,7 @@ function phase_ascent {
 
     local orbit_altitude is persist_get("launch_altitude", 80000, true).
     local launch_azimuth is persist_get("launch_azimuth", 90, true).
+    local launch_pitchover is persist_get("launch_pitchover", 2, false).
     local ascent_gain is persist_get("ascent_gain", 10, true).
     local max_facing_error is persist_get("ascent_max_facing_error", 90, true).
     local ascent_apo_grace is persist_get("ascent_apo_grace", 0.5).
@@ -91,11 +108,14 @@ function phase_ascent {
     if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height return 0.
 
     local _steering is {        // simple pitch program
-        local altitude_fraction is clamp(0,1,altitude / min(80000,orbit_altitude)).
-        local pitch_wanted is 90*(1 - sqrt(altitude_fraction)).
+        // pitch over by launch_pitchover degrees when clear,
+        // then gradually pitch down until we hit level
+        // as we leave the atmosphere.
+        local altitude_fraction is clamp(0,1,altitude / min(70000,orbit_altitude)).
+        local pitch_wanted is (90-launch_pitchover)*(1 - sqrt(altitude_fraction)).
         return heading(launch_azimuth,pitch_wanted,0). }.
 
-    local _throttle is {        // P conttroller to stop at target apoapsis
+    local _throttle is {        // Proportional Controller to stop at target apoapsis
         local current_speed is velocity:orbit:mag.
         local desired_speed is visviva_v(r0+altitude,r0+orbit_altitude+1,r0+periapsis).
         local speed_change_wanted is desired_speed - current_speed.
@@ -141,8 +161,7 @@ function phase_circ {
 
     if ship:LiquidFuel <= 0 {   // deal with "no fuel" case.
         say("Circularize: no fuel.").
-        local steering is prograde.
-        local throttle is 0. }
+        abort on. return 0. }
 
     local _delta_v is {         // compute desired velocity change.
         local desired_lateral_speed is visviva_v(r0+altitude).
@@ -153,13 +172,11 @@ function phase_circ {
     {   // check termination condition.
         local desired_velocity_change is _delta_v():mag.
         if desired_velocity_change <= good_enough {
-            // say("circularization complete").
-            // print "apoapsis-periapsis spread: "+(apoapsis-periapsis)+" m.".
-            // print "final speed error: "+desired_velocity_change+" m/s.".
+            say("circularization complete").
+            print "apoapsis-periapsis spread: "+(apoapsis-periapsis)+" m.".
+            print "final speed error: "+desired_velocity_change+" m/s.".
 
-            local steering is prograde.
-            local throttle is 0.
-            return 0. } }
+            return phase_pose(). } }
 
     local _steering is {        // steer in direction of delta-v
         return lookdirup(_delta_v(),facing:topvector). }.
@@ -185,22 +202,15 @@ function phase_circ {
 function phase_hold_brakes_to_deorbit {
     if abort return 0.
 
+    phase_pose().
     say("Activate ABORT to deorbit.", false).
-    lock steering to retrograde.
-    lock throttle to 0.
     return 5.
 }
 
 function phase_deorbit {
-    if abort abort off.
     if periapsis < 0 {
         lock throttle to 0.
         lock steering to retrograde.
-        wait 3.
-        if altitude > body:atm:height {
-            wait 3.
-            set warp to 3.
-        }
         return 0. }
 
     phase_unwarp().
@@ -210,7 +220,6 @@ function phase_deorbit {
 }
 
 function phase_fall {
-    abort off.
     if body:atm:height<10000 return 0.
     if altitude<body:atm:height/2 return 0.
 
@@ -220,7 +229,6 @@ function phase_fall {
 }
 
 function phase_decel {
-    abort off.
     if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
     if body:atm:height < 10000 return 0.
     if altitude < body:atm:height/4 return 0.
@@ -237,7 +245,6 @@ function phase_decel {
 }
 
 function phase_psafe {
-    abort off.
     // this is a decent rule of thumb for most parachutes
     // descending into Kerbin's atmosphere ...
     if altitude < 5000 and airspeed < 300 return 0.
@@ -252,7 +259,6 @@ function phase_psafe {
 }
 
 function phase_chute {
-    abort off.
     if stage:number<1 return 0.
 
     if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
@@ -266,13 +272,11 @@ function phase_chute {
 }
 
 function phase_gear {
-    abort off.
     sas on.
     gear on. return 0.
 }
 
 function phase_land {
-    abort off.
     if verticalspeed>=0 return 0.
 
     phase_unwarp().
@@ -282,7 +286,6 @@ function phase_land {
 }
 
 function phase_park {
-    abort off.
     unlock steering.
     unlock throttle.
     return 10.
