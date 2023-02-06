@@ -63,9 +63,14 @@ function persist_clr { parameter name.
 // If there is no value persisted, return the default.
 // If returning the default and commit is true,
 // store this default value as the persisted value.
+//
+// ADD: if default is a delegate, call it to obtain
+// the default value if the value is needed.
 
 function persist_get { parameter name, default is 0, commit is false.
     if persist_has(name) return persist_lexi[name].
+    if default:istype("Delegate")
+        set default to default().
     if commit persist_disk_add(name, default).
     return default.
 }
