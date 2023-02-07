@@ -17,7 +17,22 @@
 {
     global hillclimb is lex(
         "version", "0.1.0",
+        "seeks", seeks@,
         "seek", seek@ ).
+
+    // HILLCLIMB:SEEKS(data, fitness_fn, step_sizes)
+    //   data             current state vector
+    //   fitness_fn       delegate to evaluation function
+    //   step_sizes        element step sizes for BEST_NEIGHBOR
+    //
+    // Run a HILLCLIMB:SEEK for each given step size.
+    function seeks {
+        parameter data, fitness_fn, step_sizes.
+        for step_size in step_sizes {
+            set data to seek(data, fitness_fn, step_size).
+        }
+        return data.
+    }
 
     // HILLCLIMB:SEEK(data, fitness_fn, step_size)
     //   data             current state vector
