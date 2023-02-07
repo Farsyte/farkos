@@ -28,9 +28,20 @@ function persist_has { parameter name.
 
 // PERSIST_IS: true if name has this value persisted.
 // called from mission code that uses the name.
+//
+// TODO: beware floating point comparisons!
+// The values do not perfectly roundtrip.
 
 function persist_is { parameter name, value.
-    return persist_has(name) and persist_lexi[name]=value.
+    if not persist_has(name) return false.
+    local stored is persist_lexi[name].
+    if stored:typename = value:typename {
+        if stored = value return true.
+        if not value:istype("Scalar") return false.
+        local d is abs(stored-value). local m is max(abs(stored),abs(value)).
+        return d*1e12 < m.
+    }
+    return false.
 }
 
 // PERSIST_PUT: remember that this name has this value.
@@ -52,9 +63,14 @@ function persist_clr { parameter name.
 // If there is no value persisted, return the default.
 // If returning the default and commit is true,
 // store this default value as the persisted value.
+//
+// ADD: if default is a delegate, call it to obtain
+// the default value if the value is needed.
 
 function persist_get { parameter name, default is 0, commit is false.
     if persist_has(name) return persist_lexi[name].
+    if default:istype("Delegate")
+        set default to default().
     if commit persist_disk_add(name, default).
     return default.
 }
@@ -79,7 +95,8 @@ function persist_disk_add { parameter name, value.
 // must be global because the persisted value script calls it.
 
 function p_del { parameter name.
-    persist_lexi:delete(name).
+    if persist_lexi:haskey(name)
+        persist_lexi:remove(name).
 }
 
 // PERSIST_DISK_CLR: [INTERNAL] update persisted value which has changed
@@ -116,5 +133,5 @@ function persist_disk_rewrite {
 
 if exists(persist_disk) {
     runpath(persist_disk).
-    // persist_disk_rewrite().
+    persist_disk_rewrite().
 }

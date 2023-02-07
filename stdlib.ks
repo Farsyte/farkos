@@ -19,8 +19,30 @@ global dirpath is list(homedir, homedir + "../", libdir).
 
 local package_ran is UniqueSet().
 
+function fp_differs {
+    parameter a, b, eps is 1e-12.
+    return abs(a-b) > eps*(abs(a)+abs(b)).
+}
+
 function clamp { parameter lo, hi, val.
     return max(lo,min(hi,val)).
+}
+
+function sgn { parameter v.
+    if v>0 return 1.
+    if v<0 return -1.
+    return 0.
+}
+
+function ua { parameter ang. // map ang into the 0..360 range.
+    return mod(360+mod(ang, 360),360).
+}
+
+function sa { parameter ang. // map ang into the -180..+180 range
+    set ang to mod(ang, 360).
+    if ang < 180 set ang to ang + 180.
+    if ang > 180 set ang to ang - 180.
+    return ang.
 }
 
 function say {

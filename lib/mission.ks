@@ -1,7 +1,7 @@
 loadfile("persist").
 
 global mission_plan is list().
-global mission_abort is false.
+global mission_terminated is false.
 
 // MISSION_PHASE: return the currently valid mission phase,
 // clipped to be a valid index into the non-empty mission_plan
@@ -11,10 +11,15 @@ function mission_phase {
     return clamp(0, mission_plan:length-1, persist_get("mission_phase")).
 }
 
+// MISSION_JUMP: set the mission phase to a specific phase number.
+function mission_jump { parameter to_phase.
+    persist_put("mission_phase", to_phase).
+}
+
 // MISSION_INC: moves the mission phase to the next phase.
 
 function mission_inc {
-    persist_put("mission_phase", 1 + mission_phase()).
+    mission_jump(1 + mission_phase()).
 }
 
 // MISSION_ADD: Add a phase (or a list of phases) to the mission plan.
@@ -47,11 +52,15 @@ function mission_report_phase { parameter phase_obj, force is false.
 // the mission phase is advanced on the next cycle, and the
 // delay time is the absolute value.
 //
-// MISSION_ABORT is checked at the top of each loop.
+// MISSION_TERMINATED are checked at the top of each loop. If
+// it is set, processing stops.
+//
+// ABORT is monitored. If it is set, delays until the next
+// mission phase method is called are eliminated.
 
 function mission_fg {
     mission_report_phase(persist_get("mission_pname", ""), true).
-    until mission_abort {
+    until mission_terminated {
         local phase_no is mission_phase().
         local phase_obj is mission_plan[phase_no].
         local dt is 0.
@@ -62,7 +71,7 @@ function mission_fg {
         else say("BAD PHASE: "+phase_obj:typename+" "+phase_obj).
         if dt<=0 mission_inc().
         set next_t to time:seconds + abs(dt).
-        wait until mission_abort or time:seconds>next_t.
+        wait until abort or mission_terminated or time:seconds>next_t.
     }
 }
 
@@ -74,8 +83,8 @@ function mission_fg {
 
 function mission_bg { parameter task_fn.
     local next_t is time:seconds.
-    when mission_abort or time:seconds>next_t then {
-        if mission_abort return false.
+    when mission_terminated or time:seconds>next_t then {
+        if mission_terminated return false.
         local dt is task_fn().
         set next_t to time:seconds + abs(dt).
         return dt > 0.

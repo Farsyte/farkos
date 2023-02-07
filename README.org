@@ -32,6 +32,111 @@ symbol names where appropriate.
 Expect lots of {adverb} {adjective} {object} style names. The name may
 or may not relate to the mission or the vessel.
 
+* Notable Gotchas in KSP and/or kOS
+I started this list when I stumbled over the CREATEORBIT one.
+
+** CREATEORBIT(P,V,Body,T) axes messed up
+
+See https://github.com/KSP-KOS/KOS/issues/3009
+
+Janismac reports:
+
+> From this line I would expect the output 90.
+>     print createorbit(V(1,1234567,1), V(100,100,100), Kerbin, 0):inclination.
+> But the output is 135.
+>
+> Here the output is 45 instead of 90.
+>     print createorbit(V(1,1234567,1), V(-100,100,100), Kerbin, 0):inclination.
+>
+> It seems that CREATEORBIT() uses a different coordinate system where
+> Z is the body rotation axis, instead of the usual Y.
+
+Dunbaratu responds:
+
+> I had a look and yup, you're right. It calls the KSP method
+> Orbit.UpdateFromStateVectors() which apparently uses the same messed
+> up Y/Z axis-swap that KSP sometimes uses for other body-relative
+> calls like in geopositions, and the kOS code doesn't compensate for
+> that like it does when you pass a position into, say,
+> body:geopositionof(vector).
+
+** ANGULARMOMENTUM axis correction
+
+see https://www.reddit.com/r/Kos/comments/wicvgy/trouble_with_shipangularmomentum/
+
+Nummgreat comments:
+
+> The :ANGULARMOMENTUM vector is an exception to almost all other
+> vectors in kOS in that it is not in the normal SHIP-RAW frame of
+> reference that all other vectors are. Instead it is in it's own
+> somewhat custom frame of reference as I think the vector was missed
+> when adding in the code needed to get all vectors into the same
+> frame of reference.
+>
+> The vector's origin is the ship's COM and it purly describes how the
+> vessel is rotating and nothing to do with orbital motion. It's axis
+> are defined as follows if I remember the vector correctly
+>
+>     x =pitch(w = pos, s = neg)
+>     y = roll(q = pos, e = neg)
+>     z =  yaw(a = pos, d = neg)
+>
+> with the given keys increasing that axis in the described positive
+> or negative direction.
+>
+> EDIT: To get the vector into the normal SHIP-RAW frame you would
+> need a function like this
+>
+>     FUNCTION angularmomentum_in_raw {
+>       LOCAL am IS SHIP:ANGULARMOMENTUM.
+>       SET am TO v(am:X,-am:Z,am:Y).
+>       RETURN am * SHIP:FACING.
+>     }
+
+
+** LOCK is not just GLOBAL
+
+Historically, LOCK STEERING and LOCK THROTTLE have always operated
+to set the global steering and throttle. This is part of a more
+general mechanism where LOCK IDENTIFER TO EXPRESSION actually
+makes IDENTIFIER a function, available at global scope, that
+evaluates the expression when called.
+
+This is all context.
+
+It turns out that if one function says
+    LOCK MAXF TO <expression>.
+and, later, another function says
+    LOCAL MAXF IS <expression>.
+    ...
+    LOCAL something is somevalue/MAXF.
+things do not go well.
+
+When the second bit of code uses MAXF in an expression, the compiler
+attempts to call MAXF as a function -- as if it were a LOCK -- but
+in this case it is just a value. So, bad times.
+
+One approach is to always decorate the names of LOCK identifiers.
+
+Another approach is to explicitly use
+
+    LOCAL IDENTIFIER is { return <expression>. }.
+and explicitly use it as
+    LOCAL newthing is IDENTIFIER() * foo.
+
+Decorating names to assure they are unique not just in the global
+namespace but also do not conflict with any other locals is going
+to drive me crazy. So will explicitly setting up delegates, but
+that seems more tractable.
+
+The downside is if we have a delegate _FOO, and four different
+delegates all call _FOO(), then we absolutely know from our code
+that we are executing the _FOO code four times.
+
+I'm not sure whether LOCK has this problem or not!
+
+Anyway, this triggered a LOT of code changes.
+
 * Unfortunate Loss of [save 1]
 
 The KSP save file that I was using for development is lost.
@@ -141,4 +246,3 @@ once, while connected to the archive, before they might reboot. This
 can and should be done before launch, as the process of loading
 modules may take some time, during which kOS will not be otherwise
 running code managing the mission.
-
