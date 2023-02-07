@@ -76,11 +76,23 @@ function plan_intercept {    // build MANEUVER to enter Hohmann toward Targ
     {   // persist timestamps for xfer start, final, and corr.
         local n is nextnode.
         local o is n:orbit.
+
         local t1 is time:seconds + n:eta.
-        local t2 is t1 + o:period/2.
         persist_put("xfer_start_time", t1).
+
+        local t2 is t1 + o:period/2.
         persist_put("xfer_final_time", t2).
-        persist_put("xfer_corr_time", (t1+t2)/2). }
+
+        // the best time to make the correction will depend
+        // on the correction. buring sooner makes for smaller
+        // burns that need more precision. burning later means
+        // more thrust to get the same result, but similar errors
+        // will perturb the result less.
+        //
+        // maybe think in terms of a succession of corrections?
+
+        local tc is (t1+t2)/2.
+        persist_put("xfer_corr_time", tc). }
 
     return 0. }
 
