@@ -39,9 +39,6 @@ function phase_pose {
     // if we are close and rotating slow, RCS OFF.
     lock throttle to 0.
     lock steering to lookdirup(body:north:vector, -body:position).
-    set rcs to ship:angularvel:mag>0.2
-        or 5<vang(facing:forevector, steering:forevector)
-        or 5<vang(facing:topvector, steering:topvector).
     return 0.
 }
 
@@ -64,6 +61,29 @@ function bg_stager {
         if e:decoupledin=s-1 and e:ignition and not e:flameout
             return 1.
     if stage:ready stage.
+    return 1.
+}
+
+function has_no_rcs {
+    list rcs in rcs_list.
+    for r in rcs_list
+        if not r:flameout
+            return false.
+    return true.
+}
+
+// BG_RCS: A background task for RCS enable
+//
+// Enables the RCS when our steering command and facing
+// are sufficiently different, or our angular rate is high.
+function bg_rcs {
+    if has_no_rcs()                                         return 0.
+
+    if altitude < body:atm:height                           rcs off.
+    else if ship:angularvel:mag>0.2                         rcs on.
+    else if 5<vang(facing:forevector, steering:forevector)  rcs on.
+    else if 5<vang(facing:topvector, steering:topvector)    rcs on.
+    else                                                    rcs off.
     return 1.
 }
 
