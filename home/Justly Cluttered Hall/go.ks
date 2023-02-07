@@ -1,6 +1,8 @@
 say("Justly Cluttered Hall").
 say("Development Platform").
 
+clearguis().
+
 loadfile("debug").
 loadfile("mission").
 loadfile("phases").
@@ -11,6 +13,7 @@ loadfile("maneuver").
 loadfile("intercept").
 loadfile("rendezvous").
 loadfile("mission_target").
+loadfile("task").
 //
 // Development Workhorse
 //
@@ -23,84 +26,50 @@ lock throttle to 0.
 persist_get("launch_azimuth", 90, true).
 persist_get("launch_altitude", 120000, true).
 
-// Use RCS, in space, when our attitude differs from our
-// steering direction, or our angular rate is large.
-local rcs_check_time is time:seconds.
-when time:seconds > rcs_check_time then {
-    set rcs_check_time to time:seconds + 1.
-    if altitude < body:atm:height                           rcs off.
-    else if ship:angularvel:mag>0.2                         rcs on.
-    else if 5<vang(facing:forevector, steering:forevector)  rcs on.
-    else if 5<vang(facing:topvector, steering:topvector)    rcs on.
-    else                                                    rcs off.
-    return true.
-}
 //
 // Development Workhorse
 //
-local act_list is list().
-local act_num is 0.
+add_task("Circularize Here",
+    { return true. },
+    { },
+    { return phase_circ(). },
+    { }).
 
-function action_ent   { parameter e, i.
-    local v is act_list[i][e].
-    if v:istype("Delegate") return v:call. return v. }
+add_task("Execute Node",
+    { return HASNODE. },
+    { },
+    { return maneuver:step(). },
+    { }).
 
-function action_name  { parameter i. return action_ent(0,i). }
-function action_cond  { parameter i. return action_ent(1,i). }
-function action_start { parameter i. return action_ent(2,i). }
-function action_step  { parameter i. return action_ent(3,i). }
-function action_stop  { parameter i. return action_ent(4,i). }
+add_task("Match Inclination",
+    { return HASTARGET. },
+    { mission_export_target(). },
+    { return phase_match_incl(). },
+    { }).
 
-function add_action { parameter name, cond, start, step, stop.
-    act_list:add(list(name, cond, start, step, stop)). }
+add_task("Plan Intercept",
+    { return HASTARGET. },
+    { mission_export_target(). },
+    { return plan_intercept(). },
+    { }).
 
-add_action("Ready for Action", true, phase_pose@, {
-    for i in range(1, act_list:length) if action_cond(i) {
-        say("START "+action_name(i), false).
-        action_start(i). set act_num to i. break. }
-    return 1. }, { }).
+add_task("Plan Correction",
+    { return HASTARGET and persist_has("xfer_final_time"). },
+    { mission_export_target(). persist_put("xfer_corr_time", time:seconds + 60). },
+    { return plan_correction(). },
+    { }).
 
-on AG1 { print "AG1 is now " + AG1. return true. }.
-add_action("AG1: execute maneuver node",
-    {   return AG1 and HASNODE. },
-    {   },
-    maneuver:step@,
-    {   AG1 off. }).
+add_task("Coarse Approach",
+    { return HASTARGET. },
+    { mission_export_target(). },
+    { return coarse_approach(). },
+    { }).
 
-on AG2 { print "AG2 is now " + AG2. return true. }.
-add_action("AG2: match inclination",
-    {   return AG2 and HASTARGET. },
-    mission_export_target@,
-    phase_match_incl@,
-    {   AG2 off. }).
-
-on AG3 { print "AG3 is now " + AG3. return true. }.
-add_action("AG3: plan intercept",
-    {   return AG3 and HASTARGET. },
-    mission_export_target@,
-    plan_intercept@,
-    {   AG3 off. }).
-
-on AG4 { print "AG4 is now " + AG4. return true. }.
-add_action("AG4: plan correction",
-    {   return AG4 and HASTARGET. },
-    mission_export_target@,
-    plan_correction@,
-    {   AG4 off. }).
-
-on AG5 { print "AG5 is now " + AG5. return true. }.
-add_action("AG5: coarse approach",
-    {   return AG5 and HASTARGET. },
-    mission_export_target@,
-    coarse_approach@,
-    {   AG5 off. }).
-
-on AG6 { print "AG6 is now " + AG6. return true. }.
-add_action("AG6: fine approach",
-    {   return AG6 and HASTARGET. },
-    mission_export_target@,
-    fine_approach@,
-    {   AG6 off. }).
+add_task("Fine Approach",
+    { return HASTARGET. },
+    { mission_export_target(). },
+    { return fine_approach(). },
+    { }).
 
 function process_actions {
     // ABORT returns us from orbit, whatever we are doing.
@@ -128,6 +97,7 @@ function process_actions {
 }
 //
 mission_bg(bg_stager@).                 // Start the auto-stager running in the background.
+mission_bg(bg_rcs@).                    // Start RCS-enable background task.
 //
 // Mission Plan
 //
@@ -140,7 +110,7 @@ mission_add(LIST(
     //
     // In READY orbit. Set up for semi-automatic commanding.
     //
-    "READY",        process_actions@,
+    "READY",        task_step@,
     //
     // Normal deorbit, descent, and landing process.
     //
@@ -160,5 +130,6 @@ mission_add(LIST(
 //
 // Now go do it.
 //
+task_gui_show().
 mission_fg().
 wait until false.
