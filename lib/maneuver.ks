@@ -108,10 +108,13 @@
   // Compute the aggregate exhaust velocity of the vessel.
   function mnv_v_e {
     list engines in all_engines.
-    local sum is 0.
-    for en in all_engines if en:ignition and not en:flameout
-      set sum to sum + en:availablethrust / en:isp.
-    return G0 * availablethrust / sum.
+    local num is 0.
+    local den is 0.
+    for en in all_engines if en:ignition and not en:flameout {
+      set num to num + en:availablethrust.
+      set den to den + en:availablethrust / en:isp.
+    }
+    return choose G0 * num / den if den>0 else 0.
   }
 
   // MANEUVER:TIME(dv)
@@ -128,6 +131,6 @@
     local M0 is ship:mass.
     local F is availablethrust.
 
-    return M0 * (1 - e^(-dV/v_e)) * v_e / F.
+    return choose M0 * (1 - e^(-dV/v_e)) * v_e / F if v_e>0 else 0.
   }
 }
