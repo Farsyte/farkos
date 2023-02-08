@@ -44,6 +44,10 @@ function phase_match_lan {
     local match_lan is persist_get("match_lan", 0).
     local match_lon_lead is persist_get("match_lon_lead", 1).
 
+    // if the inclination is less than a degree, we do not need
+    // to do a PAD-HOLD to get in-plane.
+    if abs(inc)<1.0 return 0.
+
     if kuniverse:timewarp:rate > 1 return 1.
     if not kuniverse:timewarp:issettled return 1.
 

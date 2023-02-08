@@ -42,6 +42,9 @@
     local n is nextnode.
     local v is n:burnvector.
 
+    // hold on, why has my mnv_step_s come up as
+    // not being the right direction by far?
+
     if 0=mnv_step_t                     set mnv_step_t to time:seconds + n:eta - mnv_time(v:mag)/2.
     if 0=mnv_step_s:mag                 set mnv_step_s to v:normalized.
 
@@ -66,6 +69,7 @@
       return sqrt(dt). }.                       lock throttle to th().
 
     local wt is mnv_step_t - time:seconds.
+    if wt>10                    set mnv_step_s to v:normalized.
     if wt>0 and wt<2            return wt.
     if wt>60                    warpto(time:seconds + wt - 30).
     return 1.

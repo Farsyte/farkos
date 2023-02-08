@@ -168,6 +168,7 @@ function phase_coast {
     return 1/10.
 }
 
+local launch_dv is persist_get("launch_dv", ship:deltav:vacuum, true).
 function phase_circ {
     if abort return 0.
 
@@ -192,10 +193,12 @@ function phase_circ {
     {   // check termination condition.
         local desired_velocity_change is _delta_v():mag.
         if desired_velocity_change <= good_enough {
-            say("circularization complete").
-            print "apoapsis-periapsis spread: "+(apoapsis-periapsis)+" m.".
-            print "final speed error: "+desired_velocity_change+" m/s.".
-
+            print "circularization complete.".
+            print "  achieved "+round(periapsis/1000)
+                +"x"+round(apoapsis/1000)
+                +" km orbit using "
+                +round(launch_dv - ship:deltav:vacuum)
+                +" m/s Delta V.".
             return phase_pose(). } }
 
     local _steering is {        // steer in direction of delta-v
@@ -228,15 +231,87 @@ function phase_hold_brakes_to_deorbit {
 }
 
 function phase_deorbit {
+    // Once we get periapsis down below the dirt,
+    // this phase is well and truly complete.
     if periapsis < 0 {
         lock throttle to 0.
         lock steering to retrograde.
         return 0. }
 
+    // If we are coming in from above 250km,
+    // end the deorbit when periapsis is 90%
+    // of the height of the atmosphere.
+    //
+    // we will make multiple aerobraking passes.
+    if apoapsis > 250000 {
+        local ah is body:atm:height.
+        if altitude>ah and periapsis<ah*0.80 {
+            lock throttle to 0.
+            lock steering to retrograde.
+            return 0.
+        }
+    }
+
     phase_unwarp().
     lock steering to retrograde.
     lock throttle to 1.
     return 1/10.
+}
+
+// Aerobraking.
+function phase_aero {
+    if not body:atm:exists return 0.
+
+    local ah is body:atm:height.
+
+    // if periapsis is deep in the atmosphere, we are done.
+    if periapsis<ah*0.50 {
+        lock steering to srfretrograde.
+        set throttle to 0.
+        return 0. }
+
+    // when to do nothing:
+    // - time warp in progress
+    // - time warp not settled.
+    if kuniverse:timewarp:warp>1 return 5.
+    if not kuniverse:timewarp:issettled return 1/10.
+
+    // if our periapsis is not in the atmosphere,
+    // just burn to reduce energy. we don't care
+    // where we are in the orbit when doing this.
+    if periapsis > ah*0.90 {
+        lock steering to retrograde.
+        set throttle to 1.
+        return 1.
+    }
+
+    // if we are in space (plus some margin), warp until
+    // we are about to enter the atmosphere.
+    if altitude>ah*1.10 {    // in space: use timewarp.
+        if kuniverse:timewarp:mode = "PHYSICS" {
+            set kuniverse:timewarp:mode to "RAILS".
+            return 1.
+        }
+
+        // figure out when we next enter the atmosphere.
+
+        local tmin is time:seconds.
+        local tmax is tmin + eta:periapsis.
+
+        until tmax<tmin+1 {
+            local tmid is (tmin+tmax)/2.
+            local s_p is predict_pos(tmid, ship).
+            local s_r is s_p:mag.
+            if s_r > ah set tmin to tmid.
+            else set tmax to tmid. }
+
+        warpto(tmin-30).
+        return 5.
+    }
+
+    lock steering to retrograde.
+    set throttle to 1.
+    return 1.
 }
 
 function phase_fall {
@@ -250,6 +325,10 @@ function phase_fall {
 
 function phase_decel {
     if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+
+    lock steering to srfretrograde.
+
+    // if no atmosphere, skip right to the next phase.
     if body:atm:height < 10000 return 0.
     if altitude < body:atm:height/4 return 0.
     list engines in engine_list.
@@ -273,6 +352,7 @@ function phase_psafe {
         phase_unwarp().
         return 1/10. }
 
+    sas on.
     lock steering to srfretrograde.
     lock throttle to 0.
     return 1/10.
@@ -286,6 +366,7 @@ function phase_chute {
         phase_unwarp().
         return 1/10. }
     if stage:ready stage.
+    sas on.
     unlock steering.
     unlock throttle.
     return 1.

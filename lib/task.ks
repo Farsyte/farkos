@@ -14,10 +14,9 @@
 // return value from step controls how long we delay
 // before running the next task code.
 
-local task_gui is gui(500).
+local task_gui is gui(0,0).
 local task_panel is task_gui:addvlayout().
 local task_list is list().
-local task_gui_showing is false.
 
 function new_task {
     parameter text, cond, start, step, stop.
@@ -25,15 +24,9 @@ function new_task {
         "start", start, "step", step, "stop", stop).
 }
 
-global ret_v is { parameter v. return v. }.
-global ret_t is ret_v:bind(true).
-global ret_0 is ret_v:bind(0).
-global ret_1 is ret_v:bind(1).
-global noop is { }.
-
-local idle_task is new_task("Idle", ret_t, noop, phase_pose@, noop).
-idle_task:add("pressed", ret_t).
-idle_task:add("unpress", noop).
+local idle_task is new_task("Idle", { return true. }, { }, { return phase_pose(). }, { }).
+idle_task:add("pressed", { return true. }).
+idle_task:add("unpress", { }).
 
 local curr_task is idle_task.
 
@@ -47,12 +40,9 @@ function add_task {
 }
 
 function task_pick {
-    for t in task_list {
-        if t:pressed() {
-            if t:cond() return t.
-            t:unpress().
-        }
-    }
+    for t in task_list
+        if t:pressed() and t:cond()
+            return t.
     return idle_task.
 }
 
