@@ -72,19 +72,23 @@ function has_no_rcs {
     return true.
 }
 
+set steering to facing.
+
 // BG_RCS: A background task for RCS enable
 //
 // Enables the RCS when our steering command and facing
 // are sufficiently different, or our angular rate is high.
 function bg_rcs {
     if has_no_rcs()                                         return 0.
+    local f is facing.
+    local s is steering.
 
     if altitude < body:atm:height                           rcs off.
-    else if ship:angularvel:mag>0.2                         rcs on.
-    else if 5<vang(facing:forevector, steering:forevector)  rcs on.
-    else if 5<vang(facing:topvector, steering:topvector)    rcs on.
+    else if ship:angularvel:mag>0.5                         rcs on.
+    else if 10<vang(f:forevector, s:forevector)             rcs on.
+    else if 10<vang(f:topvector, s:topvector)               rcs on.
     else                                                    rcs off.
-    return 1.
+    return 1/10.
 }
 
 local countdown is 10.
@@ -279,7 +283,7 @@ function phase_aero {
     // if our periapsis is not in the atmosphere,
     // just burn to reduce energy. we don't care
     // where we are in the orbit when doing this.
-    if periapsis > ah*0.90 {
+    if periapsis > ah*0.95 {
         lock steering to retrograde.
         set throttle to 1.
         return 1.
@@ -287,7 +291,7 @@ function phase_aero {
 
     // if we are in space (plus some margin), warp until
     // we are about to enter the atmosphere.
-    if altitude>ah*1.10 {    // in space: use timewarp.
+    if altitude>ah*2.0 {    // in space: use timewarp.
         if kuniverse:timewarp:mode = "PHYSICS" {
             set kuniverse:timewarp:mode to "RAILS".
             return 1.
@@ -305,7 +309,7 @@ function phase_aero {
             if s_r > ah set tmin to tmid.
             else set tmax to tmid. }
 
-        warpto(tmin-30).
+        warpto(tmin-60).
         return 5.
     }
 
@@ -352,7 +356,7 @@ function phase_psafe {
         phase_unwarp().
         return 1/10. }
 
-    sas on.
+    sas off.
     lock steering to srfretrograde.
     lock throttle to 0.
     return 1/10.
