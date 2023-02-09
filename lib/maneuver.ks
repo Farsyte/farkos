@@ -31,8 +31,7 @@
   // Do a single step adjust of vessel state to meet the
   // needs of the next maneuiver node. Returns how long to
   // wait before calling it again.
-  local mnv_step_s is V(0,0,0).
-  local mnv_step_t is 0.
+  local mnv_step_dir is V(0,0,0).
   function mnv_step {
     if abort return 0.
     if not hasnode return 0.
@@ -42,34 +41,27 @@
     local n is nextnode.
     local v is n:burnvector.
 
-    // hold on, why has my mnv_step_s come up as
-    // not being the right direction by far?
+    local wt is n:eta - mnv_time(v:mag)/2.
+    if wt>10 or mnv_step_dir:mag=0 {
+      set mnv_step_dir to v:normalized.
+      lock steering to lookdirup(mnv_step_dir, facing:topvector).
+    }
 
-    if 0=mnv_step_t                     set mnv_step_t to time:seconds + n:eta - mnv_time(v:mag)/2.
-    if 0=mnv_step_s:mag                 set mnv_step_s to v:normalized.
-
-    local calc_dv is {                  // remaining DV in original thrust direction
-      return vdot(mnv_step_s, n:burnvector). }.
-
-    if calc_dv() <= 0 {                  // termination condition
+    if vdot(v,mnv_step_dir) <= 0 {              // termination condition
       lock throttle to 0.
       lock steering to facing.
       remove nextnode.
-      set mnv_step_s to V(0,0,0).
-      set mnv_step_t to 0.
+      set mnv_step_dir to V(0,0,0).
       return 0. }
 
-    // steering setting
-    lock steering to lookdirup(mnv_step_s, facing:topvector).
+    local th is {                               // throttle setting computation
+      local dv is vdot(v,mnv_step_dir).         if dv < 0 return 0.
+      local dt is mnv_time(dv).                 if dt <= 0 return 0.
+      local wt is n:eta - dt/2.                 if wt > 0 return 0.
+      // sqrt(dt) resulted in overshoots. repeatedly.
+      return clamp(0,1,dt). }.
+    lock throttle to th().
 
-    local th is {         // throttle setting computation
-      local wt is mnv_step_t - time:seconds.    if wt > 0 return 0.
-      local dv is calc_dv().                    if dv <= 0 return 0.
-      local dt is mnv_time(dv).                 if dt >= 1 return 1.
-      return sqrt(dt). }.                       lock throttle to th().
-
-    local wt is mnv_step_t - time:seconds.
-    if wt>10                    set mnv_step_s to v:normalized.
     if wt>0 and wt<2            return wt.
     if wt>60                    warpto(time:seconds + wt - 30).
     return 1.
