@@ -61,9 +61,10 @@ mission_add(LIST(
     //
     // "MATCH_INCL",   phase_match_incl@,  // match inclination of rescue target
     "PLAN_XFER",    plan_intercept@,         // create maneuver node for starting transfer.
-    "EXEC_XFER",    maneuver:step@,     // execute the maneuver to inject into the transfer orbit.
-    "PLAN_CORR",    plan_correction@,         // plan mid-transfer correction
-    "EXEC_CORR",    maneuver:step@,     // execute the mid-transfer correction.
+    { persist_put("phase_exec_node", mission_phase()). },
+    "EXEC_NODE",    maneuver:step@,             // execute the maneuver to inject into the transfer orbit.
+    "PLAN_CORR",    plan_correction@,           // plan mid-transfer correction
+    { if hasnode mission_jump(persist_get("phase_exec_node")). return 0. },
     { set mapview to false. },
     "APPROACH",     coarse_approach@,          // come to a stop near the target
     "RESCUE",       fine_approach@,            // maintain position near target
