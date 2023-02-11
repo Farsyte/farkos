@@ -5,6 +5,10 @@ loadfile("hillclimb").
 
 local burn_steps is list(30, 10, 3, 1, 0.3, 0.1, 0.03, 0.01).
 
+function intercept_error {
+    local Tf is persist_get("xfer_final_time").
+    return predict_pos_err(Tf, mission_target). }
+
 function plan_intercept {    // build MANEUVER to enter Hohmann toward Targ
     parameter targ is target.
     local pi is constant:pi.
@@ -81,44 +85,39 @@ function plan_intercept {    // build MANEUVER to enter Hohmann toward Targ
         persist_put("xfer_start_time", t1).
 
         local t2 is t1 + o:period/2.
-        persist_put("xfer_final_time", t2).
-
-        // the best time to make the correction will depend
-        // on the correction. buring sooner makes for smaller
-        // burns that need more precision. burning later means
-        // more thrust to get the same result, but similar errors
-        // will perturb the result less.
-        //
-        // maybe think in terms of a succession of corrections?
-
-        local tc is (t1+t2)/2.
-        persist_put("xfer_corr_time", tc). }
+        persist_put("xfer_final_time", t2). }
 
     return 0. }
 
 function plan_correction {    // build MANEUVER to enter Hohmann toward Targ
     parameter targ is target.
     //
-    // xfer_corr_time is when to burn. It must be persisted,
-    // and must be far enough in the future to allow
-    // planning the burn and pointing the burn direction.
-    local T0 is persist_get("xfer_corr_time").
-    if T0 < time:seconds+60 {
-        say("plan_intercept: node time too close.").
-        return 0.
-    }
+    // This does not play well with existing nodes.
+    until not hasnode { remove nextnode. wait 0. }
     //
     // xfer_final_time is when to arrive. It must be persisted,
     // and must be far enough in the future from the above
     // to allow the burn to be useful..
     local Tf is persist_get("xfer_final_time").
-    if Tf < T0+60 {
-        say("plan_intercept: meet time too close.").
-        return 0.
-    }
     //
-    // This does not play well with existing nodes.
-    until not hasnode { remove nextnode. wait 0. }
+    // if our final position is within 100m, then
+    // do not plan a maneuver node.
+    local e is predict_pos_err(Tf, mission_target).
+    if e < 100 {
+        print "plan_correction: none needed, e is "+round(e,1).
+        return 0. }
+    //
+    // Do not plan a correction if we are within
+    // five minutes of the rendezvous.
+    local dt is tF - time:seconds.
+    if dt < 300 {
+        print "plan_correction: none planned, arrival in "+round(dt,1).
+        return 0. }
+    //
+    // Plan the correction to be 20% of the time between
+    // now and the intercept time. We might perform several
+    // corrections in the course of a long transit.
+    local T0 is time:seconds + dt*0.20.
     //
     // Build the node we will adjust.
     add node(T0, 0, 0, 0). wait 0.
@@ -128,5 +127,6 @@ function plan_correction {    // build MANEUVER to enter Hohmann toward Targ
         set nextnode:radialout to burn[1].
         set nextnode:normal to burn[2]. wait 0.
         return -predict_pos_err(Tf, mission_target). }, burn_steps).
-
+    local e is predict_pos_err(Tf, mission_target).
+    print "plan_correction: predicting final error is "+round(e,1).
     return 0. }
