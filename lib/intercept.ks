@@ -22,6 +22,9 @@ function plan_intercept {    // build MANEUVER to enter Hohmann toward Targ
     local t1 is time:seconds + 300.             // First trial hohmann starts in five minutes,
     local r2 is body:radius + targ:apoapsis.    // and ends at the the target apoapsis altitude.
 
+    local r1 is predict_pos(t1, ship):mag.
+    local dv is visviva_v(r1, r2) - predict_vel(t1, ship):mag.
+
     // Track these data as we adjust the transfer:
     local t2 is 0.              // UT at the end of the transfer
     local e2 is 0.              // distance from ship to targ at t2.
@@ -65,16 +68,26 @@ function plan_intercept {    // build MANEUVER to enter Hohmann toward Targ
     // Create the node we will tune.
     local mnv is node(t1, 0, 0, 0). add mnv. wait 0.
 
-    {   // Create a node and tune it's Prograde DV.
+    {   // Create a node and tune Prograde DV.
         // Using HILLCLIMB for this is overkill, but
         // it is easy to set up and works well.
 
-        local r1 is predict_pos(t1, ship):mag.
-        local r2 is predict_pos(t2, targ):mag.
-        local dv is visviva_v(r1, r2) - predict_vel(t1, ship):mag.
+        set r1 to predict_pos(t1, ship):mag.
+        set r2 to predict_pos(t2, targ):mag.
+        set dv to visviva_v(r1, r2) - predict_vel(t1, ship):mag.
 
         hillclimb:seeks(list(dv),
             {   parameter burn. set mnv:prograde to burn[0]. wait 0.
+                return -predict_pos_err(t2, targ). }, burn_steps). }
+
+    {   // Now tune both DV and Prograde together.
+        hillclimb:seeks(list(nextnode:time, nextnode:prograde),
+            {   parameter burn.
+                set t1 to burn[0].
+                set dv to burn[1].
+                set mnv:time to t1.
+                set mnv:prograde to dv. wait 0.
+                set t2 to t1 + mnv:orbit:period/2.
                 return -predict_pos_err(t2, targ). }, burn_steps). }
 
     {   // persist timestamps for xfer start, final, and corr.
