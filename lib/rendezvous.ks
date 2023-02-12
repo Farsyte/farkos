@@ -70,12 +70,13 @@ function coarse_approach { parameter targ is target.
     }
     set Xc to Xc - margin.  // pv("Vc", Vc).
 
-    if Vc < 0 or Xc<0 {
+    if Vc<=0 or Xc<=0 {
         set throttle to 0.
         return 0.
     }
 
     local A is availablethrust / ship:mass.         // pv("A", A). // available acceleration
+    if A=0 return 1/100. // staging while on approach. deal with it.
     local X is Vc^2 / (2*A).                        // pv("X", X). // minimum stopping distance.
 
     if Xc < X {
