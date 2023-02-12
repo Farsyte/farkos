@@ -1,6 +1,6 @@
 ship = Jovially Hesitant Request
 version = 1.12.5
-description = 
+description = Sub-Orbital Tourism¨
 type = VAB
 size = 3.59704733,8.21434879,3.11513472
 steamPublishedFileId = 0
@@ -2584,7 +2584,7 @@ PART
 	istg = 2
 	resPri = 0
 	dstg = 4
-	sidx = 1
+	sidx = 0
 	sqor = 2
 	sepI = 1
 	attm = 0
@@ -3133,7 +3133,7 @@ PART
 	istg = 2
 	resPri = 0
 	dstg = 5
-	sidx = 0
+	sidx = 1
 	sqor = 2
 	sepI = 2
 	attm = 0
@@ -3305,7 +3305,7 @@ PART
 	istg = 3
 	resPri = 0
 	dstg = 6
-	sidx = 1
+	sidx = 0
 	sqor = 3
 	sepI = 2
 	attm = 0
@@ -4151,7 +4151,7 @@ PART
 	istg = 3
 	resPri = 0
 	dstg = 4
-	sidx = 0
+	sidx = 1
 	sqor = 3
 	sepI = 3
 	attm = 1
@@ -4658,7 +4658,7 @@ PART
 	pos = -0.367855549,8.7827301,-0.00672863424
 	attPos = 0.129175395,0.00504493713,0.0745794475
 	attPos0 = -0.562188148,-0.405044556,-0.324579448
-	rot = -0.00242117979,0.258807689,0.00903588813,-0.965883672
+	rot = -0.00242117932,0.258807689,0.00903588627,-0.965883672
 	attRot = 0,0,0,1
 	attRot0 = -0.0361816324,0.256277531,0.13503173,-0.956440926
 	mir = 1,1,1
