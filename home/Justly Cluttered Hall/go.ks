@@ -14,6 +14,7 @@ loadfile("intercept").
 loadfile("rendezvous").
 loadfile("mission_target").
 loadfile("task").
+loadfile("mun_retro").
 //
 // Development Workhorse
 //
@@ -70,6 +71,12 @@ add_task("Fine Approach",
     { mission_export_target(). },
     { return fine_approach(). },
     { }).
+
+add_task("Mun Retro",
+    mun_retro_cond@,
+    mun_retro_start@,
+    mun_retro_step@,
+    mun_retro_stop@).
 
 function process_actions {
     // ABORT returns us from orbit, whatever we are doing.
