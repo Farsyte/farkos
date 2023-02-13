@@ -50,6 +50,9 @@ example, including "tourist" or "orbit" or "rescue" in vessel designs
 that are specific to those needs. I may decide to use compact names,
 and will try to document the abbreviations here.
 
+    X       Experimental: initial attempts at anything new
+
+
 ** Stage One: module system and bootstrap
 
 kOS has no formal package model -- the idea is that you load up a
