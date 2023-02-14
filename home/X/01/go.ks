@@ -1,4 +1,4 @@
-{   parameter go. // default GO script for "X" series vessels.
+{   parameter go. // GO script for "X/01"
     local io is import("io").
     go:add("go", {
         io:say(list(
