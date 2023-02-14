@@ -61,6 +61,8 @@ and will try to document the abbreviations here.
 
     X       Experimental: initial attempts at anything new
     H       Hover specialized vessels
+    S       Sub-orbital specialized vessels
+    O       Simple orbital-specialized vessels
 
 ** Module system and bootstrap
 
