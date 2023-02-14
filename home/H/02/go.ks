@@ -1,4 +1,4 @@
-{   parameter _. // default GO script for "X" series vessels.
+{   parameter _. // GO script for "H/02"
 
     local mission is import("mission").
     local phase is import("phase").
