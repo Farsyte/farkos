@@ -5,6 +5,4 @@
             "Mission "+ship:name,
             "Gather some science,",
             "then recover the vessel.",
-            "kOS releasing control.")).
-    }).
-}
+            "kOS releasing control.")). }). }

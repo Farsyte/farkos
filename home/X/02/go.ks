@@ -16,6 +16,4 @@
 
     go:add("go", {
         mission:bg(phase:autostager).
-        mission:fg().
-    }).
-}
+        mission:fg(). }). }

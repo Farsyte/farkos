@@ -1,0 +1,51 @@
+Code Style tweaked for VS Code "folding" feature
+
+For reasons, I am attempting to "daily drive" Microsft VS Code, and
+it provides code folding to hide the contents of blocks of code. This
+facility will collapse blocks in curly-braces {} which is very nice
+for folding away details.
+
+However, this motivates a style change. My preferred brace style is
+from https://en.wikipedia.org/wiki/The_C_Programming_Language:
+
+        function foo { parameter x.     // apply the foo formula to x
+            local var is x+1.
+            return var*var.
+        }
+
+        function bar { parameter x.     // apply the bar formula to x
+            local var is x+1.
+            return var*var.
+        }
+
+However, VS Code leaves the close braces outside the fold, which
+results in this display:
+
+    >   function foo { parameter x.     // apply the foo formula to x
+        }
+
+    >   function bar { parameter x.     // apply the bar formula to x
+        }
+
+Now, I'm probably folding a file so I can see what functions it
+contains (or other similar things), and this takes up three lines
+of display. It turns out that if we pull the close-brace up to the
+end of the prior line,
+
+
+        function foo { parameter x.     // apply the foo formula to x
+            local var is x+1.
+            return var*var. }
+
+        function bar { parameter x.     // apply the bar formula to x
+            local var is x+1.
+            return var*var. }
+
+the folded display looks like this:
+
+    >   function foo { parameter x.     // apply the foo formula to x
+    >   function bar { parameter x.     // apply the bar formula to x
+
+This is much more in keeping with the idea of dropping unwanted
+details to expose the overall view; note that not only does it fold
+away the close brace, it folds away the blank lines that follow it.

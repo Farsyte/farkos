@@ -1,10 +1,10 @@
-{   parameter _. // default GO script for "X" series vessels.
+{   parameter _. // default GO script for "H" series vessels.
     local std is import("std").
     local io is import("io").
 
-    _:add("go", {               // control script for a new X series mission.
+    _:add("go", {               // control script for a new H series mission.
         io:say(LIST(
             "Hello "+ship:name,
-            "You are an X series vessel",
+            "You are a H series vessel",
             "with no 'GO' script,",
             "releasing control.")). }). }

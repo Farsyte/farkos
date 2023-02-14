@@ -4,29 +4,28 @@
 
     local dbg is import("dbg").
 
-    // HOVER:HOLD(h_set,v_set): hover controller
-    //
-    // compute the amount of throttle we should use right now
-    // if our plan is to be at altitude h_set, with asecent
-    // velocity v_set, right now.
-    //
-    // This smells a bit like a PI controller of velocity (the
-    // position error stands as the integral term), when we are
-    // with 10m of the altiude set point.
-    //
-    // For larger distances from the target altitude, it picks an
-    // appropriate acceleration, then computes the velocity we
-    // ought to have right now to get to the set point altitude with
-    // the set point velocity.
+    hover:add("hold", {                 // HOVER:HOLD(h_set,v_set): hover controller
 
-    hover:add("hold", {
+        {   // Implementation Notes:
+            //
+            // Compute the amount of throttle we should use right now
+            // if our plan is to be at altitude h_set, with asecent
+            // velocity v_set, right now.
+            //
+            // When the vessel is within 10m of the altiude set point,
+            // this smells a bit like a PI controller of velocity where
+            // the position error is the integrator.
+            //
+            // For larger distances from the target altitude, it picks an
+            // appropriate acceleration, then computes the velocity we
+            // ought to have right now to get to the set point altitude with
+            // the set point velocity.
+        }
+
         parameter h_set is 100.
         parameter v_set is 0.
 
         local Kav is 10. // TUNING PARAMETER: accel per velocity error
-
-        // set throttle with the goal of sitting at
-        // radar:alt = h_set.
 
         local r2 is body:position:sqrmagnitude.                 // radius for gravity computation
         local g is body:mu/r2.                                  // current gravitational acceleration
@@ -112,6 +111,4 @@
         local a_cnet is a_cmd + g.                              // net acceleration from throttle
         local t_cmd is a_cnet / a_net.                          // throttle setting 0..1
 
-        return t_cmd.
-    }).
-}
+        return t_cmd. }). }

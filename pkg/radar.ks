@@ -16,22 +16,12 @@
     // have to determine calibration data before launch, and
     // recalibrate before it is needed during landing.
 
-    // RADAR:CAL(a): get the radar calibration.
-    // if the radar is not calibrated, then set the
-    // calibration to the given value.
-    radar:add("cal", { parameter a is alt:radar.
-        return nv:get("radar/zero", a, true).
-    }).
+    radar:add("cal", { parameter a is alt:radar.                // report radar calibration value
+        return nv:get("radar/zero", a, true). }).
 
-    // RADAR:RECAL(a): set the radar calibration.
-    radar:add("recal", { parameter a is alt:radar.
+    radar:add("recal", { parameter a is alt:radar.              // set radar calibration value
         nv:put("radar/zero", a).
-        return a.
-    }).
+        return a. }).
 
-    // RADAR:ALT -- return calibrated radar altitude.
-    // If uncalibrated, current altitude is calibrated zero.
-    radar:add("alt", {
-        return round(alt:radar - radar:cal(), 3).
-    }).
-}
+    radar:add("alt", {                                          // report altitude above calibration point
+        return round(alt:radar - radar:cal(), 3). }). }
