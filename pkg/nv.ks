@@ -19,68 +19,52 @@
     //   if the first character is char(34), the value is
     //   the remainder of the string. Otherwise, convert the
     //   string to a number to get the numerical value.
+    //
+    // TODO: #38 improve serialization of floating point data so it round-trips.
 
-    // local NV_OPEN(name): open file at path name, create if it does not exist.
-    local nv_open is { parameter name.
-        if exists(name) return open(name).
-        return create(name).
-    }.
+    local nv_open is { parameter name.          // open file at path name
+        if exists(name) return open(name).      // create if it does not exist
+        return create(name). }.
 
-    // local NV_CREAT(name): create file at name. discard old content if it exists.
-    local nv_creat is { parameter name.
+    local nv_creat is { parameter name.         // create file at path name
         if not exists(name) return create(name).
-        local f is open(name).
+        local f is open(name).                  // clear preexisting content
         f:clear().
-        return f.
-    }.
+        return f. }.
 
-    // local NV_READ(name): read named nonvolatile data, deserialize it.
-    local nv_read is { parameter name.
+    local nv_read is { parameter name.          // read and deserialize data from file
         local enc is nv_open(name):readall:string.
         set data to choose enc:remove(0,1) if enc[0]=q else enc:tonumber(0).
         nvram:add(name, data).
-        return data.
-    }.
+        return data. }.
 
-    // local NV_WRITE(name, value): serialize value and write it to named nonvolatile
-    local nv_write is { parameter name, value.
+    local nv_write is { parameter name, value.  // serialize value and write to file
         set nvram[name] to value.
         local enc is choose q+value if value:istype("String") else value:tostring.
         nv_creat(name):write(enc).
-        return value.
-    }.
+        return value. }.
 
-    // exported GET(name[,default[,commit]]): get the value of a named nonvolatile.
-    // If no value stored, return the default.
-    // Store the default if commit is requested and default is used.
-    nv:add("get", { parameter name, default is 0, commit is false.
+    nv:add("get", { parameter name.             // get the value of the named nonvolatile.
+        parameter default is 0.                 // default value to use if not set
+        parameter commit is false.              // store the default if not set
+
         if nvram:haskey(name) return nvram[name].
         if exists(name) return nv_read(name).
         if commit nv_write(name, default).
-        return default.
-    }).
+        return default. }).
 
-    // exported HAS(name): return true if data is stored for named nonvolatile
-    nv:add("has", { parameter name.
-        return nvram:haskey(name) or exists(name).
-    }).
+    nv:add("has", { parameter name.             // see if this named nonvolatile is set
+        return nvram:haskey(name) or exists(name). }).
 
-    // exported IS(name): return true if the value of a named nonvolatile is this value.
-    nv:add("is", { parameter name, value.
+    nv:add("is", { parameter name, value.       // is this named nonvolatile set to this value?
         if not nv:has(name) return false.
         local stored is nv:get(name).
-        return value:typename=stored:typename and value=stored.
-    }).
+        return value:typename=stored:typename and value=stored. }).
 
-    // exported PUT(name, value): set the named nonvolatile to the given value.
-    nv:add("put", { parameter name, data.
-        if nv:is(name, data) return data.
-        return nv_write(name, data).
-    }).
+    nv:add("put", { parameter name, data.       // store data in named nonvolatile.
+        if not nv:is(name, data)                // elide the "not changed" case.
+            nv_write(name, data). }).
 
-    // exported CLR(name): remove any value stored for the named nonvolatile.
-    nv:add("clr", { parameter name.
+    nv:add("clr", { parameter name.             // erase the named nonvolatile.
         nvram:remove(name).
-        if exists(name) deletepath(name).
-    }).
-}
+        if exists(name) deletepath(name). }). }

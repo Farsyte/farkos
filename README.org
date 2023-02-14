@@ -36,6 +36,15 @@ It is hoped that this will not only ease the concerns about global
 namespace collisions, but simplify the process of finding the
 implementation of a function when looking at its caller.
 
+*** Code Style tweaked for VS Code "folding" feature
+
+For reasons, I am attempting to "daily drive" Microsft VS Code, and
+it provides code folding to hide the contents of blocks of code. This
+facility will collapse blocks in curly-braces {} which is very nice
+for folding away details.
+
+See [[doc/folding.org]] for more on this.
+
 ** Mission Names
 
 I have played with {adverb} {adjective} {object} style names. These
@@ -51,89 +60,12 @@ that are specific to those needs. I may decide to use compact names,
 and will try to document the abbreviations here.
 
     X       Experimental: initial attempts at anything new
+    H       Hover specialized vessels
 
-
-** Stage One: module system and bootstrap
+** Module system and bootstrap
 
 kOS has no formal package model -- the idea is that you load up a
 source file and run it, and maybe it runs other files.
 
-I want to be able to have a more flexible scheme where the module I am
-working on can import another module, and gain access to its
-facilities, while minimizing conflict between modules.
-
-*** The global IMPORT function
-
-The desire to have modules loaded on demand, without polluting the
-global namespace, requires that this is mediated by calling a function
-that returns a value used to interact with the module. A global function
-called ~import~ can be written to satisfy this, and the intended usage
-should match this example code:
-
-#+BEGIN_SRC ks
-  local utilitypackage is import("utilitypackage").
-  local data is utilitypackage:data.
-  local result is utilitypackage:getter().
-  utilitypackage:action(result).
-#+END_SRC
-
-Requirements for the ~import~ method:
-
-It shall exist in the global namespace before control is turned over
-to code normally customized for each mission or each class of vessel.
-
-It shall retain a lexicon of successfully loaded modules, so it can
-immediately provide the module object to callers when the module is
-already present.
-
-Otherwise, the module source on the vessel is updated from the archive
-and interpreted; during this process, the module sources will indicate
-the value to be returned by the ~import~ call.
-
-Updating the module sources from the archive will search a short list
-of folders: one specfic to the mission (using the ship name), one
-generic to the vessel class (ship name up to the last / character),
-and one that is common to all missions.
-
-If there is no connection to the archive, the ~import~ process will
-skip attempting to update, and reload from a copy of the module that
-remains on the vessel from a prior boot.
-
-It is an error to import a module for which there is no source, so
-missions should be careful to import all modules they need at least
-once, while connected to the archive, before they might reboot. This
-can and should be done before launch, as the process of loading
-modules may take some time, during which kOS will not be otherwise
-running code managing the mission.
-
-*** There is no EXPORT function.
-
-Packages are presented a lexicon as a parameter. They are expected
-to populate it with the items they are exporting.
-
-#+BEGIN_SRC ks
-  {   parameter _.
-      local dbg is import("debug").
-      set _["data"] to list("foo", "bar", 9.81).
-      set _["action"] to {
-          parameter result.
-          dbg:print("result", result).
-      }
-      set _["getter"] to {
-          return _:data[1].
-      }
-  }
-#+END_SRC
-
-Packages may call the ~import~ method, which will return the lexicon
-for the dependent object.
-
-Circular dependencies may exist. Packages should not presume that
-their imported packages are ready to use during package load.
-
-*** STD is a special case.
-
-The ~std.ks~ file is loaded at boot time by the boot loader, and it
-provides ~import~ in the global namespace. It is responsible for
-tracking what packages are imported, and provides an entry for the std
-package itself.
+See [[doc/import.org]] for information about the ~IMPORT~ function,
+the lack of any ~EXPORT~ facility, and the ~0:STD.KS~ file.

@@ -1,0 +1,92 @@
+* Module system and bootstrap
+
+kOS has no formal package model -- the idea is that you load up a
+source file and run it, and maybe it runs other files.
+
+I want to be able to have a more flexible scheme where the module I am
+working on can import another module, and gain access to its
+facilities, while minimizing conflict between modules.
+
+** The global IMPORT function
+
+The desire to have modules loaded on demand, without polluting the
+global namespace, requires that this is mediated by calling a function
+that returns a value used to interact with the module. A global function
+called ~import~ can be written to satisfy this, and the intended usage
+should match this example code:
+
+    local utilitypackage is import("utilitypackage").
+    local data is utilitypackage:data.
+    local result is utilitypackage:getter().
+    utilitypackage:action(result).#+END_SRC
+
+Requirements for the ~import~ method:
+
+It shall exist in the global namespace before control is turned over
+to code normally customized for each mission or each class of vessel.
+
+It shall retain a lexicon of successfully loaded modules, so it can
+immediately provide the module object to callers when the module is
+already present.
+
+Otherwise, the module source on the vessel is updated from the archive
+and interpreted; during this process, the module sources will indicate
+the value to be returned by the ~import~ call.
+
+Updating the module sources from the archive will search a short list
+of folders: one specfic to the mission (using the ship name), one
+generic to the vessel class (ship name up to the last / character),
+and one that is common to all missions.
+
+If there is no connection to the archive, the ~import~ process will
+skip attempting to update, and reload from a copy of the module that
+remains on the vessel from a prior boot.
+
+It is an error to import a module for which there is no source, so
+missions should be careful to import all modules they need at least
+once, while connected to the archive, before they might reboot. This
+can and should be done before launch, as the process of loading
+modules may take some time, during which kOS will not be otherwise
+running code managing the mission.
+
+** There is no EXPORT function.
+
+Packages are presented a lexicon as a parameter. They are expected
+to populate it with the items they are exporting. Note that using
+the Lexicon ":ADD" suffix checks that there is no prior entry in
+the lexicon that matches the key, so it means "we are not expecting
+to replace an existing entry of this name."
+
+I have found that providing a default value for parameters helps
+document what data type is needed, thus the ~is lex()~ at the
+top of the package files.
+
+
+    {   parameter mypkg is lex().             // my package
+        local dbg is import("debug").
+
+        mypkg:add("data", list(
+            "foo", "bar", 9.81)).
+
+        mypkg:add("action", { parameter val.  // act on val
+            dbg:print("result", val). }).
+
+        mypkg:add("getter", {                 // get a value
+            return mypkg:data[1]. } }
+
+Packages may call the ~import~ method, which will return the lexicon
+for the dependent object.
+
+Circular dependencies may exist. Packages should not presume that
+their imported packages are ready to use during package load.
+
+** The STD file is a special case.
+
+The ~0:std~ file is run at boot time by the boot loader, and it
+provides ~import~ in the global namespace. It is responsible for
+tracking what packages are imported.
+
+This file should also provide any other functions or data that
+need to live in the global namespace. If this file starts growing
+large, that is a sign of a design failure, or a failure to follow
+the design decisions made.

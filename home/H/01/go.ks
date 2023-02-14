@@ -7,7 +7,7 @@
     local io is import("io").
     local dbg is import("dbg").
 
-    _:add("go", {
+    _:add("go", {           // launch, hover higher then lower, then land.
         io:say(LIST(
             "Hello "+ship:name,
             "Hover time!")).
@@ -40,16 +40,14 @@
         print "  seeking radar:alt="+h+" m".
         until time:seconds>hover_until {
             set throttle to hover:hold(h).
-            wait 0.
-        }
+            wait 0. }
 
         set h to 50.
         set hover_until to time:seconds+30.
         print "  seeking radar:alt="+h+" m".
         until time:seconds>hover_until {
             set throttle to hover:hold(h).
-            wait 0.
-        }
+            wait 0. }
 
         // now descend at 3 m/s to altitude zero.
 
@@ -60,11 +58,8 @@
         until descend_until < time:seconds {
             set h to (descend_until-time:seconds)*v.
             set throttle to hover:hold(h, -v).
-            wait 0.
-        }
+            wait 0. }
 
         print "  shutdown.".
         set throttle to 0.
-        wait until false.
-    }).
-}
+        wait until false. }). }
