@@ -162,6 +162,17 @@
         return 1.
     }).
 
+    phase:add("lighten", {
+        if not stage:ready return 1.
+
+        if throttle>0 {
+            set throttle to 0.
+            return 1. }
+
+        if stage:number<1 return 0.
+        stage.
+        return 1. }).
+
     phase:add("fall", {         // fall into atmosphere
         if body:atm:height<10000 return 0.
         if altitude<body:atm:height/2 return 0.
