@@ -86,7 +86,7 @@
 
     phase:add("pose", {        // switch to an idle pose.
         lock throttle to 0.
-        lock steering to lookdirup(body:north:vector, -body:position).
+        lock steering to lookdirup(vcrs(body:position,ship:velocity:orbit), -body:position).
         return 0. }).
 
     phase:add("circ", {
