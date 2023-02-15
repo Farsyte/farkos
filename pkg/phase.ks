@@ -200,21 +200,30 @@
         return 10. }).
 
     phase:add("autostager", {   // stage when appropriate.
+
+        // PAUSE if STAGE:READY is false.
+        // - catches "we are doing an EVA"
+        // - needs to be true anyway for us to stage.
+        if not stage:ready return 1.
+
+        // PAUSE if we have not yet launched.
+        // This will also trigger during the very last moments
+        // of a landing if we have no thrust. Not a problem.
         if alt:radar<100 and availablethrust<=0 return 1.
-        // current convention is that stage 0 has the parachutes.
-        // we do not trigger parachutes with the autostager.
-        // NOTE: It appears that going EVA was hitting either
-        // the "stage zero" or "no engines" condition.
-        local s is stage:number. if s<1 {
-            print "autostager done: stage:number is "+stage:number.
-            return 0. }
+
+        // END if the engine list is empty.
+        // - staging will not jettison anything useful.
         list engines in engine_list.
-        if engine_list:length<1 {
-            print "autostager done: engine list is empty.".
-            return 0. }
+        if engine_list:length<1 return 0.
+
+        // Return without staging if we have an ignited engine
+        // that is not yet flamed out.
+        local s is stage:number.
         for e in engine_list
             if e:decoupledin=s-1 and e:ignition and not e:flameout
                 return 1.
-        if not stage:ready return 1/10.
+
+        // stage to discard dead weight and activate
+        // any currently not-yet-ignited engines.
         stage.
         return 1. }). }
