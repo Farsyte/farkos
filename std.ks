@@ -4,6 +4,11 @@ local home is "0:/home/" + ship:name + "/".
 local pkgd is "0:/pkg/".
 local path is list(home, home + "../", pkgd).
 
+function clamp { parameter lo, hi, v.
+    if v<lo return lo.
+    if v>hi return hi.
+    return v. }
+
 function import { parameter n.          // import the named package.
     if pkg:haskey(n) return pkg[n].
     local ret is lex().
