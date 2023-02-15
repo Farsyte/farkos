@@ -3,6 +3,9 @@
     local nv is import("nv").
     local io is import("io").
     local radar is import("radar").
+    local visviva is import("visviva").
+
+    local dbg is import("dbg").
 
     // countdown phase needs a local,
     // which resets when we boot.
@@ -24,60 +27,55 @@
         if alt:radar>50 return 0.
         lock steering to facing.
         lock throttle to 1.
+        nv:get("T0", time:seconds, true).
         return 1/10. }).
 
-    phase:add("ascent", {       // follow ascent program
+    phase:add("ascent", {
         if abort return 0.
+
+        local r0 is body:radius.
 
         local orbit_altitude is nv:get("launch_altitude", 80000, true).
         local launch_azimuth is nv:get("launch_azimuth", 90, true).
         local launch_pitchover is nv:get("launch_pitchover", 2, false).
+        local ascent_gain is nv:get("ascent_gain", 10, true).
+        local max_facing_error is nv:get("ascent_max_facing_error", 90, true).
+        local ascent_apo_grace is nv:get("ascent_apo_grace", 0.5).
 
-        // if we are completely out of fuel, give up.
-        if availablethrust=0 {
-            local _all_done is {  // "all engines are flamed out"
-                list engines in el.
-                for e in el
-                    if not e:flameout
-                        return false.
-                return true. }.
-            if _all_done() return 0. }
+        if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height return 0.
 
-        // termination condition: apoapsis stable at or above target.
+        local _steering is {        // simple pitch program
+            // pitch over by launch_pitchover degrees when clear,
+            // then gradually pitch down until we hit level
+            // as we leave the atmosphere.
+            local altitude_fraction is clamp(0,1,altitude / min(70000,orbit_altitude)).
+            local pitch_wanted is (90-launch_pitchover)*(1 - sqrt(altitude_fraction)).
+            local cmd_steering is heading(launch_azimuth,pitch_wanted,0).
+            return cmd_steering.}.
 
-        if apoapsis>=orbit_altitude and altitude>body:atm:height {
-            set throttle to 0.
-            lock steering to prograde.
-          return 0. }
+        local _throttle is {        // Proportional Controller to stop at target apoapsis
+            local current_speed is velocity:orbit:mag.
+            local desired_speed is visviva:v(r0+altitude,r0+orbit_altitude+1,r0+periapsis).
+            local speed_change_wanted is desired_speed - current_speed.
+            local accel_wanted is speed_change_wanted * ascent_gain.
+            local force_wanted is mass * accel_wanted.
+            local max_thrust is max(0.01, availablethrust).
+            local throttle_wanted is force_wanted / max_thrust.
+            local throttle_wanted_clamped is clamp(0,1,throttle_wanted).
+            local facing_error is vang(facing:vector,steering:vector).
+            local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
+            local cmd_throttle is throttle_wanted_clamped*facing_error_factor.
+            return cmd_throttle.
+          }.
 
-        // simple throttle program:
-        // full throttle until apoapsis is high enough,
-        // then zero throttle when it is higher.
-
-        set _throttle to {
-            return max(0,min(1,(orbit_altitude+10-apoapsis)/1000)). }.
+        // phase_unwarp().
+        lock steering to _steering().
         lock throttle to _throttle().
 
-        // simple pitch program:
-        //
-        // pitch over smoothly from nearly vertical at the ground
-        // to horizontal 2km above the atmosphere, where the pitchover
-        // goes as the square root of the fraction of the altitude.
-        //
-        // This does not run:
-        //    lock steering to ({... return x. })().
-        // It results in this error:
-        //    Undefined Variable Name ''.
+        set first_ascent to false.
 
-        set _steering to {
-            local alt_thresh is 2000+body:atm:height.
-            local alt_frac is max(0,min(1,altitude/alt_thresh)).
-            local alt_frac_sqrt is sqrt(alt_frac).
-            local pitch_cmd is (90-launch_pitchover)*(1-alt_frac_sqrt).
-            return heading(launch_azimuth,pitch_cmd,0). }.
-        lock steering to _steering().
-
-        return 1. }).
+        return 5.
+    }).
 
     phase:add("coast", {        // coast to apoapsis
         if abort return 0.
@@ -85,6 +83,95 @@
         if eta:apoapsis<30 return 0.
         lock throttle to 0.
         lock steering to prograde.
+        return 1. }).
+
+    phase:add("pose", {        // switch to an idle pose.
+        lock throttle to 0.
+        lock steering to lookdirup(vcrs(body:position,ship:velocity:orbit), -body:position).
+        return 0. }).
+
+    phase:add("circ", {
+        if abort return 0.
+
+        local r0 is body:radius.
+
+        local throttle_gain is nv:get("circ_throttle_gain", 5, true).
+        local max_facing_error is nv:get("circ_max_facing_error", 5, true).
+        local good_enough is nv:get("circ_good_enough", 1, true).
+
+        if ship:LiquidFuel <= 0 {   // deal with "no fuel" case.
+            io:say("Circularize: no fuel.").
+            abort on. return 0. }
+
+        local _delta_v is {         // compute desired velocity change.
+            local desired_lateral_speed is visviva:v(r0+altitude).
+            local lateral_direction is vxcl(up:vector,velocity:orbit):normalized.
+            local desired_velocity is lateral_direction*desired_lateral_speed.
+            return desired_velocity - velocity:orbit. }.
+
+        {   // check termination condition.
+            local desired_velocity_change is _delta_v():mag.
+            if desired_velocity_change <= good_enough {
+                return phase:pose(). } }
+
+        local _steering is {        // steer in direction of delta-v
+            return lookdirup(_delta_v(),facing:topvector). }.
+
+        local _throttle is {        // throttle proportional to delta-v
+            local desired_velocity_change is _delta_v().
+
+            local desired_accel is throttle_gain * desired_velocity_change:mag.
+            local desired_force is mass * desired_accel.
+            local max_thrust is max(0.01, availablethrust).
+            local desired_throttle is clamp(0,1,desired_force/max_thrust).
+
+            local facing_error is vang(facing:vector,desired_velocity_change).
+            local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
+            return clamp(0,1,facing_error_factor*desired_throttle). }.
+
+        lock steering to _steering().
+        lock throttle to _throttle().
+
+        return 5.
+    }).
+
+    phase:add("deorbit", {
+
+        local h is 0.75 * body:atm:height.
+        if periapsis < h {
+            lock throttle to 0.
+            lock steering to srfretrograde.
+            return 0. }
+
+        lock steering to retrograde.
+        if 10<vang(facing:vector,steering:vector) return 1/10.
+
+        local r0 is body:radius.
+
+        local throttle_gain is nv:get("deorbit_throttle_gain", 5, true).
+
+        local _throttle is {        // throttle proportional to delta-v
+            local desired_speed is visviva:v(r0+altitude, h, r0+apoapsis).
+            local current_speed is velocity:orbit:mag.
+            local desired_speed_change is current_speed - desired_speed.
+            local desired_accel is throttle_gain * desired_speed_change.
+            local desired_force is mass * desired_accel.
+            local max_thrust is max(0.01, availablethrust).
+            local desired_throttle is clamp(0,1,desired_force/max_thrust).
+            return clamp(0,1,desired_throttle). }. lock throttle to _throttle().
+
+        return 1.
+    }).
+
+    phase:add("lighten", {
+        if not stage:ready return 1.
+
+        if throttle>0 {
+            set throttle to 0.
+            return 1. }
+
+        if stage:number<1 return 0.
+        stage.
         return 1. }).
 
     phase:add("fall", {         // fall into atmosphere
@@ -141,14 +228,38 @@
         return 10. }).
 
     phase:add("autostager", {   // stage when appropriate.
+
+        // PAUSE if STAGE:READY is false.
+        // - catches "we are doing an EVA"
+        // - needs to be true anyway for us to stage.
+        if not stage:ready return 1.
+
+        // PAUSE if we have not yet launched.
+        // This will also trigger during the very last moments
+        // of a landing if we have no thrust. Not a problem.
         if alt:radar<100 and availablethrust<=0 return 1.
-        // current convention is that stage 0 has the parachutes.
-        // we do not trigger parachutes with the autostager.
-        local s is stage:number. if s<1 return 0.
+
+        // END if the engine list is empty.
+        // - staging will not jettison anything useful.
         list engines in engine_list.
         if engine_list:length<1 return 0.
+
+        // Return without staging if we have an ignited engine
+        // that is not yet flamed out.
+        local s is stage:number.
         for e in engine_list
             if e:decoupledin=s-1 and e:ignition and not e:flameout
                 return 1.
-        if stage:ready stage.
+
+        print " ".
+        print "autostager activating for stage "+stage:number.
+        print "  MET: "+(time:seconds - nv:get("T0")).
+        print "  altitude: "+altitude.
+        print "  s velocity: "+velocity:surface:mag.
+        print "  o velocity: "+velocity:orbit:mag.
+        print "  delta-v: "+ship:deltav.
+
+        // stage to discard dead weight and activate
+        // any currently not-yet-ignited engines.
+        stage.
         return 1. }). }

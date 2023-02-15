@@ -1,0 +1,117 @@
+\documentclass[10pt]{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\author{Farsyte}
+\date{Year 001, Day 01}
+\title{}
+\begin{document}
+
+
+\twocolumn
+\setlength{\columnsep}{0.4cm}
+\setlength{\columnseprule}{0.4pt}
+
+Specific orbital energy
+is the sum of the kinetic energy
+and the potential energy:
+
+\begin{equation*}
+\begin{split}
+E_T ={} & \frac{1}{2} m v^2 + m g r
+\\ ={} & m \frac{v^2}{2} - m \frac{\mu}{r}
+\end{split}
+\end{equation*}
+
+\begin{equation*}
+\boxed{\mathcal{E} = \frac{v^2}{2} - \frac{\mu}{r}}
+\end{equation*}
+
+Specific orbital energy is conserved;
+apply this at periapsis and apoapsis.
+
+\begin{equation*}
+\begin{split}
+\mathcal{E}
+= \frac{v_a^2}{2} - \frac{\mu}{r_a}
+={} & \frac{v_p^2}{2} - \frac{\mu}{r_p}
+\\
+\frac{v_a^2}{2} - \frac{v_p^2}{2}
+={} & \frac{\mu}{r_a} - \frac{\mu}{r_p}
+\end{split}
+\end{equation*}
+
+Specific Angular Momentum is conserved
+(\(h = r_p v_p = r_a v_a\)).
+apply this at periapsis and apoapsis
+and substitute \(v_p = r_a v_a / r_p\) into the above.
+
+\begin{equation*}
+\begin{split}
+\frac{v_a^2}{2} - \frac{r_a^2 v_a^2}{2 r_p^2}
+={} & \frac{\mu}{r_a} - \frac{\mu}{r_p}
+\\
+\frac{v_a^2}{2} \left(
+\frac{r_p^2 - r_a^2}{r_p^2}
+\right)
+={} & \frac{\mu}{r_a} - \frac{\mu}{r_p}
+\end{split}
+\end{equation*}
+
+Isolate the specific kinetic energy at apoapsis.
+
+\begin{equation*}
+\begin{split}
+\frac{v_a^2}{2}
+={} & 
+\left(
+\frac{\mu}{r_a} - \frac{\mu}{r_p}
+\right)
+\left(
+\frac{r_p^2}{r_p^2 - r_a^2}
+\right)
+\\ ={} & \mu \left( \frac{r_p - r_a}{r_a r_p} \right)
+\frac{r_p^2}{r_p^2 - r_a^2}
+\\ ={} & \mu \frac{r_p}{r_a \left( r_p + r_a \right)}
+\end{split}
+\end{equation*}
+
+\pagebreak
+Use semi-major axis \(a = \left(r_a + r_p\right) / 2\)
+to eliminate \(r_p\) from the above,
+
+\begin{equation*}
+\begin{split}
+\frac{1}{2} v_a^2
+   ={} & \mu \frac{2 a - r_a}{r_a \left( 2 a \right)}
+\\ ={} & \mu \left( \frac{1}{r_a} - \frac{1}{2 a}\right)
+\\ ={} & \frac{\mu}{r_a} - \frac{\mu}{2 a}
+\end{split}
+\end{equation*}
+
+Substituting this into the specific orbital
+energy equation from above gives us another
+way to compute \(\mathcal{E}\),
+
+\begin{equation*}
+\begin{split}
+\mathcal{E}
+={} & \frac{v_a^2}{2} - \frac{\mu}{r_a}
+\\ ={} & \left( \frac{\mu}{r_a} - \frac{\mu}{2 a} \right) - \frac{\mu}{r_a}
+\\ ={} & -\frac{\mu}{2a} \\
+\end{split}
+\end{equation*}
+
+Include this term in our preferred form
+for the specific orbital energy equation:
+
+\begin{equation*}
+\boxed{\mathcal{E} = \frac{v^2}{2} - \frac{\mu}{r} = -\frac{\mu}{2a}}
+\end{equation*}
+
+Multiply the above through by \(2/\mu\) and rearrange terms
+to obtain the Vis-Viva equation in a simplified form:
+
+\begin{equation*}
+\boxed{\frac{v^2}{\mu} = \frac{2}{r} - \frac{1}{a}}
+\end{equation*}
+\end{document}
