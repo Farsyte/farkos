@@ -136,13 +136,29 @@
 
     phase:add("deorbit", {
 
-        if periapsis < 0 {      // completion condition: periapsis in dirt.
+        local h is 0.75 * body:atm:height.
+        if periapsis < h {
             lock throttle to 0.
-            lock steering to retrograde.
+            lock steering to srfretrograde.
             return 0. }
 
         lock steering to retrograde.
-        lock throttle to 1.
+        if 10<vang(facing:vector,steering:vector) return 1/10.
+
+        local r0 is body:radius.
+
+        local throttle_gain is nv:get("deorbit_throttle_gain", 5, true).
+
+        local _throttle is {        // throttle proportional to delta-v
+            local desired_speed is visviva:v(r0+altitude, h, r0+apoapsis).
+            local current_speed is velocity:orbit:mag.
+            local desired_speed_change is current_speed - desired_speed.
+            local desired_accel is throttle_gain * desired_speed_change.
+            local desired_force is mass * desired_accel.
+            local max_thrust is max(0.01, availablethrust).
+            local desired_throttle is clamp(0,1,desired_force/max_thrust).
+            return clamp(0,1,desired_throttle). }. lock throttle to _throttle().
+
         return 1.
     }).
 
