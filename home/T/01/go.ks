@@ -11,8 +11,14 @@
     mission:do(list(
       "COUNTDOWN", phase:countdown,
       "LAUNCH", phase:launch,
-      "ASCENT", phase:ascent,
+      "POGO", {
+        if availablethrust=0 return 0.
+        if apoapsis>75000 return 0.
+        lock steering to lookdirup(up:vector,facing:topvector).
+        lock throttle to 1.
+        return 1. },
       "COAST", phase:coast,
+      "LIGHTEN", phase:lighten,
       "FALL", phase:fall,
       "DECEL", phase:decel,
       "PSAFE", phase:psafe,
