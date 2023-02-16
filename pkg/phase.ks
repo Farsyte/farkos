@@ -171,6 +171,14 @@
             return 1. }
 
         if stage:number<1 return 0.
+
+        print " ".
+        print "lighten activating for stage "+stage:number.
+        print "  MET: "+(time:seconds - nv:get("T0")).
+        print "  altitude: "+altitude.
+        print "  s velocity: "+velocity:surface:mag.
+        print "  o velocity: "+velocity:orbit:mag.
+        print "  delta-v: "+ship:deltav.
         stage.
         return 1. }).
 
