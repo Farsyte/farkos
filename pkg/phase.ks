@@ -171,6 +171,60 @@
         return 5.
     }).
 
+    local hold_in_pose is false.
+    phase:add("hold", {
+
+        local throttle_gain is nv:get("hold_throttle_gain", 1, true).
+        local max_facing_error is nv:get("hold_max_facing_error", 5, true).
+
+        local hold_peri is nv:get("hold/periapsis").
+        local hold_apo is nv:get("hold/apoapsis").
+        local r0 is body:radius.
+        local ri is r0+altitude.
+        local rp is min(ri,r0+hold_peri).
+        local ra is max(ri,r0+hold_apo).
+        local vi is visviva:v(ri, rp, ra).
+        local vp_lat is visviva:v(rp, rp, ra).
+        local va_lat is visviva:v(ra, rp, ra).
+        local hp is rp * vp_lat.
+        local vi_lat is hp/ri.
+        local hi is ri * vi_lat.
+        local vi2 is vi*vi.
+        local vil2 is vi_lat*vi_lat.
+        local vir2 is round(vi2 - vil2, 3).
+        local vi_rad is sqrt(vir2). if verticalspeed<0 set vi_rad to -vi_rad.
+
+        local vi_rad is -body:position:normalized*vi_rad.
+        local vi_lat is vxcl(vi_rad,prograde:vector):normalized*vi_lat.
+        local vi_cmd is vi_rad + vi_lat.
+        local dv is vi_cmd - ship:velocity:orbit.
+
+        set steering to lookdirup(dv, facing:topvector).
+
+        local desired_accel is throttle_gain * dv:mag.
+        local desired_force is mass * desired_accel.
+        local max_thrust is max(0.01, availablethrust).
+        local desired_throttle is clamp(0,2,desired_force/max_thrust).
+
+        // if we exceed the pose exit threshold, stop posing.
+        if desired_throttle > nv:get("hold/pose/exit", 0.05)
+            set hold_in_pose to false.
+
+        // if we are within the pose entry threshold, start posing.
+        if desired_throttle < nv:get("hold/pose/enter", 0.01)
+            set hold_in_pose to true.
+
+        if hold_in_pose
+            return phase:pose().
+
+        phase_unwarp().
+
+        local facing_error is vang(dv, facing:vector).
+        local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
+        set throttle to clamp(0,1,facing_error_factor*desired_throttle).
+
+        return 1/100. }).
+
     phase:add("deorbit", {
 
         local h is 0.75 * body:atm:height.
