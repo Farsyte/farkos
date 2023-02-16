@@ -11,6 +11,32 @@
     // which resets when we boot.
     local countdown is 10.
 
+    function phase_unwarp {
+        if kuniverse:timewarp:rate <= 1 return.
+        kuniverse:timewarp:cancelwarp().
+        wait until kuniverse:timewarp:issettled.
+    }
+
+    function phase_apowarp {
+        if not kuniverse:timewarp:issettled return.
+
+        if kuniverse:timewarp:rate>1 {
+            kuniverse:timewarp:cancelwarp().
+            return.
+        }
+
+        if eta:apoapsis<60 return.
+
+        if kuniverse:timewarp:mode = "PHYSICS" {
+            set kuniverse:timewarp:mode to "RAILS".
+            wait 1.
+        }
+        kuniverse:timewarp:warpto(time:seconds+eta:apoapsis-30).
+        wait 5.
+        wait until kuniverse:timewarp:rate <= 1.
+        wait until kuniverse:timewarp:issettled.
+    }
+
     phase:add("countdown", {    // countdown, ignite, wait for thrust.
         if availablethrust>0 return 0.
         lock throttle to 1.
@@ -80,7 +106,9 @@
     phase:add("coast", {        // coast to apoapsis
         if abort return 0.
         if verticalspeed<0 return 0.
+        phase_apowarp().
         if eta:apoapsis<30 return 0.
+        phase_unwarp().
         lock throttle to 0.
         lock steering to prograde.
         return 1. }).
@@ -115,6 +143,8 @@
                 return phase:pose(). } }
 
         local _steering is {        // steer in direction of delta-v
+        phase_unwarp().
+
             return lookdirup(_delta_v(),facing:topvector). }.
 
         local _throttle is {        // throttle proportional to delta-v
@@ -142,6 +172,8 @@
             lock throttle to 0.
             lock steering to srfretrograde.
             return 0. }
+
+        phase_unwarp().
 
         lock steering to retrograde.
         if 10<vang(facing:vector,steering:vector) return 1/10.
@@ -171,6 +203,8 @@
             return 1. }
 
         if stage:number<1 return 0.
+
+        phase_unwarp().
 
         print " ".
         print "lighten activating for stage "+stage:number.
