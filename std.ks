@@ -17,3 +17,9 @@ function import { parameter n.          // import the named package.
         runpath(d+n, ret). return ret. }
     print "import: missing "+n.
     return ret. }
+
+function unlazy { parameter v.          // resolve lazy evaluations.
+    until not v:istype("Delegate")
+        set v to v:call().
+    return v.
+}
