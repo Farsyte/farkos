@@ -63,6 +63,9 @@ and will try to document the abbreviations here.
     H       Hover specialized vessels
     S       Sub-orbital specialized vessels
     O       Simple orbital-specialized vessels
+    T       Tourist Vessels
+    G       Ground Vehicles
+    C       Communication Satellites
 
 ** Module system and bootstrap
 
