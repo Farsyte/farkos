@@ -316,6 +316,7 @@
     phase:add("land", {         // control during final landing
         if verticalspeed>=0 return 0.
 
+        gear on.
         unlock steering.
         unlock throttle.
         return 1. }).
