@@ -140,12 +140,6 @@
         {   // check termination condition.
             local desired_velocity_change is _delta_v():mag.
             if desired_velocity_change <= good_enough {
-                print "circularization complete.".
-                print "  achieved "+round(periapsis/1000)
-                    +"x"+round(apoapsis/1000)
-                    +" km orbit using "
-                    +round(launch_dv - ship:deltav:vacuum)
-                    +" m/s Delta V.".
                 return phase:pose(). } }
 
         local _steering is {        // steer in direction of delta-v
