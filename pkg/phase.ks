@@ -251,23 +251,25 @@
 
     phase:add("lighten", {
         if not stage:ready return 1.
-
-        if throttle>0 {
-            set throttle to 0.
-            return 1. }
-
         if stage:number<1 return 0.
 
         phase_unwarp().
 
         print " ".
         print "lighten activating for stage "+stage:number.
-        print "  MET: "+(time:seconds - nv:get("T0")).
-        print "  altitude: "+altitude.
-        print "  s velocity: "+velocity:surface:mag.
-        print "  o velocity: "+velocity:orbit:mag.
-        print "  delta-v: "+ship:deltav.
-        stage.
+        print "  MET: "+round(time:seconds - nv:get("T0")).
+        print "  altitude: "+round(altitude).
+        print "  apoapsis: "+round(apoapsis).
+        print "  periapsis: "+round(periapsis).
+        print "  s velocity: "+round(velocity:surface:mag).
+        print "  o velocity: "+round(velocity:orbit:mag).
+        print "  vacuum delta-v: "+round(ship:deltav:vacuum).
+        if altitude>body:atm:height
+            phase:pose().
+        else
+            lock throttle to 0.
+        wait 1.
+        wait until stage:ready. stage.
         return 1. }).
 
     phase:add("fall", {         // fall into atmosphere
