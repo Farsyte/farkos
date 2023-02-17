@@ -19,6 +19,7 @@
       "DEORBIT", phase:deorbit,
       "FALL", phase:fall,
       "DECEL", phase:decel,
+      "LIGHTEN", phase:lighten,
       "PSAFE", phase:psafe,
       "CHUTE", phase:chute,
       "LAND", phase:land,

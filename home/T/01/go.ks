@@ -18,9 +18,9 @@
         lock throttle to 1.
         return 1. },
       "COAST", phase:coast,
-      "LIGHTEN", phase:lighten,
       "FALL", phase:fall,
       "DECEL", phase:decel,
+      "LIGHTEN", phase:lighten,
       "PSAFE", phase:psafe,
       "CHUTE", phase:chute,
       "LAND", phase:land,
