@@ -7,6 +7,8 @@
     local mission is import("mission").
     local phase is import("phase").
     local task is import("task").
+    local targ is import("targ").
+    local match is import("match").
     local mnv is import("mnv").
 
     local orbit_altitude is nv:get("launch_altitude", 320000, true).
@@ -18,6 +20,12 @@
 
     task:new("Circularize Here", true, 0, phase:circ, 0).
     task:new("Execute Node", { return HASNODE. }, 0, mnv:step, 0).
+
+    task:new("Match Inclination",
+        { return HASTARGET. },
+        targ:save,
+        match:plane,
+        { }).
 
     set task:idle:step to phase:pose.
 
@@ -44,6 +52,7 @@
         return 1. }
 
     mission:do(list(
+        "PADHOLD", targ:wait, match:asc,
         "COUNTDOWN", phase:countdown,
         "LAUNCH", phase:launch,
         "ASCENT", phase:ascent,
