@@ -347,6 +347,18 @@
         return 1/10.
     }).
 
+    {
+        // dump some info during boot.
+
+        print " ".
+        print "autostager initializing at stage "+stage:number.
+        print "  MET: "+(time:seconds - nv:get("T0")).
+        print "  altitude: "+altitude.
+        print "  s velocity: "+velocity:surface:mag.
+        print "  o velocity: "+velocity:orbit:mag.
+        print "  delta-v: "+ship:deltav:vacuum.
+
+    }
     phase:add("autostager", {   // stage when appropriate.
 
         // PAUSE if STAGE:READY is false.
@@ -377,7 +389,7 @@
         print "  altitude: "+altitude.
         print "  s velocity: "+velocity:surface:mag.
         print "  o velocity: "+velocity:orbit:mag.
-        print "  delta-v: "+ship:deltav.
+        print "  delta-v: "+ship:deltav:vacuum.
 
         // stage to discard dead weight and activate
         // any currently not-yet-ignited engines.
