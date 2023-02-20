@@ -39,7 +39,7 @@
         return data. }.
 
     local nv_write is { parameter name, value.  // serialize value and write to file
-        set value to unlazy(value).
+        set value to eval(value).
         set nvram[name] to value.
         local enc is choose q+value if value:istype("String") else value:tostring.
         nv_creat(name):write(enc).
@@ -51,7 +51,7 @@
 
         if nvram:haskey(name) return nvram[name].
         if exists(name) return nv_read(name).
-        set default to unlazy(default).
+        set default to eval(default).
         if commit nv_write(name, default).
         return default. }).
 
@@ -60,12 +60,12 @@
 
     nv:add("is", { parameter name, value.       // is this named nonvolatile set to this value?
         if not nv:has(name) return false.
-        set value to unlazy(value).
+        set value to eval(value).
         local stored is nv:get(name).
         return value:typename=stored:typename and value=stored. }).
 
     nv:add("put", { parameter name, data.       // store data in named nonvolatile.
-        set data to unlazy(data).
+        set data to eval(data).
         if not nv:is(name, data)                // elide the "not changed" case.
             nv_write(name, data). }).
 
