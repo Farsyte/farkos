@@ -23,3 +23,20 @@ function eval { parameter v.           // resolve lazy evaluations.
         set v to v:call().
     return v.
 }
+
+function ua { parameter ang. // map ang into the 0..360 range.
+    return mod(360+mod(ang, 360),360).
+}
+
+function sa { parameter ang. // map ang into the -180..+180 range
+    set ang to mod(ang, 360).
+    if ang < 180 set ang to ang + 180.
+    if ang > 180 set ang to ang - 180.
+    return ang.
+}
+
+function sgn { parameter v.
+    if v>0 return 1.
+    if v<0 return -1.
+    return 0.
+}
