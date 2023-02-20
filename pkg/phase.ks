@@ -31,7 +31,7 @@
             set kuniverse:timewarp:mode to "RAILS".
             wait 1.
         }
-        kuniverse:timewarp:warpto(time:seconds+eta:apoapsis-30).
+        kuniverse:timewarp:warpto(time:seconds+eta:apoapsis-45).
         wait 5.
         wait until kuniverse:timewarp:rate <= 1.
         wait until kuniverse:timewarp:issettled.
@@ -94,23 +94,21 @@
             return cmd_throttle.
           }.
 
-        // phase_unwarp().
+        phase_unwarp().
         lock steering to _steering().
         lock throttle to _throttle().
-
-        set first_ascent to false.
-
         return 5.
     }).
 
     phase:add("coast", {        // coast to apoapsis
         if abort return 0.
         if verticalspeed<0 return 0.
-        phase_apowarp().
-        if eta:apoapsis<30 return 0.
-        phase_unwarp().
+        if eta:apoapsis<30 {
+            phase_unwarp().
+            return 0. }
         lock throttle to 0.
         lock steering to prograde.
+        phase_apowarp().
         return 1. }).
 
     phase:add("pose", {        // switch to an idle pose.
@@ -225,6 +223,8 @@
         if periapsis < h {
             lock throttle to 0.
             lock steering to srfretrograde.
+            wait 1.
+            set warp to 4.
             return 0. }
 
         phase_unwarp().
@@ -325,6 +325,27 @@
         unlock steering.
         unlock throttle.
         return 10. }).
+
+    function has_no_rcs {
+        list rcs in rcs_list.
+        for r in rcs_list
+            if not r:flameout
+                return false.
+        return true. }
+
+    set steering to facing. // have to set it at least once ...
+    phase:add("autorcs", {      // enable RCS when appropriate.
+        if has_no_rcs()                                         return 0.
+        local f is facing.
+        local s is steering.
+
+        if altitude < body:atm:height                           rcs off.
+        else if ship:angularvel:mag>0.5                         rcs on.
+        else if 10<vang(f:forevector, s:forevector)             rcs on.
+        else if 10<vang(f:topvector, s:topvector)               rcs on.
+        else                                                    rcs off.
+        return 1/10.
+    }).
 
     phase:add("autostager", {   // stage when appropriate.
 
