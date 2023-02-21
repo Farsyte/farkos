@@ -32,16 +32,32 @@
         f:clear().
         return f. }.
 
+    local nv_enc_t is lex().
+    nv_enc_t:add("Scalar", { parameter v. return v:tostring. }).
+    nv_enc_t:add("String", { parameter v. return q+v. }).
+    nv_enc_t:add("Vessel", { parameter v. return "V"+v:name. }).
+    nv_enc_t:add("Body", { parameter v. return "B"+v:name. }).
+
+    function nv_enc { parameter v.
+        local t is v:typename.
+        return nv_enc_t[t](v). }
+
+    function nv_dec { parameter s.
+        if s[0]=q return s:remove(0,1).
+        if s[0]="V" return vessel(s:remove(0,1)).
+        if s[0]="B" return body(s:remove(0,1)).
+        return s:tonumber(0). }
+
     local nv_read is { parameter name.          // read and deserialize data from file
         local enc is nv_open(name):readall:string.
-        set data to choose enc:remove(0,1) if enc[0]=q else enc:tonumber(0).
+        set data to nv_dec(enc).
         nvram:add(name, data).
         return data. }.
 
     local nv_write is { parameter name, value.  // serialize value and write to file
         set value to eval(value).
         set nvram[name] to value.
-        local enc is choose q+value if value:istype("String") else value:tostring.
+        set enc to nv_enc(value).
         nv_creat(name):write(enc).
         return value. }.
 
