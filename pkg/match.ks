@@ -1,10 +1,19 @@
 {   parameter match is lex(). // matching logic
 
     local targ is import("targ").
+    local hill is import("hill").
+    local predict is import("predict").
+    local visviva is import("visviva").
     local io is import("io").
     local nv is import("nv").
 
-    match:add("asc", { // launch when nearly under ascending node.
+    // state retained between steps but not across reboots:
+    local match_throttle_prev is 0.
+
+    // global parameters
+    local burn_steps is list(30, 10, 3, 1, 0.3, 0.1, 0.03, 0.01).
+
+    match:add("asc", {              // launch when nearly under ascending node.
         if abort return 0.
 
         local o is targ:orbit().
@@ -45,8 +54,7 @@
 
         return 1. }).
 
-    local match_throttle_prev is 0.
-    match:add("plane", {     // match orbital planes with target
+    match:add("plane", {            // match orbital planes with target
         if abort return 0.
 
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
@@ -163,7 +171,7 @@
 
         return 1/100. }).
 
-    match:add("apo", {      // push apoapsis to be out between targ/peri and targ/apo
+    match:add("apo", {              // push apoapsis to be out between targ/peri and targ/apo
         if abort return 0.
 
         local r0 is body:radius.
@@ -179,7 +187,7 @@
         local target_apo is (match_peri+match_apo)/2.
 
         local _delta_v is {     // compute desired change in velocity magnitutde
-            local desired_speed is visviva_v(r0+altitude,r0+target_apo,r0+periapsis).
+            local desired_speed is visviva:v(r0+altitude,r0+target_apo,r0+periapsis).
             local current_speed is velocity:orbit:mag.
             return desired_speed - current_speed. }.
 
@@ -207,4 +215,141 @@
         lock throttle to _throttle().
 
         return 5.}).
+
+    match:add("plan_xfer", {        // build MANEUVER to enter Hohmann toward Targ
+        local pi is constant:pi.
+
+        targ:load().
+
+        // Operation does not coexist with existing maneuver nodes.
+        until not hasnode { remove nextnode. wait 0. }
+
+        // Operation is UNDEFINED if the target is not in orbit around
+        // the same body as the ship.
+
+        local t1 is time:seconds + 300.             // First trial hohmann starts in five minutes,
+        local r2 is body:radius + target:apoapsis.    // and ends at the the target apoapsis altitude.
+
+        local r1 is predict:pos(t1, ship):mag.
+        local dv is visviva:v(r1, r2) - predict:vel(t1, ship):mag.
+
+        // Track these data as we adjust the transfer:
+        local t2 is 0.              // UT at the end of the transfer
+        local e2 is 0.              // distance from ship to targ at t2.
+
+        function eval_xfer {        // evaluate for (t1+=dt) and r2, return e2.
+            parameter dt is 0.
+            set t1 to t1 + dt.
+
+            local p1 is predict:pos(t1, ship).
+            local Xa is (p1:mag+r2)/2.
+            set t2 to t1 + pi*sqrt(Xa^3/body:mu).
+            local FPt is predict:pos(t2, target).
+            local FPs is -p1:normalized*r2.
+            local FPe is FPs - FPt.
+            return FPe:mag. }
+        //
+        set e2 to eval_xfer(0).
+        //
+        function trial_xfer {       // evaluate for (t1+=dt) and r2, return change in e2.
+            parameter dt is 0.
+            set eOld to e2.
+            return eval_xfer(dt) - eOld. }
+
+        // Find a feasible starting point for hillclimbing.
+        //
+        // Needs to start where hillclimbing will not try
+        // to climb back before the current time, so push
+        // the start time until past a maximum error, then
+        // keep pushing until past a minimum error.
+        //
+        until trial_xfer(300) < 0.          // move forward past a maximum error
+        until trial_xfer(300) > 0.          // move forward past a minimum error
+
+        // Tune Start Time to best match the target.
+        // Using HILLCLIMB for this is overkill, but
+        // it is easy to set up and works well.
+        hill:seeks(list(t1), { parameter burn.
+            set t1 to burn[0].
+            return -eval_xfer(). }, burn_steps).
+
+        // Create the node we will tune.
+        local mnv is node(t1, 0, 0, 0). add mnv. wait 0.
+
+        {   // Create a node and tune Prograde DV.
+            // Using HILLCLIMB for this is overkill, but
+            // it is easy to set up and works well.
+
+            set r1 to predict:pos(t1, ship):mag.
+            set r2 to predict:pos(t2, target):mag.
+            set dv to visviva:v(r1, r2) - predict:vel(t1, ship):mag.
+
+            hill:seeks(list(dv),
+                {   parameter burn. set mnv:prograde to burn[0]. wait 0.
+                    return -predict:pos_err(t2, target). }, burn_steps). }
+
+        {   // Now tune both DV and Prograde together.
+            hill:seeks(list(nextnode:time, nextnode:prograde),
+                {   parameter burn.
+                    set t1 to burn[0].
+                    set dv to burn[1].
+                    set mnv:time to t1.
+                    set mnv:prograde to dv. wait 0.
+                    set t2 to t1 + mnv:orbit:period/2.
+                    return -predict:pos_err(t2, target). }, burn_steps). }
+
+        {   // persist timestamp for planned transfer end.
+            local n is nextnode.
+            local o is n:orbit.
+
+            local t1 is time:seconds + n:eta.
+            nv:put("xfer/start", t1).
+
+            local t2 is t1 + o:period/2.
+            nv:put("xfer/final", t2). }
+
+        return 0. }).
+
+    match:add("plan_corr", {    // build MANEUVER to enter Hohmann toward Targ
+        //
+        // This does not play well with existing nodes.
+        until not hasnode { remove nextnode. wait 0. }
+
+        targ:load().
+
+        // xfer_final_time is when to arrive. It must be persisted,
+        // and must be far enough in the future from the above
+        // to allow the burn to be useful..
+        local Tf is nv:get("xfer/final").
+        //
+        // if our final position is within 100m, then
+        // do not plan a maneuver node.
+        local e is predict:pos_err(Tf, target).
+        if e < 100 {
+            print "plan_correction: none needed, e is "+round(e,1).
+            return 0. }
+        //
+        // Do not plan a correction if we are within
+        // five minutes of the rendezvous.
+        local dt is tF - time:seconds.
+        if dt < 300 {
+            print "plan_correction: none planned, arrival in "+round(dt,1).
+            return 0. }
+        //
+        // Plan the correction to be 20% of the time between
+        // now and the intercept time. We might perform several
+        // corrections in the course of a long transit.
+        local T0 is time:seconds + dt*0.20.
+        //
+        // Build the node we will adjust.
+        add node(T0, 0, 0, 0). wait 0.
+        //
+        hill:seeks(list(0, 0, 0), { parameter burn.
+            set nextnode:prograde to burn[0].
+            set nextnode:radialout to burn[1].
+            set nextnode:normal to burn[2]. wait 0.
+            return -predict:pos_err(Tf, target). }, burn_steps).
+        local e is predict:pos_err(Tf, target).
+        print "plan_correction: predicting final error is "+round(e,1).
+        return 0. }).
 }
