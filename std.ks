@@ -40,3 +40,11 @@ function sgn { parameter v.
     if v<0 return -1.
     return 0.
 }
+
+function assert { parameter cond.
+    return choose 0 if cond else 1/0.
+}
+
+global nothing is { }.
+global always is { return true. }.
+global zero is { return 0. }.
