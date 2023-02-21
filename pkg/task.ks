@@ -20,19 +20,27 @@
 
     function task_of {
         parameter text, cond, start, step, stop.
+        assert(cond:istype("Delegate")).
+        assert(start:istype("Delegate")).
+        assert(step:istype("Delegate")).
+        assert(stop:istype("Delegate")).
         return lexicon("text", text, "cond", cond,
             "start", start, "step", step, "stop", stop).}
 
-    task:add("idle", task_of("Idle", true, 0,
-        { set throttle to 0. lock steering to facing. return 0. }, 0)).
+    task:add("idle", task_of("Idle", always, nothing,
+        { set throttle to 0. lock steering to facing. return 0. }, nothing)).
 
-    task:idle:add("pressed", true).
-    task:idle:add("unpress", 0).
+    task:idle:add("pressed", always).
+    task:idle:add("unpress", always).
 
     task:add("curr", task:idle).
 
     task:add("new", {
         parameter text, cond, start, step, stop.
+        assert(cond:istype("Delegate")).
+        assert(start:istype("Delegate")).
+        assert(step:istype("Delegate")).
+        assert(stop:istype("Delegate")).
         local t is task_of(text, cond, start, step, stop).
         local b is task:panel:addcheckbox(text, false).
         t:add("pressed", { return b:pressed. }).
@@ -41,7 +49,7 @@
 
     task:add("pick", {
         for t in task:list
-            if eval(t:pressed) and eval(t:cond)
+            if t:pressed() and t:cond()
                 return t.
         return task:idle. }).
 
@@ -49,14 +57,14 @@
         local o is task:curr.
         local t is task:pick().
         if not(t=o) {
-            eval(o:stop).
+            o:stop().
             set task:curr to t.
             print "task: "+t:text.
-            eval(t:start).
+            t:start().
         }
-        local dt is eval(t:step).
+        local dt is t:step().
         if dt>0 return dt.
-        eval(t:unpress).
+        t:unpress().
         return 1. }).
 
     task:add("show", {
