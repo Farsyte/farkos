@@ -10,22 +10,20 @@
     local targ is import("targ").
     local match is import("match").
     local mnv is import("mnv").
+    local hill is import("hill").
 
     local orbit_altitude is nv:get("launch_altitude", 320000, true).
     local launch_azimuth is nv:get("launch_azimuth", 90, true).
     local launch_pitchover is nv:get("launch_pitchover", 3, false).
 
-    local fn_noop is {}.
-    local fn_true is { return true. }.
+    local has_node is { return HASNODE. }.
+    local has_targ is { return HASTARGET. }.
 
-    task:new("Circularize Here", true, 0, phase:circ, 0).
-    task:new("Execute Node", { return HASNODE. }, 0, mnv:step, 0).
-
-    task:new("Match Inclination",
-        { return HASTARGET. },
-        targ:save,
-        match:plane,
-        { }).
+    task:new("Circularize Here", always, nothing, phase:circ,nothing).
+    task:new("Execute Node", has_node, nothing, mnv:step, nothing).
+    task:new("Match Inclination", has_targ, targ:save, match:plane, nothing).
+    task:new("Plan Intercept", has_targ, targ:save, match:plan_xfer, nothing).
+    task:new("Plan Correction", has_targ, targ:save, match:plan_corr, nothing).
 
     set task:idle:step to phase:pose.
 
