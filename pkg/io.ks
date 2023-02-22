@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter io is lex(). // I/O Library
 
     io:add("say", {         // IO:SAY(m,e): display a message.

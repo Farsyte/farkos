@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {
     parameter phase is lex(). // stock mission phase library.
     local nv is import("nv").

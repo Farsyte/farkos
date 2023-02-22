@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {
     parameter memo is lex(). // memoization package
 

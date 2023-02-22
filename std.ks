@@ -1,3 +1,5 @@
+@LAZYGLOBAL off.
+
 local pkg is lex().
 
 local home is "0:/home/" + ship:name + "/".

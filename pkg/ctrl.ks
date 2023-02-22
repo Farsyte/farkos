@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {
     parameter ctrl is lex().    // augmented control package
 

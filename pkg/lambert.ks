@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {
     parameter lambert is lex(). // lambert equation solver.
 

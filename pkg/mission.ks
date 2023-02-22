@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter mission is lex(). // mission sequencing package
 
     local io is import("io").

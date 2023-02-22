@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter go. // GO script for "O/02".
 
     clearguis().

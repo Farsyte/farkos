@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter _. // GO script for "H/01"
 
     local mission is import("mission").

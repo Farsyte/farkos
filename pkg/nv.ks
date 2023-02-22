@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter nv is lex(). // nonvolatile storage.
 
     local nvram is lex().

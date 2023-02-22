@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter predict is lex().     // Orbital Prediction
     //
     // Encapsulate positionat calls: it is indeed
