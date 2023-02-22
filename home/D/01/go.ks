@@ -20,6 +20,8 @@
     local has_node is { return HASNODE. }.
     local has_targ is { return HASTARGET. }.
 
+    local act_num is 0.
+
     task:new("Circularize Here", always, nothing, phase:circ,nothing).
     task:new("Execute Node", has_node, nothing, mnv:step, nothing).
     task:new("Match Inclination", has_targ, targ:save, match:plane, nothing).
@@ -27,6 +29,7 @@
     task:new("Plan Correction", has_targ, targ:save, match:plan_corr, nothing).
 
     set task:idle:step to phase:pose.
+
 
     function process_actions {
           // ABORT returns us from orbit, whatever we are doing.

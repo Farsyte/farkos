@@ -50,3 +50,6 @@ function assert { parameter cond.
 global nothing is { }.
 global always is { return true. }.
 global zero is { return 0. }.
+
+wait until ship:unpacked.
+import("go"):go().

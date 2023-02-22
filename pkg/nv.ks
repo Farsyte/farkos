@@ -51,14 +51,14 @@
 
     local nv_read is { parameter name.          // read and deserialize data from file
         local enc is nv_open(name):readall:string.
-        set data to nv_dec(enc).
+        local data is nv_dec(enc).
         nvram:add(name, data).
         return data. }.
 
     local nv_write is { parameter name, value.  // serialize value and write to file
         set value to eval(value).
         set nvram[name] to value.
-        set enc to nv_enc(value).
+        local enc to nv_enc(value).
         nv_creat(name):write(enc).
         return value. }.
 

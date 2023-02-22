@@ -4,6 +4,9 @@
     local io is import("io").
     local nv is import("nv").
 
+    local printed_phase_name is "".
+    local phase_next is 0.
+
     local plan is list(                         // main mission plan
         { return 0. }).                         // never empty, start with a "do nothing" entry.
 
@@ -20,9 +23,6 @@
         set phase_next to n.
         nv:put("mission/phase/number", phase_next).
         return v. }).
-
-    local printed_phase_name is "".
-    local phase_next is 0.
 
     local sayname is { parameter n.             // display and store label, if it changed.
         if printed_phase_name=n return.

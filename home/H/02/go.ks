@@ -22,7 +22,7 @@
         print "  apoapsis = "+apoapsis.
 
         wait until availablethrust>0.
-        set s to stage:number.
+        local s is stage:number.
 
         mission:bg(phase:autostager).
 
@@ -37,22 +37,22 @@
         unlock steering.
         sas on.
 
-        set h to 25.
-        print "  descending to radar:alt="+h+" m".
-        until radar:alt()<h+5 {
-            set throttle to hover:hold(h).
+        local h_wait is 25.
+        print "  descending to radar:alt="+h_wait+" m".
+        until radar:alt()<h_wait+5 {
+            set throttle to hover:hold(h_wait).
             wait 0. }
-        set hover_until to time:seconds+10.
-        print "  holding radar:alt="+h+" m".
+        local hover_until is time:seconds+10.
+        print "  holding radar:alt="+h_wait+" m".
         until time:seconds>hover_until {
-            set throttle to hover:hold(h).
+            set throttle to hover:hold(h_wait).
             wait 0. }
 
         // now descend at 5 m/s to altitude zero.
 
         local v is 5.
-        set h to radar:alt().
-        set descend_until to time:seconds + h/v.
+        local h is radar:alt().
+        local descend_until to time:seconds + h/v.
         print "  descending from radar:alt="+round(h,1)+" m at "+v+" m/s".
         until descend_until < time:seconds {
             set h to (descend_until-time:seconds)*v.

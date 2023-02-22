@@ -140,6 +140,7 @@
                 return phase:pose(). } }
 
         set ctrl:gain to throttle_gain.
+        set ctrl:emin to 1.
         set ctrl:emax to max_facing_error.
 
         lock steering to ctrl:steering(dv).
@@ -171,7 +172,7 @@
             local vi2 is vi*vi.
             local vil2 is vi_lat*vi_lat.
             local vir2 is round(vi2 - vil2, 3).
-            local vi_rad is sqrt(vir2). if verticalspeed<0 set vi_rad to -vi_rad.
+            local vi_rad is choose -sqrt(-vir2) if vir2<0 else sqrt(vir2).
 
             local vi_rad is -body:position:normalized*vi_rad.
             local vi_lat is vxcl(vi_rad,prograde:vector):normalized*vi_lat.
@@ -277,6 +278,7 @@
         if body:atm:height < 10000 return 0.
         if altitude < body:atm:height/4 return 0.
         if airspeed<200 return 0.
+        local engine_list is list().
         list engines in engine_list.
         if engine_list:length < 1 return 0.
 
@@ -365,6 +367,7 @@
 
         // END if the engine list is empty.
         // - staging will not jettison anything useful.
+        local engine_list is list().
         list engines in engine_list.
         if engine_list:length<1 return 0.
 
