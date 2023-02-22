@@ -4,6 +4,7 @@
     local hill is import("hill").
     local predict is import("predict").
     local visviva is import("visviva").
+    local lambert is import("lambert").
     local io is import("io").
     local nv is import("nv").
 
@@ -309,6 +310,44 @@
             nv:put("xfer/final", t2). }
 
         return 0. }).
+
+    match:add("lamb_corr", {
+        local t2 is nv:get("xfer/final").
+        local t1 is time:seconds.
+        if t1 + 60 > t2 {               // too close to use this method.
+            lock steering to facing.
+            set throttle to 0.
+            return 0. }
+
+        local dv is lamb:dv_of_t1t2(t1, t2).
+        if dv:mag < 0.1 {               // no correction needed.
+            lock steering to facing.
+            set throttle to 0.
+            return 0. }
+
+        set steering to lookdirup(dv, facing:topvector).
+
+        local dvw is lamb:dv_of_t1t2(t1+1, t2).
+        if dvw:mag <= dv:mag {          // prefer to wait.
+            set throttle to 0.
+            return 1. }
+
+        // TODO create generic "set throttle properly
+        // for this desired delta-v, with discount for
+        // being pointed not quite perfectly."
+
+        local desired_velocity_change is lamb:dv_of_t1t2(time:seconds, t2).
+
+        local desired_accel is throttle_gain * desired_velocity_change:mag.
+        local desired_force is mass * desired_accel.
+        local max_thrust is max(0.01, availablethrust).
+        local desired_throttle is clamp(0,1,desired_force/max_thrust).
+
+        local facing_error is vang(facing:vector,desired_velocity_change).
+        local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
+        set throttle to clamp(0,1,facing_error_factor*desired_throttle).
+
+        return 1/100. }).
 
     match:add("plan_corr", {    // build MANEUVER to enter Hohmann toward Targ
         //
