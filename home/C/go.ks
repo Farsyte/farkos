@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter go. // default GO script for "X" series vessels.
 
     local io is import("io").

@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter task is lex(). // tasking package.
     //
     // a list of tasks that can be requested

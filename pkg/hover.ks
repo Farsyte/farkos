@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {
     parameter hover is lex(). // HOVER package
     local radar is import("radar").

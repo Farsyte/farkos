@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter radar is lex(). // Calibrated Radar Altimeter
     local nv is import("nv").
 

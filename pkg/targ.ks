@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter targ is lex().    // target management package.
 
     local nv is import("nv").

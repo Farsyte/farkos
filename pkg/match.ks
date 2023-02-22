@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter match is lex(). // matching logic
 
     local targ is import("targ").

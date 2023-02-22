@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter goal. // configure goals for this vessel.
 
     // COMSAT ONE:

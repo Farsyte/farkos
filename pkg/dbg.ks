@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter dbg. // debug package.
 
     local pr_d is lex(

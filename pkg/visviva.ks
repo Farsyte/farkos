@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {
     parameter visviva is lex().         // apply v^2/mu = 2/r - 1/a
 

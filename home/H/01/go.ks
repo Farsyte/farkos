@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter _. // GO script for "H/01"
 
     local mission is import("mission").
@@ -35,25 +36,25 @@
         unlock steering.
         sas on.
 
-        local h is 200.
-        set hover_until to time:seconds+30.
-        print "  seeking radar:alt="+h+" m".
-        until time:seconds>hover_until {
-            set throttle to hover:hold(h).
+        local hi is 200.
+        local hold_hi_until is time:seconds+30.
+        print "  seeking radar:alt="+hi+" m".
+        until time:seconds>hold_hi_until {
+            set throttle to hover:hold(hi).
             wait 0. }
 
-        set h to 50.
-        set hover_until to time:seconds+30.
-        print "  seeking radar:alt="+h+" m".
-        until time:seconds>hover_until {
-            set throttle to hover:hold(h).
+        local lo is 50.
+        local hover_lo_until to time:seconds+30.
+        print "  seeking radar:alt="+lo+" m".
+        until time:seconds>hover_lo_until {
+            set throttle to hover:hold(lo).
             wait 0. }
 
         // now descend at 3 m/s to altitude zero.
 
         local v is 3.
-        set h to radar:alt().
-        set descend_until to time:seconds + h/v.
+        local h to radar:alt().
+        local descend_until to time:seconds + h/v.
         print "  descending from radar:alt="+round(h,1)+" m at "+v+" m/s".
         until descend_until < time:seconds {
             set h to (descend_until-time:seconds)*v.

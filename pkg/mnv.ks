@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter mnv is lex(). // Maneuver Node Execution
 
     local nv is import("nv").

@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter hill is lex(). // Hillclimb Algorithm Library
 
     // Hillclimb Algorithm Library
