@@ -6,15 +6,23 @@
     ctrl:add("emin", 1).    // if facing within this angle, use computed throttle
     ctrl:add("emax", 15).   // if facing outside this angle, use zero throttle
 
+    ctrl:add("pose", {
+        if altitude>body:atm:height
+            return lookdirup(vcrs(ship:velocity:orbit, -body:position), -body:position).
+        if verticalspeed>10
+            return lookdirup(srfprograde:vector, facing:topvector).
+        if verticalspeed<10
+            return lookdirup(srfretrograde:vector, facing:topvector).
+        if airspeed>100
+            return lookdirup(srfprograde:vector, facing:topvector).
+        return lookdirup(up:vector, facing:topvector).
+    }).
+
     ctrl:add("steering", {              // steer based on delta-v
         parameter dv.                   // lambda that returns delta-v
         set dv to eval(dv).
-
-        if dv:mag>0
-            return lookdirup(dv, facing:topvector).
-        // if DV is zero, steer into the POSE attitude.
-        local pose_dir is vcrs(ship:velocity:orbit, -body:position).
-        return lookdirup(pose_dir, -body:position). }).
+        if dv:mag>0 return lookdirup(dv, facing:topvector).
+        return ctrl:pose(). }).
 
     ctrl:add("throttle", {              // thrust based on delta-v.
         parameter dv.                   // lambda that returns delta-v
