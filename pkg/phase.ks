@@ -2,6 +2,7 @@
     parameter phase is lex(). // stock mission phase library.
     local nv is import("nv").
     local io is import("io").
+    local ctrl is import("ctrl").
     local radar is import("radar").
     local visviva is import("visviva").
 
@@ -70,33 +71,30 @@
 
         if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height return 0.
 
-        local _steering is {        // simple pitch program
-            // pitch over by launch_pitchover degrees when clear,
-            // then gradually pitch down until we hit level
-            // as we leave the atmosphere.
-            local altitude_fraction is clamp(0,1,altitude / min(70000,orbit_altitude)).
-            local pitch_wanted is (90-launch_pitchover)*(1 - sqrt(altitude_fraction)).
-            local cmd_steering is heading(launch_azimuth,pitch_wanted,0).
-            return cmd_steering.}.
+        phase_unwarp().
 
-        local _throttle is {        // Proportional Controller to stop at target apoapsis
+        local memo_dv_time is 0.
+        local memo_dv_result is V(0,0,0).
+
+        local dv is {
+            if time:seconds=memo_dv_time return memo_dv_result.
             local current_speed is velocity:orbit:mag.
             local desired_speed is visviva:v(r0+altitude,r0+orbit_altitude+1,r0+periapsis).
             local speed_change_wanted is desired_speed - current_speed.
-            local accel_wanted is speed_change_wanted * ascent_gain.
-            local force_wanted is mass * accel_wanted.
-            local max_thrust is max(0.01, availablethrust).
-            local throttle_wanted is force_wanted / max_thrust.
-            local throttle_wanted_clamped is clamp(0,1,throttle_wanted).
-            local facing_error is vang(facing:vector,steering:vector).
-            local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
-            local cmd_throttle is throttle_wanted_clamped*facing_error_factor.
-            return cmd_throttle.
-          }.
 
-        phase_unwarp().
-        lock steering to _steering().
-        lock throttle to _throttle().
+            local altitude_fraction is clamp(0,1,altitude / min(70000,orbit_altitude)).
+            local pitch_wanted is (90-launch_pitchover)*(1 - sqrt(altitude_fraction)).
+            local cmd_steering is heading(launch_azimuth,pitch_wanted,0).
+
+            // NOTE: ctrl:steering takes a vector, not a direction,
+            // it minimizes roll rather than trying to point our heads
+            // away from the planet.
+            set memo_dv_result to cmd_steering:vector:normalized*speed_change_wanted.
+            set memo_dv_time to time:seconds.
+            return memo_dv_result. }.
+
+        lock steering to ctrl:steering(dv).
+        lock throttle to ctrl:throttle(dv).
         return 5.
     }).
 
