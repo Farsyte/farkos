@@ -26,7 +26,7 @@
         parameter fitness. // fitness function we will maximize
         parameter fitincr. // function to increment the state vector
         parameter fitfine. // function to reduce step size
-        parameter fitstate. // lexicon to present to above delegates
+        parameter fitstate. // state to provide to above.
 
         local c is list().
 
@@ -38,11 +38,14 @@
 
             // termination case 1: fitness says to stop searching.
             local score is fitness(fitstate).
-            if not score:istype("Scalar")
-                return true.
 
-            // add this score and state to the results we are watching.
-            c:add(list(score, copyof(fitstate))).
+            // add scalar scores and state to the results we are watching.
+            if score:istype("Scalar")
+                c:add(list(score, copyof(fitstate))).
+
+            // The string "halt" terminates the process.
+            if score:istype("String") and score="halt"
+                return true.
 
             // see if we are bracketing a maximum.
             if c:length=3 {
