@@ -11,6 +11,13 @@
             for e in value
                 ret:add(dbg:pr(e)).
             return "["+ret:join(" ")+"]". },
+        "Lexicon",       { parameter value.
+            local ret is list().
+            local nl is "". // char(10).
+            local nlin is " ". // nl+"  ".
+            for k in value:keys
+                ret:add(dbg:pr(k)+" => "+dbg:pr(value[k])).
+            return "LEX{"+nlin+ret:join(","+nlin)+nl+"}". },
         "Vector",       { parameter value.
             local n is value:normalized.
             return dbg:pr(value:mag)+"*"+dbg:pr(list(n:x, n:y, n:z)). },
