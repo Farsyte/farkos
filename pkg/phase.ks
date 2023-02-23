@@ -321,9 +321,10 @@
         return 10. }).
 
     function has_no_rcs {
+        local rcs_list is list().
         list rcs in rcs_list.
-        for r in rcs_list
-            if not r:flameout
+        for it in rcs_list
+            if not it:flameout
                 return false.
         return true. }
 

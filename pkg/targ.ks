@@ -6,7 +6,7 @@
 
     targ:add("save", {          // nv:put info about target.
         local o is target:orbit.
-        io:say("locking target: "+target:name).
+        // io:say("locking target: "+target:name).
         nv:put("targ/name", target:name).
         nv:put("targ/apo", o:apoapsis).
         nv:put("targ/peri", o:periapsis).

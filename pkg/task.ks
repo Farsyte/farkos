@@ -29,7 +29,7 @@
             "start", start, "step", step, "stop", stop).}
 
     task:add("idle", task_of("Idle", always, nothing,
-        { set throttle to 0. lock steering to facing. return 0. }, nothing)).
+        { lock throttle to 0. lock steering to facing. return 0. }, nothing)).
 
     task:idle:add("pressed", always).
     task:idle:add("unpress", always).

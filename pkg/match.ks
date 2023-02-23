@@ -86,8 +86,8 @@
 
         if i_r <= max_i_r {                     // termination condition
             print "phase_match_incl: final i_r is "+i_r.
-            set throttle to 0.
-            set steering to prograde.
+            lock throttle to 0.
+            lock steering to lookdirup(prograde, facing:forevector).
             return 0. }
 
         if availablethrust <= 0 {                                   // no thrust, try again later.
@@ -111,8 +111,8 @@
         local b_time is 2*p_dist/p_rate.                            // computed time until X=0 V=0 at constant A
         if b_time >= 0 {
             if kuniverse:timewarp:rate=1 set warp to 4.
-            set throttle to 0.
-            set steering to prograde.
+            lock throttle to 0.
+            lock steering to lookdirup(prograde, facing:forevector).
             return 5. }
 
         local b_accel is p_rate/b_time.                             // b_accel: the required acceleration
@@ -156,12 +156,13 @@
                 return 1/10. }
         }
 
+        // TODO: refactor to use CTRL package.
+
         local next_Cs is h_s*sgn(b_throt).      // pick upward or downward normal
-        local local_s is lookdirup(next_Cs,facing:topvector).
-        set steering to local_s.
+        lock steering to lookdirup(next_Cs,facing:topvector).
 
         if match_throttle_prev=0 {
-            set throttle to 0.
+            lock throttle to 0.
             if next_ct<0.1 return 1.
             if next_ct<0.4 return 1/100.
         }
@@ -169,7 +170,8 @@
 
         local facing_error is vang(facing:vector,steering:vector).
         local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
-        set throttle to clamp(0,1,facing_error_factor*next_Ct).
+        local net_throttle is clamp(0,1,facing_error_factor*next_Ct).
+        lock throttle to net_throttle.
 
         return 1/100. }).
 

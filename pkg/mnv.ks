@@ -45,16 +45,16 @@
         if not kuniverse:timewarp:issettled return 1.
 
         local n is nextnode.
-        local v is n:burnvector.
+        local dv is n:burnvector.
 
         lock steering to lookdirup(n:burnvector, facing:upvector).
 
-        local waittime is n:eta - mnv:time(v:mag)/2.
+        local waittime is n:eta - mnv:time(dv:mag)/2.
         local starttime is time:seconds + waittime.
 
         if waittime > 60 {
             if throttle>0 {
-                set throttle to 0.
+                lock throttle to 0.
                 return 1. }
             warpto(starttime-10).
             return 1. }
@@ -94,9 +94,9 @@
         if not hasnode return.
 
         local n is nextnode.
-        local v is n:burnvector.
+        local dv is n:burnvector.
 
-        local starttime is time:seconds + n:eta - mnv:time(v:mag)/2.
+        local starttime is time:seconds + n:eta - mnv:time(dv:mag)/2.
         lock steering to n:burnvector.
 
         if autowarp { warpto(starttime - 30). }
@@ -104,7 +104,7 @@
         wait until time:seconds >= starttime or abort.
         lock throttle to sqrt(max(0,min(1,mnv:time(n:burnvector:mag)))).
 
-        wait until vdot(n:burnvector, v) < 0 or abort.
+        wait until vdot(n:burnvector, dv) < 0 or abort.
         lock throttle to 0.
         unlock steering.
         remove nextnode.
