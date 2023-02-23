@@ -2,6 +2,8 @@
 {   parameter dbg. // debug package.
 
     local pr_d is lex(
+        "Boolean",      { parameter value.
+            return choose "TRUE" if value else "FALSE". },
         "String",       { parameter value.
             return char(34)+value+char(34). },
         "Scalar",       { parameter value.
