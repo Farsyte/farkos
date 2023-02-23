@@ -7,6 +7,7 @@
     local nv is import("nv").
     local mission is import("mission").
     local phase is import("phase").
+    local lamb is import("lamb").
     local task is import("task").
     local targ is import("targ").
     local match is import("match").
@@ -27,6 +28,8 @@
     task:new("Match Inclination", has_targ, targ:save, match:plane, nothing).
     task:new("Plan Intercept", has_targ, targ:save, match:plan_xfer, nothing).
     task:new("Plan Correction", has_targ, targ:save, match:plan_corr, nothing).
+    task:new("Lamb Intercept", has_targ, targ:save, lamb:plan_xfer, nothing).
+    task:new("Lamb Correction", has_targ, targ:save, lamb:plan_corr, nothing).
 
     set task:idle:step to phase:pose.
 
