@@ -2,6 +2,7 @@
 {   parameter mnv is lex(). // Maneuver Node Execution
 
     local nv is import("nv").
+    local predict is import("predict").
 
     //
     // This package is derived from:
@@ -29,6 +30,24 @@
 
     local e is constant:e.
     local G0 is constant:G0. // converion factor for Isp
+
+    mnv:add("schedule_dv_at_t", {   // create maneuver for dv at time t
+        parameter dv.               // Body-rel change in velocity
+        parameter t.                // universal time to apply change.
+
+        local pos_t is predict:pos(t, ship).
+        local vel_t is predict:vel(t, ship).
+
+        local basis_p is vel_t:normalized.
+        local basis_n is vcrs(vel_t, pos_t):normalized.
+        local basis_r is vcrs(basis_n, basis_p).
+
+        local dv_r is vdot(basis_r, dv).
+        local dv_n is vdot(basis_n, dv).
+        local dv_p is vdot(basis_p, dv).
+
+        local n is node(t, dv_r, dv_n, dv_p). add n. wait 0.
+        return n. }).
 
     mnv:add("step", {         // maneuver step computation for right now
 
