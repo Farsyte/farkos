@@ -257,7 +257,7 @@
         //
         function trial_xfer {       // evaluate for (t1+=dt) and r2, return change in e2.
             parameter dt is 0.
-            set eOld to e2.
+            local eOld is e2.
             return eval_xfer(dt) - eOld. }
 
         // Find a feasible starting point for hillclimbing.
