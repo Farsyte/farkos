@@ -3,37 +3,70 @@
 {
     parameter scan is lex(). // unidirectional hillclimb with backstep
 
-    scan:add("init", {
+    // To use this:
+    // - define fitness, a function of a state, to be maximized.
+    // - define fitincr, which increments (and returns) the state.
+    // - define fitfine, which reduces step sizes
+    // - construct the initial state vector
+    // - use scan:init to package up the scanner state.
+    // - call step until it returns true, doing other things between calls.
+    // - scanner:failed will be true if we have not found a maximum.
+    // - scanner:result will have the state that has maximum fitness.
+    // Note that each time we find a local maximum at any grid size,
+    // the "failed" and "result" values are updated, so if problems
+    // arise in a refined pass, the caller will see the earlier estiamate.
+    //
+    // There are several ways for the caller to indicate failure.
+    // - fitness returning anything that is not a Scalar.
+
+    local function copyof { parameter val.
+        return choose val if val:istype("Scalar") else val:copy(). }
+
+    scan:add("init", {      // create the scanner state lexicon.
         parameter fitness. // fitness function we will maximize
         parameter fitincr. // function to increment the state vector
         parameter fitfine. // function to reduce step size
         parameter fitstate. // lexicon to present to above delegates
-        set fitstate["score"] to 0. // make sure it has a "score" suffix.
-        return lex (
-            "candidates", list(), // memory of recent evaulations [0] is eldest
-            "fitness", fitness,
-            "fitincr", fitincr,
-            "fitfine", fitfine,
-            "fitstate", fitstate ). }).
 
-    // scanner:step(scanner): evaluate one more candidate.
-    // return true if scanner:fitstate is the located maximum.
-    scan:add("step", { parameter scanner.
-        local c is scanner:candidates.
-        local a is scanner:fitstate.
-        set a["score"] to scanner:fitness(a).
-        c:add(a:copy()).
-        if c:length=3 {
-            if c[0]:score < c[1]:score and c[1]:score >= c[2]:score {
-                if scanner:fitfine(c[0])
-                    return true.
-                set scanner:fitstate to c[0].
-                set scanner:candidates to list().
-                return false. }
+        local c is list().
 
-            // we have three samples but do not see a local maximum.
-            c:remove(0). }
+        local scanner is lex(
+            "result", "fail",
+            "failed", true ).
 
-        // fitincr returns true if we have to stop now.
-        return scanner:fitincr(scanner:fitstate). }).
+        scanner:add("step", {
+
+            // termination case 1: fitness says to stop searching.
+            local score is fitness(fitstate).
+            if not score:istype("Scalar")
+                return true.
+
+            // add this score and state to the results we are watching.
+            c:add(list(score, copyof(fitstate))).
+
+            // see if we are bracketing a maximum.
+            if c:length=3 {
+                if c[0][0]>=c[1][0] or c[1][0]<c[2][0]
+                    c:remove(0).    // not bracketing a maximum. make room for next.
+                else {              // bracketing a maximum.
+                    // register the bracketed maximum as a reasonable result
+                    set scanner:failed to false.
+                    set scanner:result to c[1][1].
+                    // rewind to the sample before the maximum
+                    set fitstate to c[0][1].
+                    // refine the search grid.
+                    // termination case 2: fitfine says no further refinement
+                    if fitfine(fitstate)
+                        return true.
+                    // keep only the old pre-max result,
+                    // and set up to increment from it.
+                    c:remove(1).
+                    c:remove(1).
+                    set c[0][1] to copyof(fitstate). }}
+
+            // step to the next grid point for searching.
+            set fitstate to fitincr(fitstate).
+            return false. }).
+
+        return scanner. }).
 }
