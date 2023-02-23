@@ -2,7 +2,7 @@
 {   parameter nv is lex(). // nonvolatile storage.
 
     local nvram is lex().
-    local q is char(34).
+    local quot is char(34).
 
     // Nonvolatile storage: data that survives a reboot.
     //
@@ -34,17 +34,17 @@
         return f. }.
 
     local nv_enc_t is lex().
-    nv_enc_t:add("Scalar", { parameter v. return v:tostring. }).
-    nv_enc_t:add("String", { parameter v. return q+v. }).
-    nv_enc_t:add("Vessel", { parameter v. return "V"+v:name. }).
-    nv_enc_t:add("Body", { parameter v. return "B"+v:name. }).
+    nv_enc_t:add("Scalar", { parameter val. return val:tostring. }).
+    nv_enc_t:add("String", { parameter val. return quot+val. }).
+    nv_enc_t:add("Vessel", { parameter val. return "V"+val:name. }).
+    nv_enc_t:add("Body", { parameter val. return "B"+val:name. }).
 
-    function nv_enc { parameter v.
-        local t is v:typename.
-        return nv_enc_t[t](v). }
+    function nv_enc { parameter val.
+        local t is val:typename.
+        return nv_enc_t[t](val). }
 
     function nv_dec { parameter s.
-        if s[0]=q return s:remove(0,1).
+        if s[0]=quot return s:remove(0,1).
         if s[0]="V" return vessel(s:remove(0,1)).
         if s[0]="B" return body(s:remove(0,1)).
         return s:tonumber(0). }

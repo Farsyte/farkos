@@ -289,7 +289,7 @@
     phase:add("psafe", {        // wait until generally safe to deploy parachutes
         // TODO what if we are not on Kerbin?
         lock steering to srfretrograde.
-        if throttle>0 { set throttle to 0. return 1. }
+        if throttle>0 { lock throttle to 0. return 1. }
         if verticalspeed>0 return 1.
         if stage:number>0 and stage:ready { stage. return 1. }
         if altitude < 5000 and airspeed < 300 return 0.
@@ -327,7 +327,7 @@
                 return false.
         return true. }
 
-    set steering to facing. // have to set it at least once ...
+    lock steering to facing. // have to set it at least once ...
     phase:add("autorcs", {      // enable RCS when appropriate.
         if has_no_rcs()                                         return 0.
         local f is facing.

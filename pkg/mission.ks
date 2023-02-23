@@ -19,10 +19,10 @@
         return max(0,min(plan:length-1,nv:get("mission/phase/number"))). }).
 
     mission:add("jump", {                       // set next mission phase number
-        parameter n, v is 0.
+        parameter n, val is 0.
         set phase_next to n.
         nv:put("mission/phase/number", phase_next).
-        return v. }).
+        return val. }).
 
     local sayname is { parameter n.             // display and store label, if it changed.
         if printed_phase_name=n return.
