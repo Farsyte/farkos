@@ -19,6 +19,7 @@
     task:add("panel", task:gui:addvlayout()).
     task:add("list", list()).
 
+
     function task_of {
         parameter text, cond, start, step, stop.
         assert(cond:istype("Delegate")).
@@ -69,5 +70,9 @@
         return 1. }).
 
     task:add("show", {
+        parameter x is 100.
+        parameter y is 100.
+        set task:gui:x to x.
+        set task:gui:y to y.
         task:gui:show(). }).
 }
