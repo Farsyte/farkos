@@ -31,6 +31,25 @@
     local e is constant:e.
     local G0 is constant:G0. // converion factor for Isp
 
+
+    mnv:add("update_dv_at_t", {     // update maneuver for dv at time t
+        parameter n.                // node to update.
+        parameter dv.               // Body-rel change in velocity
+        parameter t.                // universal time to apply change.
+
+        local pos_t is predict:pos(t, ship).
+        local vel_t is predict:vel(t, ship).
+
+        local basis_p is vel_t:normalized.
+        local basis_n is vcrs(vel_t, pos_t):normalized.
+        local basis_r is vcrs(basis_n, basis_p).
+
+        set n:time to t.
+        set n:radialout to vdot(basis_r, dv).
+        set n:normal to vdot(basis_n, dv).
+        set n:prograde to vdot(basis_p, dv).
+        add n. wait 0. return n. }).
+
     mnv:add("schedule_dv_at_t", {   // create maneuver for dv at time t
         parameter dv.               // Body-rel change in velocity
         parameter t.                // universal time to apply change.
@@ -42,12 +61,8 @@
         local basis_n is vcrs(vel_t, pos_t):normalized.
         local basis_r is vcrs(basis_n, basis_p).
 
-        local dv_r is vdot(basis_r, dv).
-        local dv_n is vdot(basis_n, dv).
-        local dv_p is vdot(basis_p, dv).
-
-        local n is node(t, dv_r, dv_n, dv_p). add n. wait 0.
-        return n. }).
+        local n is node(t, vdot(basis_r, dv), vdot(basis_n, dv), vdot(basis_p, dv)).
+        add n. wait 0. return n. }).
 
     mnv:add("step", {         // maneuver step computation for right now
 
@@ -132,6 +147,7 @@
     mnv:add("v_e", {          // compute aggregate exhaust velocity
         local F is availablethrust.
         if F=0 return 0.
+        local all_engines is list().
         list engines in all_engines.
         local den is 0.
         for en in all_engines if en:ignition and not en:flameout {

@@ -48,8 +48,13 @@
                 return true.
 
             // see if we are bracketing a maximum.
+            // NOTE: if all three samples are the same,
+            // treat the middle as a local maximum.
             if c:length=3 {
-                if c[0][0]>=c[1][0] or c[1][0]<c[2][0]
+                local sc is c[1][0].
+                local il is sc - c[0][0].
+                local ir is sc - c[2][0].
+                if il<0 or ir<0
                     c:remove(0).    // not bracketing a maximum. make room for next.
                 else {              // bracketing a maximum.
                     // register the bracketed maximum as a reasonable result
@@ -59,12 +64,11 @@
                     set fitstate to c[0][1].
                     // refine the search grid.
                     // termination case 2: fitfine says no further refinement
-                    if fitfine(fitstate)
+                    if fitfine(fitstate, max(il,ir))
                         return true.
                     // keep only the old pre-max result,
                     // and set up to increment from it.
-                    c:remove(1).
-                    c:remove(1).
+                    until c:length < 2 c:remove(1).
                     set c[0][1] to copyof(fitstate). }}
 
             // step to the next grid point for searching.
