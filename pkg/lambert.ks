@@ -76,9 +76,10 @@
         local it1 is vcrs(ih, ir1):normalized.
         local it2 is vcrs(ih, ir2):normalized.
 
-        // Change transfer direction between prograde/retrograde either if requested
-        // XOR if transfer angle is greater than 180 degrees.
-        if (ih:y < 0) <> flip_direction {
+        // Change transfer direction between prograde/retrograde  if requested
+        // // XOR if transfer angle is greater than 180 degrees.
+        // if (ih:y < 0) <> flip_direction {
+        if flip_direction {
             set it1 to -it1.
             set it2 to -it2.
             set lambda to -lambda.
