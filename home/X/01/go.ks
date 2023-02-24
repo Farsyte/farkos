@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter go. // GO script for "X/01"
     local io is import("io").
     go:add("go", {

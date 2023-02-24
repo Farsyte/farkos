@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter go is lex(). // default GO script.
     local io is import("io").
 

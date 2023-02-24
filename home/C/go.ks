@@ -1,5 +1,6 @@
+@LAZYGLOBAL off.
 {   parameter go. // default GO script for "X" series vessels.
-    local std is import("std").
+
     local io is import("io").
     local nv is import("nv").
     local mission is import("mission").

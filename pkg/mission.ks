@@ -1,7 +1,11 @@
+@LAZYGLOBAL off.
 {   parameter mission is lex(). // mission sequencing package
 
     local io is import("io").
     local nv is import("nv").
+
+    local printed_phase_name is "".
+    local phase_next is 0.
 
     local plan is list(                         // main mission plan
         { return 0. }).                         // never empty, start with a "do nothing" entry.
@@ -15,13 +19,10 @@
         return max(0,min(plan:length-1,nv:get("mission/phase/number"))). }).
 
     mission:add("jump", {                       // set next mission phase number
-        parameter n, v is 0.
+        parameter n, val is 0.
         set phase_next to n.
         nv:put("mission/phase/number", phase_next).
-        return v. }).
-
-    local printed_phase_name is "".
-    local phase_next is 0.
+        return val. }).
 
     local sayname is { parameter n.             // display and store label, if it changed.
         if printed_phase_name=n return.
@@ -39,7 +40,7 @@
     mission:add("fg", {                         // execute mission plan
         abort off.
         sayname(mission:pname()).
-        until abort {
+        until false {
             local p is mission:phase().
             set phase_next to p+1.
             local dt is plan[p]().
