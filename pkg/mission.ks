@@ -40,7 +40,7 @@
     mission:add("fg", {                         // execute mission plan
         abort off.
         sayname(mission:pname()).
-        until abort {
+        until false {
             local p is mission:phase().
             set phase_next to p+1.
             local dt is plan[p]().
