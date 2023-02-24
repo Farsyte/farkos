@@ -99,6 +99,8 @@
 
         local dv is memo:getter({
 
+            if not hastarget return V(0,0,0).
+
             local t_p is target:position.
             local d_p is t_p:mag.
 
