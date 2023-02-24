@@ -87,7 +87,7 @@
         if i_r <= max_i_r {                     // termination condition
             print "phase_match_incl: final i_r is "+i_r.
             lock throttle to 0.
-            lock steering to lookdirup(prograde, facing:forevector).
+            lock steering to lookdirup(prograde:vector, facing:vector).
             return 0. }
 
         if availablethrust <= 0 {                                   // no thrust, try again later.
@@ -112,7 +112,7 @@
         if b_time >= 0 {
             if kuniverse:timewarp:rate=1 set warp to 4.
             lock throttle to 0.
-            lock steering to lookdirup(prograde, facing:forevector).
+            lock steering to lookdirup(prograde:vector, facing:vector).
             return 5. }
 
         local b_accel is p_rate/b_time.                             // b_accel: the required acceleration
