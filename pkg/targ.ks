@@ -35,6 +35,8 @@
     targ:add("valid", {
         if not nv:has("targ/name") return false.
         local tn is list().
+        local tl is list().
+        local bl is list().
         list targets in tl. for t in tl tn:add(t:name).
         list bodies in bl. for b in bl tn:add(b:name).
         local t is nv:get("targ/name").
@@ -66,6 +68,6 @@
     targ:add("wait", {
         if hastarget { return targ:save(). }
         if targ:valid() { return 0. }
-        io:say("Please select target").
+        io:say("Please select target", false).
         return 5. }).
 }
