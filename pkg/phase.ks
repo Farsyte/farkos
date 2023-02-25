@@ -214,7 +214,7 @@
         local r0 is body:radius.
 
         local dv is memo:getter({
-            local desired_speed is visviva:v(r0+altitude, h, r0+apoapsis).
+            local desired_speed is visviva:v(r0+altitude, r0+h, r0+apoapsis).
             local current_speed is velocity:orbit:mag.
             local desired_speed_change is max(0, current_speed - desired_speed).
             return retrograde:vector*desired_speed_change. }).
