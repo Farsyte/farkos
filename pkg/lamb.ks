@@ -228,8 +228,8 @@
             local P is (Ps*Pt)/abs(Ps-Pt).
 
             local t1min is time:seconds + 600.
-            local t1end is t1min + 1.0*P.
-            local t1max is t1min + 2.0*P.
+            local t1end is t1min + 3.0*P.
+            local t1max is t1min + 4.0*P.
             // local t1step is P / 8.
             // local t1eps is P / 3600.
 
