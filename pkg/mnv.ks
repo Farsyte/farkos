@@ -92,13 +92,12 @@
         local starttime is time:seconds + waittime.
         local good_enough is nv:get("mnv/step/good_enough", 0.01).
 
-
         local dv is {
             if not hasnode return V(0,0,0).         // node cancelled
             if nextnode<>n return V(0,0,0).         // node replaced
             local bv is n:burnvector.
             if time:seconds<starttime or availablethrust=0
-                return bv/1000000.      // want steering but zero throttle.
+                return bv:normalized/10000.         // want steering but zero throttle.
             local dt is bv:mag*ship:mass/availablethrust.
             if dt < good_enough
                 return V(0,0,0).
