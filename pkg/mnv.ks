@@ -5,6 +5,7 @@
     local predict is import("predict").
     local memo is import("memo").
     local ctrl is import("ctrl").
+    local dbg is import("dbg").
 
     //
     // This package is derived from:
@@ -67,9 +68,6 @@
         add n. wait 0. return n. }).
 
     mnv:add("step", {         // maneuver step computation for right now
-
-        local good_enough is nv:get("mnv/step/good_enough", 0.01).
-        local max_facing_error is nv:get("mnv/step/max_facing_error", 5).
         //
         // mnv:step() is intended to provide the same results
         // as mnv:exec() but with control inverted: where mnv:exec()
@@ -89,39 +87,41 @@
         if availablethrust=0 and ship:deltav:current>0
             return 1/10.
 
-        local dv is memo:getter({
-            if not hasnode return V(0,0,0).
-            if nextnode<>n return V(0,0,0).
-            local bv is n:burnvector.
-
-            local bt is mnv:time(bv:mag).
-            local waittime is n:eta - bt/2.
-            if waittime>0 return bv/1000000.
-
-            if bt <= good_enough return V(0,0,0).
-
-            return bv. }).
-
-        lock steering to ctrl:steering(dv).
-        lock throttle to ctrl:throttle(dv).
-
         local bv is n:burnvector.
         local waittime is n:eta - mnv:time(bv:mag)/2.
         local starttime is time:seconds + waittime.
+        local good_enough is nv:get("mnv/step/good_enough", 0.01).
+
+
+        local dv is {
+            if not hasnode return V(0,0,0).         // node cancelled
+            if nextnode<>n return V(0,0,0).         // node replaced
+            local bv is n:burnvector.
+            if time:seconds<starttime or availablethrust=0
+                return bv/1000000.      // want steering but zero throttle.
+            local dt is bv:mag*ship:mass/availablethrust.
+            if dt < good_enough
+                return V(0,0,0).
+            return bv. }.
+
+        if dv():mag=0 {
+            ctrl:dv(V(0,0,0)).
+            if hasnode and nextnode=n remove n.
+            return -10. }
+
+        set ctrl:emin to 1.
+        set ctrl:emax to 5.
+
+        ctrl:dv(dv).
 
         if waittime > 60 {
-            warpto(starttime-20).
+            if vang(steering:vector, facing:vector) < 5
+                warpto(starttime-30).
             return 1. }
 
         if waittime>0 return min(1, waittime).
 
-        if dv():mag=0 {
-            lock steering to ctrl:steering(V(0,0,0)).
-            lock throttle to ctrl:throttle(V(0,0,0)).
-            if hasnode and nextnode=n remove n.
-            return -10. }
-
-        return 1. }).
+        return 5. }).
 
     // mnv:EXEC(autowarp)
     //   autowarp         if true, autowarp to the node.
@@ -177,4 +177,5 @@
         if F=0 or v_e=0 return 0.   // staging.
 
         return M0 * (1 - e^(-dV/v_e)) * v_e / F. }).
+
 }
