@@ -3,6 +3,8 @@
 
     local nv is import("nv").
     local predict is import("predict").
+    local memo is import("memo").
+    local ctrl is import("ctrl").
 
     //
     // This package is derived from:
@@ -79,36 +81,45 @@
         if not kuniverse:timewarp:issettled return 1.
 
         local n is nextnode.
-        local dv is n:burnvector.
 
-        lock steering to lookdirup(n:burnvector, facing:upvector).
+        // If we currently have no available thrust,
+        // but if there is still Delta-V available
+        // on the vessel, stall briefly to allow the
+        // auto-stager to finish its job.
+        if availablethrust=0 and ship:deltav:current>0
+            return 1/10.
 
-        local waittime is n:eta - mnv:time(dv:mag)/2.
+        local dv is memo:getter({
+            if not hasnode return V(0,0,0).
+            if nextnode<>n return V(0,0,0).
+            local bv is n:burnvector.
+
+            local bt is mnv:time(bv:mag).
+            local waittime is n:eta - bt/2.
+            if waittime>0 return bv/1000000.
+
+            if bt <= good_enough return V(0,0,0).
+
+            return bv. }).
+
+        lock steering to ctrl:steering(dv).
+        lock throttle to ctrl:throttle(dv).
+
+        local bv is n:burnvector.
+        local waittime is n:eta - mnv:time(bv:mag)/2.
         local starttime is time:seconds + waittime.
 
         if waittime > 60 {
-            if throttle>0 {
-                lock throttle to 0.
-                return 1. }
-            warpto(starttime-10).
+            warpto(starttime-20).
             return 1. }
 
         if waittime>0 return min(1, waittime).
 
-        local dt is mnv:time(n:burnvector:mag).
-
-        if dt <= good_enough {          // termination condition.
-            lock throttle to 0.
-            lock steering to facing.
-            remove nextnode.
-            return 0. }
-
-        local _throttle is {
-            local desired_throttle is clamp(0,1,dt).
-            local facing_error is vang(facing:vector,nextnode:burnvector).
-            local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
-            local th is clamp(0,1,facing_error_factor*desired_throttle).
-            return th. }. lock throttle to _throttle().
+        if dv():mag=0 {
+            lock steering to ctrl:steering(V(0,0,0)).
+            lock throttle to ctrl:throttle(V(0,0,0)).
+            if hasnode and nextnode=n remove n.
+            return -10. }
 
         return 1. }).
 
