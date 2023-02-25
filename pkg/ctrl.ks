@@ -44,4 +44,6 @@
         if facing_error>=ctrl:emax return 0.
 
         local df is (facing_error-ctrl:emin) / (ctrl:emax-ctrl:emin).
-        return df*desired_throttle. }). }
+        return df*desired_throttle. }). }    ctrl:add("dv", { parameter dv.
+        lock steering to ctrl:steering(dv).
+        lock throttle to ctrl:throttle(dv). }). }
