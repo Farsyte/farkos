@@ -296,8 +296,9 @@
             return 5+phase_pose(). }
 
         // we are in, or just above, atmosphere. burn retrograde
-        // to help shed our orbital energy.
-        ctrl:dv(retrograde:vector).
+        // to help shed our orbital energy. direction is important
+        // and magnitude needs to be enough to get us full throttle.
+        ctrl:dv(-ship:velocity:orbit).
         return 1. }).
 
     phase:add("lighten", {
