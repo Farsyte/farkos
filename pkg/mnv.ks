@@ -90,7 +90,7 @@
         local bv is n:burnvector.
         local waittime is n:eta - mnv:time(bv:mag)/2.
         local starttime is time:seconds + waittime.
-        local good_enough is nv:get("mnv/step/good_enough", 0.01).
+        local good_enough is nv:get("mnv/step/good_enough", 0.001).
 
         local dv is {
             if not hasnode return V(0,0,0).         // node cancelled
@@ -104,14 +104,11 @@
             return bv. }.
 
         if dv():mag=0 {
-            ctrl:dv(V(0,0,0)).
+            ctrl:dv(V(0,0,0),0,0,0).
             if hasnode and nextnode=n remove n.
             return -10. }
 
-        set ctrl:emin to 1.
-        set ctrl:emax to 5.
-
-        ctrl:dv(dv).
+        ctrl:dv(dv,1,1,5).
 
         if waittime > 60 {
             if vang(steering:vector, facing:vector) < 5
