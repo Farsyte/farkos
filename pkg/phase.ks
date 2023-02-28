@@ -62,7 +62,7 @@
     phase:add("ascent", {
         if abort return 0.
 
-        local r0 is body:radius.
+        local radius_body is body:radius.
 
         local orbit_altitude is nv:get("launch_altitude", 80000, true).
         local launch_azimuth is nv:get("launch_azimuth", 90, true).
@@ -72,12 +72,15 @@
 
         if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height return 0.
 
-        phase_unwarp().
+        if not kuniverse:timewarp:issettled return 1/10.
+        if kuniverse:timewarp:rate > 1 {
+            kuniverse:timewarp:cancelwarp().
+            return 1/10. }
 
         local dv is memo:getter({
             local current_speed is velocity:orbit:mag.
             // aim a bit high or we faff about forever.
-            local desired_speed is visviva:v(r0+altitude,r0+orbit_altitude+1000,r0+periapsis).
+            local desired_speed is visviva:v(radius_body+altitude,radius_body+orbit_altitude+1000,radius_body+periapsis).
             local speed_change_wanted is max(0, desired_speed - current_speed).
 
             local altitude_fraction is clamp(0,1,altitude / min(70000,orbit_altitude)).
@@ -86,26 +89,44 @@
 
             return cmd_steering:vector:normalized*speed_change_wanted. }).
 
-        set ctrl:emin to max_facing_error/2.
-        set ctrl:emax to max_facing_error.
-
-        ctrl:dv(dv).
+        ctrl:dv(dv, 1, max_facing_error/2, max_facing_error).
         return 5.
     }).
 
-    phase:add("coast", {        // coast to apoapsis
+    phase:add("coast", {                // coast to near apoapsis
         if abort return 0.
-        if verticalspeed<0 return 0.
-        if eta:apoapsis<30 {
-            phase_unwarp().
+        if not kuniverse:timewarp:issettled return 1/10.
+
+        if verticalspeed<0 {            // terminate: we overshot apoapsis.
+            if kuniverse:timewarp:rate > 1 { kuniverse:timewarp:cancelwarp(). return 1/10. }
+            ctrl:dv(prograde:srfretrograde/10000, 1, 1, 5).
+            if vang(steering:vector, facing:vector)>5 return 1.
             return 0. }
-        lock throttle to 0.
-        lock steering to prograde.
-        phase_apowarp().
-        return 1. }).
+
+        if eta:apoapsis<30 {            // terminate: approaching apoapsis.
+            if kuniverse:timewarp:rate > 1 { kuniverse:timewarp:cancelwarp(). return 1/10. }
+            ctrl:dv(prograde:vector/10000, 1, 1, 5).
+            if vang(steering:vector, facing:vector)>5 return 1.
+            return 0. }
+
+        if eta:apoapsis>60 {
+
+            if kuniverse:timewarp:mode = "PHYSICS" and altitude>ship:body:atm:height {
+                if kuniverse:timewarp:rate > 1 { kuniverse:timewarp:cancelwarp(). return 1/10. }
+                print "switching timewarp mode from PHYSICS to RAILS.".
+                set kuniverse:timewarp:mode to "RAILS".
+                return 1/10. }
+
+            if kuniverse:timewarp:rate=1
+                warpto(time:seconds+eta:apoapsis-45).
+            return 5. }
+
+        ctrl:dv(prograde:vector/10000, 1, 1, 5).
+
+        return min(5, eta:apoapsis-30). }).
 
     phase:add("pose", {
-        ctrl:dv(V(0,0,0)).
+        ctrl:dv(V(0,0,0), 0, 0, 0).
         return 0. }).
 
     phase:add("circ", {
@@ -113,7 +134,7 @@
 
         phase_unwarp().
 
-        local r0 is body:radius.
+        local radius_body is body:radius.
 
         local max_facing_error is nv:get("circ_max_facing_error", 5, true).
         local good_enough is nv:get("circ_good_enough", 1, true).
@@ -125,7 +146,7 @@
             abort on. return 0. }
 
         local dv is memo:getter({         // compute desired velocity change.
-            local desired_lateral_speed is visviva:v(r0+altitude).
+            local desired_lateral_speed is visviva:v(radius_body+altitude).
             local lateral_direction is vxcl(up:vector,velocity:orbit):normalized.
             local desired_velocity is lateral_direction*desired_lateral_speed.
             return desired_velocity - velocity:orbit. }).
@@ -135,10 +156,7 @@
             if desired_velocity_change <= good_enough {
                 return phase:pose(). } }
 
-        set ctrl:emin to 1.
-        set ctrl:emax to max_facing_error.
-
-        ctrl:dv(dv).
+        ctrl:dv(dv, 1, 1, max_facing_error).
 
         return 5.
     }).
@@ -152,31 +170,32 @@
         local hold_apo is nv:get("hold/apoapsis").
 
         local dv is memo:getter({
-            local r0 is body:radius.
-            local ri is r0+altitude.
-            local rp is min(ri,r0+hold_peri).
-            local ra is max(ri,r0+hold_apo).
-            local vi is visviva:v(ri, rp, ra).
-            local vp_lat is visviva:v(rp, rp, ra).
-            local va_lat is visviva:v(ra, rp, ra).
-            local hp is rp * vp_lat.
-            local vi_lat is hp/ri.
-            local hi is ri * vi_lat.
-            local vi2 is vi*vi.
-            local vil2 is vi_lat*vi_lat.
-            local vir2 is round(vi2 - vil2, 3).
-            local vi_rad is choose -sqrt(-vir2) if vir2<0 else sqrt(vir2).
 
-            local vi_rad is -body:position:normalized*vi_rad.
-            local vi_lat is vxcl(vi_rad,prograde:vector):normalized*vi_lat.
-            local vi_cmd is vi_rad + vi_lat.
+            local radius_body is body:radius.
+            local radius_peri is min(radius_curr, radius_body+hold_peri).
+            local radius_apo is max(radius_curr, radius_body+hold_apo).
+            local radius_curr is radius_body+altitude.
 
-            return vi_cmd - ship:velocity:orbit. }).
+            local speed_req is visviva:v(radius_curr, radius_peri, radius_apo).
+            local speed_peri is visviva:v(radius_peri, radius_peri, radius_apo).
+            local angular_momentum is radius_peri * speed_peri.
+            local lateral_req is angular_momentum/radius_curr.
+
+            local radial_req is safe_sqrt(speed_req*speed_req - lateral_req*lateral_req).
+
+            local signed_radial_req is
+                choose radial_req if verticalspeed>=0 else -radial_req.
+
+            local v_rad is -body:position:normalized*radial_req.
+            local v_lat is vxcl(v_rad,prograde:vector):normalized*lateral_req.
+            local v_cmd is v_rad + v_lat.
+
+            return v_cmd - ship:velocity:orbit. }).
 
         phase_unwarp().
 
-        // peek at the throttle request BEFORE facing adjustment.
-        local peek_throttle is ctrl:throttle(dv, true).
+        // peek at the required throttle ignoring facing errors.
+        local peek_throttle is dv():mag*ship:mass/availablethrust.
 
         if hold_in_pose {
             // if we exceed the pose exit threshold, stop posing.
@@ -191,10 +210,10 @@
                 set hold_in_pose to true. } }
 
         if hold_in_pose {
-            ctrl:dv(V(0,0,0)). }
+            ctrl:dv(V(0,0,0), 0, 0, 0). }
 
         else {
-            ctrl:dv(dv). }
+            ctrl:dv(dv, 1, 1, 5). }
 
         return 1. }).
 
@@ -203,26 +222,20 @@
         local h is 0.75 * body:atm:height.
 
         if periapsis <= h {
-            lock throttle to 0.
-            lock steering to srfretrograde.
-            wait 1.
-            set warp to 4.
-            return 0. }
+            ctrl:dv({return srfretrograde:vector:normalized/10000.}, 1, 1, 5).
+            return -10. }
 
         phase_unwarp().
 
-        local r0 is body:radius.
+        local radius_body is body:radius.
 
         local dv is memo:getter({
-            local desired_speed is visviva:v(r0+altitude, r0+h, r0+apoapsis).
+            local desired_speed is visviva:v(radius_body+altitude, radius_body+h, radius_body+apoapsis).
             local current_speed is velocity:orbit:mag.
             local desired_speed_change is max(0, current_speed - desired_speed).
             return retrograde:vector*desired_speed_change. }).
 
-        set ctrl:emin to 1.
-        set ctrl:emax to 10.
-
-        ctrl:dv(dv).
+        ctrl:dv(dv, 1, 1, 5).
 
         return 1.
     }).
@@ -252,16 +265,13 @@
         if periapsis > hi {
             print "lowering periapsis from "
                 +round(periapsis)+" to "+round(hi).
-            set ctrl:gain to 1.
-            set ctrl:emin to 1.
-            set ctrl:emax to 5.
-            local dv is {
+            local dv is memo:getter({
                 if periapsis <= hi return V(0,0,0).
-                local r0 is body:radius.
+                local radius_body is body:radius.
                 local v0 is ship:velocity:orbit.
-                local v1 is visviva:v(r0 + altitude, r0 + apoapsis, r0 + hi) *v0:normalized.
-                return v1 - v0. }.
-            ctrl:dv(dv).
+                local v1 is visviva:v(radius_body + altitude, radius_body + apoapsis, radius_body + hi) *v0:normalized.
+                return v1 - v0. }).
+            ctrl:dv(dv, 1, 1, 5).
             return 1/10. }
 
         // if we are in space (plus some margin), warp until
@@ -296,9 +306,9 @@
             return 5+phase_pose(). }
 
         // we are in, or just above, atmosphere. burn retrograde
-        // to help shed our orbital energy. direction is important
+        // to help shed our orbital energy. direction is somewhat important
         // and magnitude needs to be enough to get us full throttle.
-        ctrl:dv(-ship:velocity:orbit).
+        ctrl:dv(-ship:velocity:orbit, 1, 5, 15).
         return 1. }).
 
     phase:add("lighten", {
@@ -309,7 +319,7 @@
             kuniverse:timewarp:cancelwarp().
             return 1. }
 
-        ctrl:dv(V(0,0,0)).
+        ctrl:dv(V(0,0,0), 0, 0, 0).
 
         print " ".
         print "lighten activating for stage "+stage:number.
@@ -327,7 +337,7 @@
     phase:add("fall", {         // fall into atmosphere
         if body:atm:height<10000 return 0.
         if altitude<body:atm:height/2 return 0.
-        ctrl:dv(V(0,0,0)).
+        ctrl:dv(V(0,0,0), 0, 0, 0).
         return 1. }).
 
     phase:add("decel", {        // active deceleration
