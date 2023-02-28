@@ -86,7 +86,7 @@
                 local r2 is predict:pos(t2, target).
                 local v2 is predict:vel(t2, target).
 
-                if vang(r1,r2)>90 set r2 to vxcl(onv,r2).
+                if vang(r1,r2)>170 set r2 to vxcl(onv,r2).
 
                 local r1r2fac is onv*vcrs(r1,r2).
 
@@ -228,8 +228,8 @@
             local P is (Ps*Pt)/abs(Ps-Pt).
 
             local t1min is time:seconds + 600.
-            local t1end is t1min + 1.0*P.
-            local t1max is t1min + 2.0*P.
+            local t1end is t1min + 3.0*P.
+            local t1max is t1min + 4.0*P.
             // local t1step is P / 8.
             // local t1eps is P / 3600.
 
@@ -274,7 +274,20 @@
 
         return 0. }).
 
+    local function hms { parameter dt.
+        local ts is timespan(abs(dt)).
+        local bits is list().
+        if ts:year>0 bits:add(ts:year+"y").
+        if ts:day>0 bits:add(ts:day+"d").
+        if ts:hour>0 bits:add(ts:hour+"h").
+        if ts:minute>0 bits:add(ts:minute+"m").
+        if ts:second>0 or bits:length<1 bits:add(ts:second+"s").
+        return bits:join(" ").
+    }
+
     lamb:add("plan_corr", {
+
+        if not hastarget return 0.
 
         until not hasnode { remove nextnode. wait 0. }
         wait 1.
@@ -285,26 +298,29 @@
         // plan the correction node.
         local t1 is time:seconds.
         local t2 is nv:get("xfer/final").
+        local tof is t2 - t1.
 
-        if t1 + 60 > t2 {               // too close to use this method.
+        if tof < 60 {               // too close to use this method.
             io:say("Lambert Correction: no time.").
             lock steering to facing.
             lock throttle to 0.
             return 0. }
 
         local r1 is predict:pos(t1, ship).
+        local v1 is predict:vel(t1, ship).
 
         local r2 is predict:pos(t2, target).
         local v2 is predict:vel(t2, target).
+
         local r2e is r2 - predict:pos(t2, ship).
 
         if r2e:mag<100
             return 0.
 
         local scorethresh is 1/10.
-        local tofmax is t2-t1.
         local t1step is (t2-t1)/8.
         local t1eps is (t2-t1)/1024.
+
 
         local plan_corr_scanner is scan:init(
 
@@ -315,8 +331,11 @@
                 local r1 is predict:pos(t1, ship).
                 local v1 is predict:vel(t1, ship).
 
-                local s is lambert:v1v2(r1, r2, tof, mu, false).
-                local sR is lambert:v1v2(r1, r2, tof, mu, true).
+                local lr2 is r2.
+                if vang(r1,lr2)>170 set lr2 to vxcl(onv,lr2).
+
+                local s is lambert:v1v2(r1, lr2, tof, mu, false).
+                local sR is lambert:v1v2(r1, lr2, tof, mu, true).
                 if (s:v1-v1):mag>(sR:v1-v1):mag
                     set s to sR.
 
@@ -347,8 +366,26 @@
             return 0.
 
         local result is plan_corr_scanner:result.
-        mnv:schedule_dv_at_t(result:b1, result:t1).
+
+        set t1 to result:t1.
+
+        print "lamb:plan_corr selected burn time.".
+        dbg:pv("  at", "T+"+hms(t1 - time:seconds)).
+        dbg:pv("  eta(burn)/eta(match)",
+            (t1 - time:seconds) /
+            (t2 - time:seconds)).
+
+        print "lamb:plan_corr retaining arrival time.".
+        dbg:pv("  at", "T+"+hms(t2 - time:seconds)).
+
+        mnv:schedule_dv_at_t(result:b1, t1).
+
+        local rs is predict:pos(t2, ship).
+        local rt is predict:pos(t2, target).
+        dbg:pv("  predicted error:", rt-rs).
+
         // mnv:schedule_dv_at_t(result:b2, t2).
         return 0.
     }).
+
 }

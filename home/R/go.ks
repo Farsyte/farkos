@@ -55,18 +55,29 @@
         { set mapview to true. return 0. },
 
         "CIRC", phase:circ,
-        "LAMB_XFER", lamb:plan_xfer, mnv:step,
-        "LAMB_CORR", lamb:plan_corr, mnv:step,
+
+        // initial transfer is intended to place us on a trajectory
+        // that ends at the projection of the target position onto
+        // the current orbital plane.
+
+        "LAMB_XFER",    lamb:plan_xfer,
+        "EXEC_XFER",    mnv:step,
+
+        "LAMB_CORR",    lamb:plan_corr,
+        "EXEC_CORR",    mnv:step,
+
         { set mapview to false. },
-        "APPROACH",     rdv:coarse,          // come to a stop near the target
+
+        "APPROACH",     rdv:coarse,          // get close enough rdv:fine can operate.
         "RESCUE",       rdv:fine,            // maintain position near target
 
         // rdv:fine holds position, velocity, and pose
         // until we activate the abort signal.
 
         "DEORBIT", phase:deorbit,
+        "AERO", phase:aero,
         "FALL", phase:fall,
-        "DECEL", phase:decel,
+        // "DECEL", phase:decel,
         "LIGHTEN", phase:lighten,
         "PSAFE", phase:psafe,
         "CHUTE", phase:chute,
