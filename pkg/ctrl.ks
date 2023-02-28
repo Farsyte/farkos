@@ -3,6 +3,7 @@
     parameter ctrl is lex().    // augmented control package
 
     // allow missions to tweak these parameters.
+    ctrl:add("gain", 1).    // gain: acceleration per change in velocity
     ctrl:add("emin", 1).    // if facing within this angle, use computed throttle
     ctrl:add("emax", 15).   // if facing outside this angle, use zero throttle
 
@@ -31,9 +32,9 @@
         if availablethrust=0 return 0.
 
         local dv is eval(dv).
-        if dv:mag=0 return 0.
+        if dv:mag<2/10000 return 0.     // tiny deadzone for tiny thrust -> engines off.
 
-        local dt is dv:mag*ship:mass/availablethrust.
+        local dt is ctrl:gain*dv:mag*ship:mass/availablethrust.
         local desired_throttle is clamp(0,1,dt/2).
         if raw return desired_throttle.
 
@@ -42,8 +43,15 @@
         if facing_error>=ctrl:emax return 0.
 
         local df is (facing_error-ctrl:emin) / (ctrl:emax-ctrl:emin).
-        return df*desired_throttle. }).
+        return round(df*desired_throttle,2). }).
 
     ctrl:add("dv", { parameter dv.
+        parameter gain is ctrl:gain.
+        parameter emin is ctrl:emin.
+        parameter emax is ctrl:emacs.
+        set ctrl:gain to gain.
+        set ctrl:emin to emin.
+        set ctrl:emax to emax.
         lock steering to ctrl:steering(dv).
-        lock throttle to ctrl:throttle(dv). }). }
+        lock throttle to ctrl:throttle(dv).
+        wait 0. }). }
