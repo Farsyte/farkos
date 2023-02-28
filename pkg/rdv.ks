@@ -126,7 +126,11 @@
 
             if not hastarget return V(0,0,0).
 
-            local t_p is target:position.
+            local t_p_raw is target:position.
+            // OFFSET THE AIM POINT 100m toward the body,
+            // so we do not bulls-eye the vessel on our
+            // way in, if we overshoot.
+            local t_p is t_p_raw - 100*t_p_raw:normalized.
             local d_p is t_p:mag.
 
             local t_v is target:velocity:orbit.
@@ -148,22 +152,23 @@
                 print "rdv:fine holding position.".
                 return V(0,0,0). }
 
-            if d_p < 30
+            if d_p < 30 {
                 // when close but not slow,
                 // burn to cancel the velocity.
-                return r_v.
+                return r_v. }
 
             // not close enough. burn to set velocity
             // to close at a controlled rate.
+            //
+            // NOTE: once we accelerate to this rate,
+            // we need to FLIP THE ROCKET AROUND
+            // to be able to decelerate.
 
             local cmd_X is d_p - 20.
             local cmd_A is availablethrust * 0.30 / ship:mass.
             local cmd_V is sqrt(2*cmd_A*cmd_X).
             return r_v + t_p:normalized*cmd_V. }).
 
-        set ctrl:emin to 1.
-        set ctrl:emax to 15.
-
-        ctrl:dv(dv).
+        ctrl:dv(dv, 1, 1, 15).
 
         return 1. }). }
