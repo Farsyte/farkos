@@ -267,10 +267,22 @@
         until not hasnode { remove nextnode. wait 0. }
 
         mnv:schedule_dv_at_t(plan_xfer_best:b1, plan_xfer_best:t1).
-        // mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
+        mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
+
+        local t2 is plan_xfer_best:t2.
+        local rs is predict:pos(t2, ship).
+        local rt is predict:pos(t2, target).
+        local dist is (rs-rt):mag.
+        local vs is predict:vel(t2, ship).
+        local vt is predict:vel(t2, target).
+        local aspd is (vs-vt):mag.
 
         io:say("Lambert Planning Successful.").
-        nv:put("xfer/final", plan_xfer_best:t2).
+        io:say("Initial Burn: "+round(plan_xfer_best:b1:mag)+" m/s").
+        io:say("B2 Distance: "+round(dist)).
+        io:say("B2 Delta-V: "+round(plan_xfer_best:b2:mag)).
+
+        nv:put("xfer/final", t2).
 
         return 0. }).
 
@@ -287,7 +299,9 @@
 
     lamb:add("plan_corr", {
 
-        if not hastarget return 0.
+        if not hastarget {
+            io:say("Lambert Correction: TARGET not set.").
+            return 0. }
 
         until not hasnode { remove nextnode. wait 0. }
         wait 1.
@@ -295,8 +309,8 @@
         local mu is body:mu.
         local onv is vcrs(body:position, ship:velocity:orbit):normalized.
 
-        // plan the correction node.
-        local t1 is time:seconds.
+        // plan the earliest possible correction node.
+        local t1 is time:seconds+300.
         local t2 is nv:get("xfer/final").
         local tof is t2 - t1.
 
@@ -306,21 +320,50 @@
             lock throttle to 0.
             return 0. }
 
-        local r1 is predict:pos(t1, ship).
-        local v1 is predict:vel(t1, ship).
-
         local r2 is predict:pos(t2, target).
-        local v2 is predict:vel(t2, target).
-
         local r2e is r2 - predict:pos(t2, ship).
 
-        if r2e:mag<100
-            return 0.
+        io:say("Lambert Correction: position error is "+r2e:mag).
+        if r2e:mag<100 {
+            return 0. }
+
+        local sInit is lex("t1", t1, "score", 0,
+                "b1", V(0,0,0), "b2", V(0,0,0)).
+
+        local r1 is predict:pos(t1, ship).
+        local v1 is predict:vel(t1, ship).
+        local v2 is predict:vel(t2, target).
+
+                local lr2 is r2.
+                if vang(r1,lr2)>170 set lr2 to vxcl(onv,lr2).
+
+                local s is lambert:v1v2(r1, lr2, tof, mu, false).
+                local sR is lambert:v1v2(r1, lr2, tof, mu, true).
+                if (s:v1-v1):mag>(sR:v1-v1):mag
+                    set s to sR.
+
+                local t1pct is (t1-time:seconds)*100/(t2-time:seconds).
+
+                local b1 is s:v1-v1.
+                local b2 is v2-s:v2.
+
+                local sMin is sInit:copy().
+                set sMin:b1 to b1.
+                set sMin:b2 to b2.
+                set sMin:score to -(b1:mag+b2:mag).
+
+                print "corr_min["+round(t1pct,2)+"%]:"
+                    +" t1 scan yields"
+                    +" eta "+round(t1-time:seconds)
+                    +" burn "+round(sMin:b1:mag)
+                    +" tof "+round(tof)
+                    +" burn "+round(sMin:b2:mag)
+                    +" score "+round(sMin:score).
+
 
         local scorethresh is 1/10.
         local t1step is (t2-t1)/8.
         local t1eps is (t2-t1)/1024.
-
 
         local plan_corr_scanner is scan:init(
 
@@ -328,6 +371,7 @@
                 local t1 is state:t1.
                 local tof is t2 - t1.
                 if tof<=0 return "halt".
+
                 local r1 is predict:pos(t1, ship).
                 local v1 is predict:vel(t1, ship).
 
@@ -345,6 +389,17 @@
                 set state:b1 to b1.
                 set state:b2 to b2.
                 set state:score to -(b1:mag+b2:mag).
+
+                local t1pct is (t1-time:seconds)*100/(t2-time:seconds).
+
+                print "corr_fit["+round(t1pct,2)+"%]:"
+                    +" t1 scan yields"
+                    +" eta "+round(t1-time:seconds)
+                    +" burn "+round(state:b1:mag)
+                    +" tof "+round(tof)
+                    +" burn "+round(state:b2:mag)
+                    +" score "+round(state:score).
+
                 return state:score. },
 
             {   parameter state.
@@ -357,15 +412,18 @@
                 set t1step to max(t1eps,t1step/4).
                 return false. },
 
-            lex("t1", t1, "score", 0,
-                "b1", V(0,0,0), "b2", V(0,0,0))).
+            sInit).
 
         until plan_corr_scanner:step() { }
 
-        if plan_corr_scanner:failed
-            return 0.
+        local result is sMin.
 
-        local result is plan_corr_scanner:result.
+        if plan_corr_scanner:failed {
+            io:say("Lambert Correction: using sMin."). }
+
+        else {
+            io:say("Lambert Correction: using located optimum.").
+            set result to plan_corr_scanner:result. }
 
         set t1 to result:t1.
 
@@ -384,7 +442,7 @@
         local rt is predict:pos(t2, target).
         dbg:pv("  predicted error:", rt-rs).
 
-        // mnv:schedule_dv_at_t(result:b2, t2).
+        mnv:schedule_dv_at_t(result:b2, t2).
         return 0.
     }).
 
