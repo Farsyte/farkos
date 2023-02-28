@@ -114,14 +114,16 @@
                 // relative speed hits 0.1 m/s.
                 if d_p < 100 and r_v:mag < 1.0 {
                     return V(0,0,0). }
+                print "rdv:fine starting maneuver.".
                 set holding_position to false. }
 
-            if d_p < 20 and r_v:mag < 0.01 {
+            if d_p < 40 and r_v:mag < 0.01 {
                 // when close and slow, hold position.
                 set holding_position to true.
+                print "rdv:fine holding position.".
                 return V(0,0,0). }
 
-            if d_p < 15
+            if d_p < 30
                 // when close but not slow,
                 // burn to cancel the velocity.
                 return r_v.
@@ -129,16 +131,14 @@
             // not close enough. burn to set velocity
             // to close at a controlled rate.
 
-            local cmd_X is d_p - 10.
-            local cmd_A is availablethrust * 0.1 / ship:mass.
+            local cmd_X is d_p - 20.
+            local cmd_A is availablethrust * 0.30 / ship:mass.
             local cmd_V is sqrt(2*cmd_A*cmd_X).
             return r_v + t_p:normalized*cmd_V. }).
 
-        set ctrl:gain to 2.
         set ctrl:emin to 1.
         set ctrl:emax to 15.
 
-        lock steering to ctrl:steering(dv).
-        lock throttle to ctrl:throttle(dv).
+        ctrl:dv(dv).
 
         return 1. }). }

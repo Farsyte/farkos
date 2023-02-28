@@ -3,6 +3,9 @@
 
     local nv is import("nv").
     local predict is import("predict").
+    local memo is import("memo").
+    local ctrl is import("ctrl").
+    local dbg is import("dbg").
 
     //
     // This package is derived from:
@@ -31,6 +34,25 @@
     local e is constant:e.
     local G0 is constant:G0. // converion factor for Isp
 
+
+    mnv:add("update_dv_at_t", {     // update maneuver for dv at time t
+        parameter n.                // node to update.
+        parameter dv.               // Body-rel change in velocity
+        parameter t.                // universal time to apply change.
+
+        local pos_t is predict:pos(t, ship).
+        local vel_t is predict:vel(t, ship).
+
+        local basis_p is vel_t:normalized.
+        local basis_n is vcrs(vel_t, pos_t):normalized.
+        local basis_r is vcrs(basis_n, basis_p).
+
+        set n:time to t.
+        set n:radialout to vdot(basis_r, dv).
+        set n:normal to vdot(basis_n, dv).
+        set n:prograde to vdot(basis_p, dv).
+        add n. wait 0. return n. }).
+
     mnv:add("schedule_dv_at_t", {   // create maneuver for dv at time t
         parameter dv.               // Body-rel change in velocity
         parameter t.                // universal time to apply change.
@@ -42,17 +64,10 @@
         local basis_n is vcrs(vel_t, pos_t):normalized.
         local basis_r is vcrs(basis_n, basis_p).
 
-        local dv_r is vdot(basis_r, dv).
-        local dv_n is vdot(basis_n, dv).
-        local dv_p is vdot(basis_p, dv).
-
-        local n is node(t, dv_r, dv_n, dv_p). add n. wait 0.
-        return n. }).
+        local n is node(t, vdot(basis_r, dv), vdot(basis_n, dv), vdot(basis_p, dv)).
+        add n. wait 0. return n. }).
 
     mnv:add("step", {         // maneuver step computation for right now
-
-        local good_enough is nv:get("mnv/step/good_enough", 0.01).
-        local max_facing_error is nv:get("mnv/step/max_facing_error", 5).
         //
         // mnv:step() is intended to provide the same results
         // as mnv:exec() but with control inverted: where mnv:exec()
@@ -64,38 +79,48 @@
         if not kuniverse:timewarp:issettled return 1.
 
         local n is nextnode.
-        local dv is n:burnvector.
 
-        lock steering to lookdirup(n:burnvector, facing:upvector).
+        // If we currently have no available thrust,
+        // but if there is still Delta-V available
+        // on the vessel, stall briefly to allow the
+        // auto-stager to finish its job.
+        if availablethrust=0 and ship:deltav:current>0
+            return 1/10.
 
-        local waittime is n:eta - mnv:time(dv:mag)/2.
+        local bv is n:burnvector.
+        local waittime is n:eta - mnv:time(bv:mag)/2.
         local starttime is time:seconds + waittime.
+        local good_enough is nv:get("mnv/step/good_enough", 0.01).
+
+        local dv is {
+            if not hasnode return V(0,0,0).         // node cancelled
+            if nextnode<>n return V(0,0,0).         // node replaced
+            local bv is n:burnvector.
+            if time:seconds<starttime or availablethrust=0
+                return bv:normalized/10000.         // want steering but zero throttle.
+            local dt is bv:mag*ship:mass/availablethrust.
+            if dt < good_enough
+                return V(0,0,0).
+            return bv. }.
+
+        if dv():mag=0 {
+            ctrl:dv(V(0,0,0)).
+            if hasnode and nextnode=n remove n.
+            return -10. }
+
+        set ctrl:emin to 1.
+        set ctrl:emax to 5.
+
+        ctrl:dv(dv).
 
         if waittime > 60 {
-            if throttle>0 {
-                lock throttle to 0.
-                return 1. }
-            warpto(starttime-10).
+            if vang(steering:vector, facing:vector) < 5
+                warpto(starttime-30).
             return 1. }
 
         if waittime>0 return min(1, waittime).
 
-        local dt is mnv:time(n:burnvector:mag).
-
-        if dt <= good_enough {          // termination condition.
-            lock throttle to 0.
-            lock steering to facing.
-            remove nextnode.
-            return 0. }
-
-        local _throttle is {
-            local desired_throttle is clamp(0,1,dt).
-            local facing_error is vang(facing:vector,nextnode:burnvector).
-            local facing_error_factor is clamp(0,1,1-facing_error/max_facing_error).
-            local th is clamp(0,1,facing_error_factor*desired_throttle).
-            return th. }. lock throttle to _throttle().
-
-        return 1. }).
+        return 5. }).
 
     // mnv:EXEC(autowarp)
     //   autowarp         if true, autowarp to the node.
@@ -132,6 +157,7 @@
     mnv:add("v_e", {          // compute aggregate exhaust velocity
         local F is availablethrust.
         if F=0 return 0.
+        local all_engines is list().
         list engines in all_engines.
         local den is 0.
         for en in all_engines if en:ignition and not en:flameout {
@@ -150,4 +176,5 @@
         if F=0 or v_e=0 return 0.   // staging.
 
         return M0 * (1 - e^(-dV/v_e)) * v_e / F. }).
+
 }

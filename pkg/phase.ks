@@ -67,7 +67,6 @@
         local orbit_altitude is nv:get("launch_altitude", 80000, true).
         local launch_azimuth is nv:get("launch_azimuth", 90, true).
         local launch_pitchover is nv:get("launch_pitchover", 2, false).
-        local ascent_gain is nv:get("ascent_gain", 10, true).
         local max_facing_error is nv:get("ascent_max_facing_error", 90, true).
         local ascent_apo_grace is nv:get("ascent_apo_grace", 0.5).
 
@@ -77,7 +76,8 @@
 
         local dv is memo:getter({
             local current_speed is velocity:orbit:mag.
-            local desired_speed is visviva:v(r0+altitude,r0+orbit_altitude+1,r0+periapsis).
+            // aim a bit high or we faff about forever.
+            local desired_speed is visviva:v(r0+altitude,r0+orbit_altitude+1000,r0+periapsis).
             local speed_change_wanted is max(0, desired_speed - current_speed).
 
             local altitude_fraction is clamp(0,1,altitude / min(70000,orbit_altitude)).
@@ -86,12 +86,10 @@
 
             return cmd_steering:vector:normalized*speed_change_wanted. }).
 
-        set ctrl:gain to ascent_gain.
         set ctrl:emin to max_facing_error/2.
         set ctrl:emax to max_facing_error.
 
-        lock steering to ctrl:steering(dv).
-        lock throttle to ctrl:throttle(dv).
+        ctrl:dv(dv).
         return 5.
     }).
 
@@ -107,8 +105,7 @@
         return 1. }).
 
     phase:add("pose", {
-        lock steering to ctrl:steering(V(0,0,0)).
-        lock throttle to ctrl:throttle(V(0,0,0)).
+        ctrl:dv(V(0,0,0)).
         return 0. }).
 
     phase:add("circ", {
@@ -118,7 +115,6 @@
 
         local r0 is body:radius.
 
-        local throttle_gain is nv:get("circ_throttle_gain", 5, true).
         local max_facing_error is nv:get("circ_max_facing_error", 5, true).
         local good_enough is nv:get("circ_good_enough", 1, true).
 
@@ -139,12 +135,10 @@
             if desired_velocity_change <= good_enough {
                 return phase:pose(). } }
 
-        set ctrl:gain to throttle_gain.
         set ctrl:emin to 1.
         set ctrl:emax to max_facing_error.
 
-        lock steering to ctrl:steering(dv).
-        lock throttle to ctrl:throttle(dv).
+        ctrl:dv(dv).
 
         return 5.
     }).
@@ -152,7 +146,6 @@
     local hold_in_pose is false.
     phase:add("hold", {
 
-        local throttle_gain is nv:get("hold_throttle_gain", 1, true).
         local max_facing_error is nv:get("hold_max_facing_error", 5, true).
 
         local hold_peri is nv:get("hold/periapsis").
@@ -198,12 +191,10 @@
                 set hold_in_pose to true. } }
 
         if hold_in_pose {
-            lock steering to ctrl:steering(V(0,0,0)).
-            lock throttle to ctrl:throttle(V(0,0,0)). }
+            ctrl:dv(V(0,0,0)). }
 
         else {
-            lock steering to ctrl:steering(dv).
-            lock throttle to ctrl:throttle(dv). }
+            ctrl:dv(dv). }
 
         return 1. }).
 
@@ -223,22 +214,92 @@
         local r0 is body:radius.
 
         local dv is memo:getter({
-            local desired_speed is visviva:v(r0+altitude, h, r0+apoapsis).
+            local desired_speed is visviva:v(r0+altitude, r0+h, r0+apoapsis).
             local current_speed is velocity:orbit:mag.
             local desired_speed_change is max(0, current_speed - desired_speed).
             return retrograde:vector*desired_speed_change. }).
 
-        local throttle_gain is nv:get("deorbit_throttle_gain", 5, true).
-
-        set ctrl:gain to throttle_gain.
         set ctrl:emin to 1.
         set ctrl:emax to 10.
 
-        lock steering to ctrl:steering(dv).
-        lock throttle to ctrl:throttle(dv).
+        ctrl:dv(dv).
 
         return 1.
     }).
+
+    phase:add("aero", {
+
+        if not body:atm:exists return 0.
+
+        local ah is body:atm:height.
+        local hi is 0.95*ah.
+        local lo is 0.50*ah.
+
+        // if periapsis is deep in the atmosphere, we are done.
+        if periapsis<lo
+            return phase:pose().
+
+        // when to do nothing:
+        // - time warp in progress
+        // - time warp not settled.
+        if kuniverse:timewarp:warp>1 return 5.
+        if not kuniverse:timewarp:issettled return 1/10.
+
+        // if our periapsis is not in the atmosphere,
+        // do a retrograde burn to get it down to 95%
+        // of the height of the atmosphere. Be careful
+        // to avoid overshooting.
+        if periapsis > hi {
+            print "lowering periapsis from "
+                +round(periapsis)+" to "+round(hi).
+            set ctrl:gain to 1.
+            set ctrl:emin to 1.
+            set ctrl:emax to 5.
+            local dv is {
+                if periapsis <= hi return V(0,0,0).
+                local r0 is body:radius.
+                local v0 is ship:velocity:orbit.
+                local v1 is visviva:v(r0 + altitude, r0 + apoapsis, r0 + hi) *v0:normalized.
+                return v1 - v0. }.
+            ctrl:dv(dv).
+            return 1/10. }
+
+        // if we are in space (plus some margin), warp until
+        // we are about to enter the atmosphere.
+        if altitude>ah*2.0 {    // in space: use timewarp.
+
+            if kuniverse:timewarp:mode = "PHYSICS" {
+                set kuniverse:timewarp:mode to "RAILS".
+                return 1. }
+
+            // assure we are in the idle pose.
+            // command it every second until we are
+            // sitting close to idle, then drop into
+            // the timewarp logic.
+            phase:pose(). wait 0.
+            if vang(steering:vector, facing:vector)>5
+                return 1.
+
+            // figure out when we next enter the atmosphere.
+
+            local tmin is time:seconds.
+            local tmax is tmin + eta:periapsis.
+
+            until tmax<tmin+1 {
+                local tmid is (tmin+tmax)/2.
+                local s_p is predict_pos(tmid, ship).
+                local s_r is s_p:mag.
+                if s_r > ah set tmin to tmid.
+                else set tmax to tmid. }
+
+            warpto(tmin-60).
+            return 5+phase_pose(). }
+
+        // we are in, or just above, atmosphere. burn retrograde
+        // to help shed our orbital energy. direction is important
+        // and magnitude needs to be enough to get us full throttle.
+        ctrl:dv(-ship:velocity:orbit).
+        return 1. }).
 
     phase:add("lighten", {
         if not kuniverse:timewarp:issettled return 1.
@@ -248,8 +309,7 @@
             kuniverse:timewarp:cancelwarp().
             return 1. }
 
-        lock steering to ctrl:steering(V(0,0,0)).
-        lock throttle to ctrl:throttle(V(0,0,0)).
+        ctrl:dv(V(0,0,0)).
 
         print " ".
         print "lighten activating for stage "+stage:number.
@@ -267,8 +327,7 @@
     phase:add("fall", {         // fall into atmosphere
         if body:atm:height<10000 return 0.
         if altitude<body:atm:height/2 return 0.
-        lock steering to ctrl:steering(V(0,0,0)).
-        lock throttle to ctrl:throttle(V(0,0,0)).
+        ctrl:dv(V(0,0,0)).
         return 1. }).
 
     phase:add("decel", {        // active deceleration
