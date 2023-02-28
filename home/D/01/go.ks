@@ -13,6 +13,8 @@
     local match is import("match").
     local mnv is import("mnv").
     local hill is import("hill").
+    local rdv is import("rdv").
+    local ctrl is import("ctrl").
 
     local orbit_altitude is nv:get("launch_altitude", 320000, true).
     local launch_azimuth is nv:get("launch_azimuth", 90, true).
@@ -30,6 +32,8 @@
     task:new("Plan Correction", has_targ, targ:save, match:plan_corr, nothing).
     task:new("Lamb Intercept", has_targ, targ:save, lamb:plan_xfer, nothing).
     task:new("Lamb Correction", has_targ, targ:save, lamb:plan_corr, nothing).
+    task:new("Rescue Coarse", has_targ, targ:save, rdv:coarse, nothing).
+    task:new("Rescue Fine", has_targ, targ:save, rdv:fine, nothing).
 
     set task:idle:step to phase:pose.
 
@@ -66,8 +70,23 @@
         "POSE", phase:pose,
         //
         // In READY orbit. Set up for semi-automatic commanding.
+        // When ABORT is acdtivated, head home.
         //
-        "READY", task:step)).
+        "READY", { if abort return 0. return task:step(). },
+
+        "ABORT", { print "bringing the development lab home.".
+            lights on. brakes on. abort off.
+            ctrl:dv(V(0,0,0)). return -30. },
+
+        "DEORBIT", phase:deorbit,
+        "AERO", phase:aero,
+        "FALL", phase:fall,
+        // "DECEL", phase:decel,
+        "LIGHTEN", phase:lighten,
+        "PSAFE", phase:psafe,
+        "CHUTE", phase:chute,
+        "LAND", phase:land,
+        "PARK", phase:park)).
 
     go:add("go", {
         task:show().
