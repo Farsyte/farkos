@@ -18,7 +18,7 @@
     match:add("asc", {              // launch when nearly under ascending node.
         if abort return 0.
 
-        local o is targ:orbit().
+        local o is targ:orbit.
         local match_inc is o:inclination.
         local match_lan is o:lan.
         local match_lon_lead is nv:get("match/lon_lead", 1).
@@ -61,7 +61,7 @@
 
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
 
-        local o is targ:orbit().
+        local o is targ:orbit.
 
         // TODO consider the case: vdot(h_s,h_t) <= 0
         // ... current logic may end up going the wrong way.
@@ -70,7 +70,7 @@
         local max_i_r is nv:get("match/incl/good_enough", 0.01).
 
         local b is body.
-        local o_t is targ:orbit().
+        local o_t is targ:orbit.
 
         // TODO: fail if in orbit around the wrong body.
 
@@ -179,7 +179,7 @@
         if abort return 0.
 
         local r0 is body:radius.
-        local o is targ:orbit().
+        local o is targ:orbit.
 
         local match_apo is o:apoapsis.
         local match_peri is o:periapsis.
@@ -320,8 +320,6 @@
         //
         // This does not play well with existing nodes.
         until not hasnode { remove nextnode. wait 0. }
-
-        targ:load().
 
         // xfer_final_time is when to arrive. It must be persisted,
         // and must be far enough in the future from the above
