@@ -56,15 +56,25 @@
 
         "CIRC", phase:circ,
 
+        // Procedures above should place our orbital plane fairly
+        // close to the right inclination. Get it even closer.
+        //
+        // if this were not a small change, we would want to assure
+        // that we did this as far from the body as possible, but
+        // with small changes, it's OK to do it in our initial orbit
+        // even if the target is far far above us.
+
+        "PLANE",        match:plane,
+
         // initial transfer is intended to place us on a trajectory
         // that ends at the projection of the target position onto
         // the current orbital plane.
 
         "LAMB_XFER",    lamb:plan_xfer,
+        { nv:put("to/exec", mission:phase()+1). return 0. },
         "EXEC_XFER",    mnv:step,
-
         "LAMB_CORR",    lamb:plan_corr,
-        "EXEC_CORR",    mnv:step,
+        { if hasnode mission:jump(nv:get("to/exec")). return 0. }
 
         { set mapview to false. },
 
