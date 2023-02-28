@@ -3,7 +3,32 @@
 
     local ctrl is import("ctrl").
     local memo is import("memo").
+    local predict is import("predict").
+    local mnv is import("mnv").
     local nv is import("nv").
+    local dbg is import("dbg").
+
+    rdv:add("node", {
+
+        until not hasnode { remove nextnode. wait 0. }
+
+        local t2 is nv:get("xfer/final").
+        local dt is t2 - time:seconds.
+        if dt < 60 return 0.
+
+        local r1 is predict:pos(t2, target).
+        local r2 is predict:pos(t2, ship).
+
+        local v1 is predict:vel(t2, target).
+        local v2 is predict:vel(t2, ship).
+        local dv is v1 - v2.
+        mnv:schedule_dv_at_t(dv, t2).
+
+        dbg:pv("rdv node dt", dt).
+        dbg:pv("rdv node dv", dv).
+        dbg:pv("rdv dist", r2-r1).
+
+        return 0. }).
 
     rdv:add("coarse", { parameter targ is target.
         if abort return 0.
