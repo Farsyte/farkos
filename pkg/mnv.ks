@@ -105,7 +105,7 @@
 
         if dv():mag=0 {
             ctrl:dv(V(0,0,0),0,0,0).
-            if hasnode and nextnode=n remove n.
+            if hasnode remove nextnode.
             return -10. }
 
         ctrl:dv(dv,1,1,5).
