@@ -5,6 +5,7 @@
     local memo is import("memo").
     local predict is import("predict").
     local mnv is import("mnv").
+    local targ is import("targ").
     local nv is import("nv").
     local dbg is import("dbg").
 
@@ -16,7 +17,7 @@
         local dt is t2 - time:seconds.
         if dt < 60 return 0.
 
-        local r1 is predict:pos(t2, target).
+        local r1 is targ:standoff(t2). // predict:pos(t2, target).
         local r2 is predict:pos(t2, ship).
 
         local v1 is predict:vel(t2, target).
@@ -24,9 +25,9 @@
         local dv is v1 - v2.
         mnv:schedule_dv_at_t(dv, t2).
 
-        dbg:pv("rdv node dt", dt).
-        dbg:pv("rdv node dv", dv).
-        dbg:pv("rdv dist", r2-r1).
+        // dbg:pv("rdv node dt", dt).
+        // dbg:pv("rdv node dv", dv).
+        // dbg:pv("rdv dist", r2-r1).
 
         return 0. }).
 
@@ -72,7 +73,8 @@
 
         local dir is prograde:vector.                               // pv("dir", dir).
 
-        local t_p is target:position.                               // pv("t_p", t_p).
+        local r_p is targ:standoff(time:seconds).
+        local t_p is r_p+body:position.                               // pv("t_p", t_p).
         local t_v is target:velocity:orbit.                         // pv("t_v", t_v).
         local s_v is ship:velocity:orbit.                           // pv("s_v", s_v).
 
@@ -117,7 +119,7 @@
         return 1/100. }).
 
     local holding_position is false.
-    rdv:add("fine", { parameter targ is target.
+    rdv:add("fine", {
         if abort return 0.
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
@@ -126,11 +128,9 @@
 
             if not hastarget return V(0,0,0).
 
-            local t_p_raw is target:position.
-            // OFFSET THE AIM POINT 100m toward the body,
-            // so we do not bulls-eye the vessel on our
-            // way in, if we overshoot.
-            local t_p is t_p_raw - 100*t_p_raw:normalized.
+            // t_p is from ship to the target standoff point.
+
+            local t_p is targ:standoff(time:seconds)+body:position.
             local d_p is t_p:mag.
 
             local t_v is target:velocity:orbit.
@@ -143,13 +143,13 @@
                 // relative speed hits 0.1 m/s.
                 if d_p < 100 and r_v:mag < 1.0 {
                     return V(0,0,0). }
-                print "rdv:fine starting maneuver.".
+                // print "rdv:fine starting maneuver.".
                 set holding_position to false. }
 
-            if d_p < 40 and r_v:mag < 0.01 {
+            if d_p < 40 and r_v:mag < 0.02 {
                 // when close and slow, hold position.
                 set holding_position to true.
-                print "rdv:fine holding position.".
+                // print "rdv:fine holding position.".
                 return V(0,0,0). }
 
             if d_p < 30 {
@@ -164,7 +164,7 @@
             // we need to FLIP THE ROCKET AROUND
             // to be able to decelerate.
 
-            local cmd_X is d_p - 20.
+            local cmd_X is d_p - 10.
             local cmd_A is availablethrust * 0.30 / ship:mass.
             local cmd_V is sqrt(2*cmd_A*cmd_X).
             return r_v + t_p:normalized*cmd_V. }).
