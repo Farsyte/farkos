@@ -28,11 +28,12 @@
     task:new("Circularize Here", always, nothing, phase:circ,nothing).
     task:new("Execute Node", has_node, nothing, mnv:step, nothing).
     task:new("Match Inclination", has_targ, targ:save, match:plane, nothing).
-    task:new("Plan Intercept", has_targ, targ:save, match:plan_xfer, nothing).
-    task:new("Plan Correction", has_targ, targ:save, match:plan_corr, nothing).
+    // task:new("Plan Intercept", has_targ, targ:save, match:plan_xfer, nothing).
+    // task:new("Plan Correction", has_targ, targ:save, match:plan_corr, nothing).
     task:new("Lamb Intercept", has_targ, targ:save, lamb:plan_xfer, nothing).
     task:new("Lamb Correction", has_targ, targ:save, lamb:plan_corr, nothing).
-    task:new("Rescue Coarse", has_targ, targ:save, rdv:coarse, nothing).
+    task:new("Rescue Node", has_targ, targ:save, rdv:node, nothing).
+    // task:new("Rescue Coarse", has_targ, targ:save, rdv:coarse, nothing).
     task:new("Rescue Fine", has_targ, targ:save, rdv:fine, nothing).
 
     set task:idle:step to phase:pose.
@@ -76,7 +77,7 @@
 
         "ABORT", { print "bringing the development lab home.".
             lights on. brakes on. abort off.
-            ctrl:dv(V(0,0,0)). return -30. },
+            ctrl:dv(V(0,0,0), 0, 0, 0). return -30. },
 
         "DEORBIT", phase:deorbit,
         "AERO", phase:aero,

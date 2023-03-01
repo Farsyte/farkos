@@ -43,6 +43,9 @@ function sgn { parameter val.
 function assert { parameter cond.
     return choose 0 if cond else 1/0. }
 
+function safe_sqrt { parameter val.
+    return sqrt(max(0,val)). }
+
 global nothing is { }.
 global always is { return true. }.
 global zero is { return 0. }.
