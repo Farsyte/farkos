@@ -3,6 +3,14 @@
 
     local nv is import("nv").
     local io is import("io").
+    local predict is import("predict").
+
+    // work out a "standoff" position that is near target
+    // but not so close we "bulls-eye" it when we arrive.
+    targ:add("standoff", {
+        parameter t is time:seconds.
+        local t_p is predict:pos(t, target).
+        return t_p - 50*t_p:normalized. }).
 
     targ:add("target", false).          // mission target Orbitable (or "" if not Body or Vessel)
     targ:add("orbit", false).           // mission target Orbit (or "" during initial import)
