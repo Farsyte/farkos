@@ -7,6 +7,7 @@
     local memo is import("memo").
     local radar is import("radar").
     local visviva is import("visviva").
+    local predict is import("predict").
 
     local dbg is import("dbg").
 
@@ -219,9 +220,9 @@
 
     phase:add("deorbit", {
 
-        local h is 0.75 * body:atm:height.
+        local h is round(0.75 * body:atm:height).
 
-        if periapsis <= h {
+        if round(periapsis) <= h {
             ctrl:dv({return srfretrograde:vector:normalized/10000.}, 1, 1, 5).
             return -10. }
 
@@ -297,13 +298,13 @@
 
             until tmax<tmin+1 {
                 local tmid is (tmin+tmax)/2.
-                local s_p is predict_pos(tmid, ship).
+                local s_p is predict:pos(tmid, ship).
                 local s_r is s_p:mag.
                 if s_r > ah set tmin to tmid.
                 else set tmax to tmid. }
 
             warpto(tmin-60).
-            return 5+phase_pose(). }
+            return 5+phase:pose(). }
 
         // we are in, or just above, atmosphere. burn retrograde
         // to help shed our orbital energy. direction is somewhat important
@@ -321,15 +322,15 @@
 
         ctrl:dv(V(0,0,0), 0, 0, 0).
 
-        print " ".
-        print "lighten activating for stage "+stage:number.
-        print "  MET: "+round(time:seconds - nv:get("T0")).
-        print "  altitude: "+round(altitude).
-        print "  apoapsis: "+round(apoapsis).
-        print "  periapsis: "+round(periapsis).
-        print "  s velocity: "+round(velocity:surface:mag).
-        print "  o velocity: "+round(velocity:orbit:mag).
-        print "  vacuum delta-v: "+round(ship:deltav:vacuum).
+        // print " ".
+        // print "lighten activating for stage "+stage:number.
+        // print "  MET: "+round(time:seconds - nv:get("T0")).
+        // print "  altitude: "+round(altitude).
+        // print "  apoapsis: "+round(apoapsis).
+        // print "  periapsis: "+round(periapsis).
+        // print "  s velocity: "+round(velocity:surface:mag).
+        // print "  o velocity: "+round(velocity:orbit:mag).
+        // print "  vacuum delta-v: "+round(ship:deltav:vacuum).
         wait 1.
         wait until stage:ready. stage.
         return 1. }).
@@ -411,18 +412,15 @@
         return 1/10.
     }).
 
-    {
-        // dump some info during boot.
+    // {   // dump some info during boot.
+    //     print " ".
+    //     print "autostager initializing at stage "+stage:number.
+    //     print "  MET: "+(time:seconds - nv:get("T0")).
+    //     print "  altitude: "+altitude.
+    //     print "  s velocity: "+velocity:surface:mag.
+    //     print "  o velocity: "+velocity:orbit:mag.
+    //     print "  delta-v: "+ship:deltav:vacuum. }
 
-        print " ".
-        print "autostager initializing at stage "+stage:number.
-        print "  MET: "+(time:seconds - nv:get("T0")).
-        print "  altitude: "+altitude.
-        print "  s velocity: "+velocity:surface:mag.
-        print "  o velocity: "+velocity:orbit:mag.
-        print "  delta-v: "+ship:deltav:vacuum.
-
-    }
     phase:add("autostager", {   // stage when appropriate.
 
         // PAUSE if STAGE:READY is false.
@@ -448,13 +446,13 @@
             if e:decoupledin=s-1 and e:ignition and not e:flameout
                 return 1.
 
-        print " ".
-        print "autostager activating for stage "+stage:number.
-        print "  MET: "+(time:seconds - nv:get("T0")).
-        print "  altitude: "+altitude.
-        print "  s velocity: "+velocity:surface:mag.
-        print "  o velocity: "+velocity:orbit:mag.
-        print "  delta-v: "+ship:deltav:vacuum.
+        // print " ".
+        // print "autostager activating for stage "+stage:number.
+        // print "  MET: "+(time:seconds - nv:get("T0")).
+        // print "  altitude: "+altitude.
+        // print "  s velocity: "+velocity:surface:mag.
+        // print "  o velocity: "+velocity:orbit:mag.
+        // print "  delta-v: "+ship:deltav:vacuum.
 
         // stage to discard dead weight and activate
         // any currently not-yet-ignited engines.
