@@ -34,7 +34,7 @@
         if t1=dv_of_t12_last_t1 and t2=dv_of_t12_last_t2 return dv_of_t12_last_dv.
 
         local r1 is predict:pos(t1, ship).
-        local r2 is predict:pos(t2, target).
+        local r2 is targ:standoff(t2). // predict:pos(t2, target).
         local mu is body:mu.
 
         local onv is vcrs(body:position, ship:velocity:orbit):normalized.
@@ -83,7 +83,7 @@
                 local tof is state:tof.
                 if tof<=0 return "skip".
                 local t2 is t1 + tof.
-                local r2 is predict:pos(t2, target).
+                local r2 is targ:standoff(t2). // predict:pos(t2, target).
                 local v2 is predict:vel(t2, target).
 
                 if vang(r1,r2)>170 set r2 to vxcl(onv,r2).
@@ -138,13 +138,13 @@
         set state:b2 to result:b2.
         set state:score to result:score.
 
-        print "t1_fit["+round(t1pct,2)+"%]:"
-            +" t2 scan yields"
-            +" eta "+round(t1-time:seconds)
-            +" burn "+round(result:b1:mag)
-            +" tof "+round(result:tof)
-            +" burn "+round(result:b2:mag)
-            +" score "+round(result:score).
+        // print "t1_fit["+round(t1pct,2)+"%]:"
+        //     +" t2 scan yields"
+        //     +" eta "+round(t1-time:seconds)
+        //     +" burn "+round(result:b1:mag)
+        //     +" tof "+round(result:tof)
+        //     +" burn "+round(result:b2:mag)
+        //     +" score "+round(result:score).
 
         // mnv:update_dv_at_t(t1_scan_n1, state:b1, state:t1).
         // mnv:update_dv_at_t(t1_scan_n2, state:b2, state:t2).
@@ -271,7 +271,7 @@
 
         local t2 is plan_xfer_best:t2.
         local rs is predict:pos(t2, ship).
-        local rt is predict:pos(t2, target).
+        local rt is targ:standoff(t2). // predict:pos(t2, target).
         local dist is (rs-rt):mag.
         local vs is predict:vel(t2, ship).
         local vt is predict:vel(t2, target).
@@ -320,7 +320,7 @@
             lock throttle to 0.
             return 0. }
 
-        local r2 is predict:pos(t2, target).
+        local r2 is targ:standoff(t2). // predict:pos(t2, target).
         local r2e is r2 - predict:pos(t2, ship).
 
         io:say("Lambert Correction: position error is "+r2e:mag).
@@ -328,38 +328,37 @@
             return 0. }
 
         local sInit is lex("t1", t1, "score", 0,
-                "b1", V(0,0,0), "b2", V(0,0,0)).
+            "b1", V(0,0,0), "b2", V(0,0,0)).
 
         local r1 is predict:pos(t1, ship).
         local v1 is predict:vel(t1, ship).
         local v2 is predict:vel(t2, target).
 
-                local lr2 is r2.
-                if vang(r1,lr2)>170 set lr2 to vxcl(onv,lr2).
+        local lr2 is r2.
+        if vang(r1,lr2)>170 set lr2 to vxcl(onv,lr2).
 
-                local s is lambert:v1v2(r1, lr2, tof, mu, false).
-                local sR is lambert:v1v2(r1, lr2, tof, mu, true).
-                if (s:v1-v1):mag>(sR:v1-v1):mag
-                    set s to sR.
+        local s is lambert:v1v2(r1, lr2, tof, mu, false).
+        local sR is lambert:v1v2(r1, lr2, tof, mu, true).
+        if (s:v1-v1):mag>(sR:v1-v1):mag
+            set s to sR.
 
-                local t1pct is (t1-time:seconds)*100/(t2-time:seconds).
+        local t1pct is (t1-time:seconds)*100/(t2-time:seconds).
 
-                local b1 is s:v1-v1.
-                local b2 is v2-s:v2.
+        local b1 is s:v1-v1.
+        local b2 is v2-s:v2.
 
-                local sMin is sInit:copy().
-                set sMin:b1 to b1.
-                set sMin:b2 to b2.
-                set sMin:score to -(b1:mag+b2:mag).
+        local sMin is sInit:copy().
+        set sMin:b1 to b1.
+        set sMin:b2 to b2.
+        set sMin:score to -(b1:mag+b2:mag).
 
-                print "corr_min["+round(t1pct,2)+"%]:"
-                    +" t1 scan yields"
-                    +" eta "+round(t1-time:seconds)
-                    +" burn "+round(sMin:b1:mag)
-                    +" tof "+round(tof)
-                    +" burn "+round(sMin:b2:mag)
-                    +" score "+round(sMin:score).
-
+        // print "corr_min["+round(t1pct,2)+"%]:"
+        //     +" t1 scan yields"
+        //     +" eta "+round(t1-time:seconds)
+        //     +" burn "+round(sMin:b1:mag)
+        //     +" tof "+round(tof)
+        //     +" burn "+round(sMin:b2:mag)
+        //     +" score "+round(sMin:score).
 
         local scorethresh is 1/10.
         local t1step is (t2-t1)/8.
@@ -392,13 +391,13 @@
 
                 local t1pct is (t1-time:seconds)*100/(t2-time:seconds).
 
-                print "corr_fit["+round(t1pct,2)+"%]:"
-                    +" t1 scan yields"
-                    +" eta "+round(t1-time:seconds)
-                    +" burn "+round(state:b1:mag)
-                    +" tof "+round(tof)
-                    +" burn "+round(state:b2:mag)
-                    +" score "+round(state:score).
+                // print "corr_fit["+round(t1pct,2)+"%]:"
+                //     +" t1 scan yields"
+                //     +" eta "+round(t1-time:seconds)
+                //     +" burn "+round(state:b1:mag)
+                //     +" tof "+round(tof)
+                //     +" burn "+round(state:b2:mag)
+                //     +" score "+round(state:score).
 
                 return state:score. },
 
@@ -427,20 +426,20 @@
 
         set t1 to result:t1.
 
-        print "lamb:plan_corr selected burn time.".
-        dbg:pv("  at", "T+"+hms(t1 - time:seconds)).
-        dbg:pv("  eta(burn)/eta(match)",
-            (t1 - time:seconds) /
-            (t2 - time:seconds)).
+        // print "lamb:plan_corr selected burn time.".
+        // dbg:pv("  at", "T+"+hms(t1 - time:seconds)).
+        // dbg:pv("  eta(burn)/eta(match)",
+        //     (t1 - time:seconds) /
+        //     (t2 - time:seconds)).
 
-        print "lamb:plan_corr retaining arrival time.".
-        dbg:pv("  at", "T+"+hms(t2 - time:seconds)).
+        // print "lamb:plan_corr retaining arrival time.".
+        // dbg:pv("  at", "T+"+hms(t2 - time:seconds)).
 
         mnv:schedule_dv_at_t(result:b1, t1).
 
         local rs is predict:pos(t2, ship).
-        local rt is predict:pos(t2, target).
-        dbg:pv("  predicted error:", rt-rs).
+        local rt is targ:standoff(t2). // predict:pos(t2, target).
+        io:say("Lambert Correction predicted error: "+round((rt-rs):mag,3)+" m.").
 
         mnv:schedule_dv_at_t(result:b2, t2).
         return 0.
