@@ -43,7 +43,7 @@
         if facing_error>=ctrl:emax return 0.
 
         local df is (facing_error-ctrl:emin) / (ctrl:emax-ctrl:emin).
-        return round(df*desired_throttle,2). }).
+        return round(df*desired_throttle,4). }).
 
     ctrl:add("dv", { parameter dv.
         parameter gain is ctrl:gain.
