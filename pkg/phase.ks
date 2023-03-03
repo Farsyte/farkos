@@ -173,6 +173,7 @@
         local dv is memo:getter({
 
             local radius_body is body:radius.
+            local radius_curr is radius_body + altitude.
             local radius_peri is min(radius_curr, radius_body+hold_peri).
             local radius_apo is max(radius_curr, radius_body+hold_apo).
             local radius_curr is radius_body+altitude.
@@ -223,6 +224,8 @@
         local h is round(0.75 * body:atm:height).
 
         if round(periapsis) <= h {
+            print "phase:deorbit complete, periapsis "+round(periapsis)+" <= target height "+round(h).
+
             ctrl:dv({return srfretrograde:vector:normalized/10000.}, 1, 1, 5).
             return -10. }
 
@@ -231,7 +234,7 @@
         local radius_body is body:radius.
 
         local dv is memo:getter({
-            local desired_speed is visviva:v(radius_body+altitude, radius_body+h, radius_body+apoapsis).
+            local desired_speed is visviva:v(radius_body+altitude, radius_body+h-1, radius_body+apoapsis).
             local current_speed is velocity:orbit:mag.
             local desired_speed_change is max(0, current_speed - desired_speed).
             return retrograde:vector*desired_speed_change. }).
@@ -398,13 +401,17 @@
                 return false.
         return true. }
 
+    phase:add("force_rcs_on", 0).
+    phase:add("force_rcs_off", 0).
     lock steering to facing. // have to set it at least once ...
     phase:add("autorcs", {      // enable RCS when appropriate.
         if has_no_rcs()                                         return 0.
         local f is facing.
         local s is steering.
 
-        if altitude < body:atm:height                           rcs off.
+        if phase:force_rcs_on>0                                 rcs on.
+        else if phase:force_rcs_off>0                           rcs off.
+        else if altitude < body:atm:height                      rcs off.
         else if ship:angularvel:mag>0.5                         rcs on.
         else if 10<vang(f:forevector, s:forevector)             rcs on.
         else if 10<vang(f:topvector, s:topvector)               rcs on.
