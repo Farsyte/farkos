@@ -7,6 +7,7 @@
     local mnv is import("mnv").
     local targ is import("targ").
     local nv is import("nv").
+    local io is import("io").
     local dbg is import("dbg").
 
     rdv:add("node", {
@@ -119,18 +120,43 @@
         return 1/100. }).
 
     local holding_position is false.
+    local fine_drawn_timeout is 0.
+    local fine_drawn is list().
     rdv:add("fine", {
         if abort return 0.
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+
+        local tsd is targ:standoff_distance.
+
+        if time:seconds > fine_drawn_timeout {
+            clearvecdraws().
+            set fine_drawn to list().
+            local tpos is { return target:position. }.
+            local stsov is {
+                local tr is target:position-body:position.
+                local ov is tr:normalized*tsd.
+                return target:position-ov. }.
+            local dv is {
+                return ship:velocity:orbit - target:velocity:orbit. }.
+            fine_drawn:add(vecdraw(V(0,0,0), tpos, RGB(0,0,1), "To Target", 1.0, TRUE, 0.2, TRUE, TRUE)).
+            fine_drawn:add(vecdraw(V(0,0,0), stsov, RGB(0,1,0), "Hold Near Here", 1.0, TRUE, 0.2, TRUE, TRUE)).
+            fine_drawn:add(vecdraw(V(0,0,0), dv, RGB(1,0,0), "Velocity", 1.0, TRUE, 0.2, TRUE, TRUE)). }
+        set fine_drawn_timeout to time:seconds+10.
 
         local dv is memo:getter({
 
             if not hastarget return V(0,0,0).
 
             // t_p is from ship to the target standoff point.
+            local body_to_target is target:position-body:position.
+            local standoff_vector is body_to_target:normalized*tsd.
 
-            local t_p is targ:standoff(time:seconds)+body:position.
+            // we can use a radius vector above, since the NORMALIZED vector
+            // will not be rotating, but when computing and subtracting positions,
+            // avoid involving radius vectors.
+
+            local t_p is target:position - standoff_vector.
             local d_p is t_p:mag.
 
             local t_v is target:velocity:orbit.
@@ -143,13 +169,13 @@
                 // relative speed hits 0.1 m/s.
                 if d_p < 100 and r_v:mag < 1.0 {
                     return V(0,0,0). }
-                // print "rdv:fine starting maneuver.".
+                print "rdv:fine starting maneuver.".
                 set holding_position to false. }
 
             if d_p < 40 and r_v:mag < 0.02 {
                 // when close and slow, hold position.
                 set holding_position to true.
-                // print "rdv:fine holding position.".
+                print "rdv:fine holding position.".
                 return V(0,0,0). }
 
             if d_p < 30 {
@@ -165,10 +191,12 @@
             // to be able to decelerate.
 
             local cmd_X is d_p - 10.
-            local cmd_A is availablethrust * 0.30 / ship:mass.
+            local cmd_A is availablethrust * 0.10 / ship:mass.
             local cmd_V is sqrt(2*cmd_A*cmd_X).
             return r_v + t_p:normalized*cmd_V. }).
 
         ctrl:dv(dv, 1, 1, 15).
 
-        return 1. }). }
+        if dv():mag=0 io:say("This is Fine.", false).
+
+        return 5. }). }
