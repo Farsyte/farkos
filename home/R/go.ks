@@ -87,7 +87,7 @@
             print "dropping stage "+stage:number+" early"
                 +", only "+round(stage:deltav:vacuum)+" m/s remains.".
             stage. return 1. },
-        "EXEC_XFER",    mnv:step,
+        "EXEC_NODE",    mnv:step,
         "LAMB_CORR",    lamb:plan_corr,
         { if hasnode mission:jump(nv:get("to/exec")). return 0. },
 

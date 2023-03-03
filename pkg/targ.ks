@@ -3,63 +3,80 @@
 
     local nv is import("nv").
     local io is import("io").
+    local dbg is import("dbg").
     local predict is import("predict").
+
+    // TODO handle TARGET:TYPENAME is DockingPort
 
     // work out a "standoff" position that is near target
     // but not so close we "bulls-eye" it when we arrive.
     targ:add("standoff", {
         parameter t is time:seconds.
         local t_p is predict:pos(t, target).
-        return t_p - 50*t_p:normalized. }).
+        return t_p - t_p:normalized*targ:standoff_distance. }).
 
-    targ:add("target", false).          // mission target Orbitable (or "" if not Body or Vessel)
-    targ:add("orbit", false).           // mission target Orbit (or "" during initial import)
+    targ:add("name", "").                       // mission target String  (or "" if not set)
+    targ:add("target", "").                     // mission target (for KSP TARGET) (or "" if not set)
+    targ:add("orbit", "").                      // mission target Orbit (or "" if not set)
+
+    targ:add("standoff_distance", 50).          // default standoff distance: 50 m (toward the body)
+
+    local function nameof { parameter x.
+        return choose x:name if x:hassuffix("name") else x:tostring. }
+
     targ:add("load", {                          // set TARGET to mission target (or nothing)
-        if targ:target:istype("Orbitable")
-            set target to targ:target.
-        else
-            set target to "".
-        return 0. }).
+
+        local ctn is choose target:name if hastarget else "".
+        local mtn is choose "" if targ:target="" else targ:target:name.
+        if ctn<>mtn set target to targ:target. return 0. }).
 
     targ:add("save", {                          // set mission target to TARGET (or optional argument)
         parameter sel is choose target if hastarget else "".
 
         if sel:istype("String") {               // can specify target by name.
-            if body_names:contains(sel)         // OK to specify a BODY name.
-                set sel to body(sel).
-            else if vessel_names:contains(sel)  // OK to specify a VESSEL name.
-                set sel to vessel(sel).
-            else                                // MAY add standard orbits later (LKO, HKO, KSO, etc)
-                return targ:clr(). }            // if not a supported name, CLEAR THE MISSION TARGET.
+            if sel="" {                         // explicit "clear target" request
+                return targ:clr(). }
+            local obj is named(sel).              // convert to something we can target
+            if obj="" {
+                print "targ:save rejecting '"+sel+"'".
+                return 0. }
+            set sel to obj. }
 
-        // String values passed have now been converted to Orbitable objects.
+        if sel:hassuffix("name") {              // update targ:name before moving from sel to its parent.
+            set targ:name to sel:name. }
+        else {
+            set targ:name to "". }
+
+        if sel:istype("DockingPort") {          // a DockingPort has been selected.
+            set targ:port to target.            // remember the selected port
+            set sel to sel:ship. }              // get the associated Orbitable.
+        else {
+            set targ:port to "". }              // remember selected is not a port.
 
         if sel:istype("Orbitable") {            // can specify with an Orbitable object.
-            set target to sel.
-            write_orbitable(sel).               // persist the name so we can restore after reboot.
-            set targ:target to sel.             // update KSP TARGET
+            set targ:orbitable to sel.             // remember the selected orbitable
             set sel to sel:orbit. }             // get its associated Orbit.
-
         else {
-            set targ:target to "". }            // if not an orbitable, clear TARGET.
-
-        // String and Orbitable passed have now been converted to Orbit.
+            set targ:orbitable to "". }            // remember selected is not an orbitable.
 
         if sel:istype("Orbit") {                // can specify with an Orbit object.
-            set targ:orbit to sel.              // make available to callers.
-            write_orbit(sel). }
-
+            set targ:orbit to sel.              // remember the selected orbit.
+            nv_put_orbit(sel). }                 // persist the orbital parameters.
         else {
-            return targ:clr(). }                // if we do not have an Orbit, clear the mission target.
+            set targ:orbit to "". }              // if we do not have an Orbit, clear the mission target.
+
+        nv_put_name().
+        nv_put_orbit().
 
         return 0. }).
 
     targ:add("clear", {                         // clear mission target.
-        write_orbitable(false).
-        set targ:target to "".
+        nv:clr("targ").
+        set targ:name to "".
+        set targ:port to "".
+        set targ:orbitable to "".
         set targ:orbit to "".
         return 0. }).
-
 
     targ:add("wait", {                          // wait for TARGET, then make it the mission target.
         if hastarget { return targ:save(). }
@@ -77,9 +94,9 @@
         // clear targ/name if it is a name of a thing that does not exist.
 
         if nv:has("targ/name") {
-            local n is nv:get("targ/name").
-            if targ_names:contains(n)
-                return targ:save(n).
+            local n is nv:get("targ/name", "").
+            set n to named(n).
+            if n<>"" return targ:save(n).
             nv:clr("targ/name"). }
 
         // Construct a target orbit using the persisted euler parameters,
@@ -130,40 +147,24 @@
         nv:put("targ/euler/aop", aop).
         return targ:load(). }).
 
+    local map is create_map().
 
-    local function get_vessel_names {           // build a UniqueSet of vessel names.
-        local result is uniqueset().
-        local vessel_list is list().
-        local each_vessel is "".
-        list targets in vessel_list.
-        for each_vessel in vessel_list
-            result:add(each_vessel:name).
-        return result. }
+    local function create_map {
+        local m is lex(), l is list(), e is "".
+        list targets in l. for e in l set m[e:name] to e.
+        list bodies in l. for e in l set m[e:name] to e.
+        list parts in l. for e in l if e:istype("DockingPort") set m[e:name] to e.
+        return m. }
 
-    local function get_body_names {             // build a UniqueSet of body names.
-        local result is uniqueset().
-        local body_list is list().
-        local each_body is "".
-        list bodies in body_list.
-        for each_body in body_list
-            result:add(each_body:name).
-        return result. }
+    local function named { parameter n.
+        return choose map[n] if map:haskey(n) else "". }
 
-    local vessel_names is get_vessel_names().
-    local body_names is get_body_names().
+    local function nv_put_name {            // persist current mission target orbitable
+        parameter name is targ:name.
+        if name:hassuffix("name") set name to name:name.
+        nv:put("targ/name", name). }
 
-    local function write_orbitable {            // persist current mission target orbitable
-        parameter sel is targ:target.
-
-        if sel:istype("Orbitable") {
-            nv:put("targ/name", sel:name).
-            write_orbit(sel:orbit). }
-
-        else {
-            nv:clr("targ/name", sel:name).
-            write_orbit(sel). } }
-
-    local function write_orbit {                // persist current mission target orbit
+    local function nv_put_orbit {                // persist current mission target orbit
         parameter sel is targ:orbit.
 
         if sel:istype("Orbit") {
@@ -179,10 +180,4 @@
         else {
             nv:clr("targ"). } }
 
-    local function initialize_mission_target {              // initialize the mission target (use TARGET, or persisted)
-        if hastarget {
-            targ:save(target). }
-        else {
-            targ:restore(). } }
-
-    initialize_mission_target(). }
+    targ:restore(). }
