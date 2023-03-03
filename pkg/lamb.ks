@@ -167,7 +167,7 @@
     local lamb_plan_chat is 0.
     lamb:add("plan_xfer", {             // lambert based transfer planning
 
-        targ:load().
+        if hastarget targ:save(). else targ:load().
 
         until not hasnode { remove nextnode. wait 0. }
 
@@ -240,7 +240,7 @@
             io:say("Lambert Planning", false). }
 
         if not plan_xfer_t1_scanner:step()
-            return 1/10.
+            return 1/100.
 
         until not hasnode { remove nextnode. wait 0. }
 
@@ -324,7 +324,7 @@
         local r2e is r2 - predict:pos(t2, ship).
 
         io:say("Lambert Correction: position error is "+r2e:mag).
-        if r2e:mag<100 {
+        if r2e:mag<1000 {
             return 0. }
 
         local sInit is lex("t1", t1, "score", 0,
