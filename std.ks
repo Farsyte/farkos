@@ -51,3 +51,4 @@ global always is { return true. }.
 global zero is { return 0. }.
 
 wait until ship:unpacked.
+clearvecdraws().
