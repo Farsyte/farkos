@@ -16,8 +16,7 @@
             return lookdirup(srfretrograde:vector, facing:topvector).
         if airspeed>100
             return lookdirup(srfprograde:vector, facing:topvector).
-        return lookdirup(up:vector, facing:topvector).
-    }).
+        return lookdirup(up:vector, facing:topvector). }).
 
     ctrl:add("steering", {              // steer based on delta-v
         parameter dv.                   // lambda that returns delta-v
@@ -54,4 +53,12 @@
         set ctrl:emax to emax.
         lock steering to ctrl:steering(dv).
         lock throttle to ctrl:throttle(dv).
-        wait 0. }). }
+        wait 0. }).
+
+    ctrl:add("translate", { parameter dir.// vector along desired translation
+        // not debugged yet, but this is the same formulation
+        // used elsewhere. "dir" is RCS direction,
+        // and with magnitude 1 is max thrust.
+        set ship:control:translation to facing:inverse*dir. }).
+
+}
