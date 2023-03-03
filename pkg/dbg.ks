@@ -47,7 +47,8 @@
         "Direction",    { parameter value.
             return "[y="+dbg:pr(value:yaw)
                 +" p="+dbg:pr(value:pitch)
-                +" r="+dbg:pr(value:roll)+"]". }).
+                +" r="+dbg:pr(value:roll)+"]". },
+        "UserDelegate", { parameter value. return "@"+dbg:pr(value()). } ).
 
     dbg:add("pr", { parameter value.            // useful printable representation
         local t is value:typename.
