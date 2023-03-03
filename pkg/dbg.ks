@@ -1,6 +1,27 @@
 @LAZYGLOBAL off.
 {   parameter dbg. // debug package.
 
+    dbg:add("term", {
+        parameter w is terminal:width.
+        parameter h is terminal:height.
+        set terminal:height to h.
+        set terminal:width to w.
+        // TERMINAL:WIDTH               terminal width in characters
+        // TERMINAL:HEIGHT              terminal height in characters
+        // TERMINAL:REVERSE             swap foreground and background colors
+        // TERMINAL:VISUALBEEP          turn beeps into screen flashes
+        // TERMINAL:BRIGHTNESS          adjust brightness [0..1]
+        // TERMINAL:CHARHEIGHT          height of a character in pixels
+        // TERMINAL:CHARWIDTH           width of a character in pixels
+        // TERMINAL:INPUT               object for obtaining "raw-mode" input from terminal
+        //
+        // RESIZEWATCHERS
+        //
+        // HASSUFFIX INHERITANCE ISSERIALIZABLE ISTYPE SUFFIXNAMES TOSTRING TYPENAME
+
+        if career():candoactions
+            core:doAction("open terminal", true). }).
+
     local pr_d is lex(
         "Boolean",      { parameter value.
             return choose "TRUE" if value else "FALSE". },
