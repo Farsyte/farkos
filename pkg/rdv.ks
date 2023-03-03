@@ -132,11 +132,10 @@
         if time:seconds > fine_drawn_timeout {
             clearvecdraws().
             set fine_drawn to list().
-            local tpos is { return target:position. }.
+            local tpos is {
+                return target:position. }.
             local stsov is {
-                local tr is target:position-body:position.
-                local ov is tr:normalized*tsd.
-                return target:position-ov. }.
+                return target:position-(target:position-body:position):normalized*tsd. }.
             local dv is {
                 return ship:velocity:orbit - target:velocity:orbit. }.
             fine_drawn:add(vecdraw(V(0,0,0), tpos, RGB(0,0,1), "To Target", 1.0, TRUE, 0.2, TRUE, TRUE)).
