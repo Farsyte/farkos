@@ -29,41 +29,40 @@
     task:new("Circularize Here", always, nothing, phase:circ,nothing).
     task:new("Execute Node", has_node, nothing, mnv:step, nothing).
     task:new("Match Inclination", has_targ, targ:save, match:plane, nothing).
-    // task:new("Plan Intercept", has_targ, targ:save, match:plan_xfer, nothing).
-    // task:new("Plan Correction", has_targ, targ:save, match:plan_corr, nothing).
+    task:new("Old Match Plan Xfer", has_targ, targ:save, match:plan_xfer, nothing).
+    task:new("Old Match Plan Corr", has_targ, targ:save, match:plan_corr, nothing).
     task:new("Lamb Intercept", has_targ, targ:save, lamb:plan_xfer, nothing).
     task:new("Lamb Correction", has_targ, targ:save, lamb:plan_corr, nothing).
-    task:new("Rescue Node", has_targ, targ:save, rdv:node, nothing).
-    // task:new("Rescue Coarse", has_targ, targ:save, rdv:coarse, nothing).
-    task:new("Rescue Fine", has_targ, targ:save, rdv:fine, nothing).
+    task:new("RDV Node", has_targ, targ:save, rdv:node, nothing).
+    task:new("RDV Coarse", has_targ, targ:save, rdv:coarse, nothing).
+    task:new("RDV Fine", has_targ, targ:save, rdv:fine, nothing).
+    task:new("RDV Near", has_targ, targ:save, rdv:near, nothing).
+    task:new("RCS Velocity Match", has_targ, targ:save, rcs_vel_match@, ctrl:rcs_off).
+    task:new("RCS Position Match", has_targ, targ:save, rcs_pos_match@, ctrl:rcs_off).
 
     set task:idle:step to phase:pose.
 
-    local function rcs_vel_experiment {
+    local function rcs_vel_match {
         if not hastarget return 0.
 
-        io:say("RCS velocity experiment", false).
+        io:say("RCS Velocity Match", false).
 
         ctrl:rcs_dv({ return target:velocity:orbit - ship:velocity:orbit. }).
         return 5. }
 
-    task:new("RCS vel experiment", has_targ, targ:save, rcs_vel_experiment@, ctrl:rcs_off).
-
-    local function rcs_pos_experiment {
+    local function rcs_pos_match {
         if not hastarget return 0.
 
-        io:say("RCS position experiment", false).
+        local parking_offset is 10.
 
-        local parking_offset is 5.
-        io:say("Parking Offset: "+parking_offset, false).
+        io:say("RCS Position Match", false).
+        io:say("  Standoff Distance: "+parking_offset+" m.", false).
 
         ctrl:rcs_dx({ return target:position
-            + (body:position - target:position):normalized
+            - target:position:normalized
                 * parking_offset. }).
 
         return 5. }
-
-    task:new("RCS pos experiment", has_targ, targ:save, rcs_pos_experiment@, ctrl:rcs_off).
 
     function process_actions {
           // ABORT returns us from orbit, whatever we are doing.
