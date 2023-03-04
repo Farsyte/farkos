@@ -10,6 +10,10 @@
     local io is import("io").
     local dbg is import("dbg").
 
+    local holding_position is false.
+    local fine_drawn_timeout is 0.
+    local fine_drawn is list().
+
     rdv:add("node", {                                               // place maneuver node at xfer/final
 
         until not hasnode { remove nextnode. wait 0. }
@@ -126,36 +130,87 @@
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
 
         local standoff_distance is targ:standoff_distance.
-        local closing_speed_limit is 10.
 
-        dbg:pv("rdv:near standoff_distance is ", standoff_distance).
-        dbg:pv("rdv:near closing_speed_limit is ", closing_speed_limit).
+        if time:seconds > fine_drawn_timeout {
+            clearvecdraws().
+            set fine_drawn to list().
+            local tpos is {
+                if not hastarget return V(0,0,0).
+                return target:position. }.
+            local stsov is {
+                if not hastarget return V(0,0,0).
+                return target:position-(target:position-body:position):normalized*standoff_distance. }.
+            local dv is {
+                if not hastarget return V(0,0,0).
+                return ship:velocity:orbit - target:velocity:orbit. }.
+            fine_drawn:add(vecdraw(V(0,0,0), tpos, RGB(0,0,1), "To Target", 1.0, TRUE, 0.2, TRUE, TRUE)).
+            fine_drawn:add(vecdraw(V(0,0,0), stsov, RGB(0,1,0), "Hold Near Here", 1.0, TRUE, 0.2, TRUE, TRUE)).
+            fine_drawn:add(vecdraw(V(0,0,0), dv, RGB(1,0,0), "Velocity", 1.0, TRUE, 0.2, TRUE, TRUE)). }
+        set fine_drawn_timeout to time:seconds+10.
 
         local dv is memo:getter({
-            local targ_from_ship is target:position.
-            local targ_vrel_ship is target:velocity:orbit - ship:velocity:orbit.
-            if targ_from_ship:mag>standoff_distance {
-                local cmd_X is targ_from_ship:mag - standoff_distance + 10.
-                local cmd_A is availablethrust * 0.10 / ship:mass.
-                local cmd_V is sqrt(2*cmd_A*cmd_X).
-                local cmd_V_lim is min(closing_speed_limit, cmd_V).
-                local corr_V is targ_vrel_ship + targ_from_ship:normalized * cmd_V_lim.
-                return corr_V. }
-            if targ_vrel_ship:mag>1 {
-                // fast. hit the brakes.
-                return targ_vrel_ship. }
-            // close and slow. all done.
-            return V(0,0,0). }).
+
+            if not hastarget return V(0,0,0).
+
+            // t_p is from ship to the target standoff point.
+            local body_to_target is target:position-body:position.
+            local standoff_vector is body_to_target:normalized*standoff_distance.
+
+            // we can use a radius vector above, since the NORMALIZED vector
+            // will not be rotating, but when computing and subtracting positions,
+            // avoid involving radius vectors.
+
+            local t_p is target:position - standoff_vector.
+            local d_p is t_p:mag.
+
+            local t_v is target:velocity:orbit.
+            local s_v is ship:velocity:orbit.
+            local r_v is t_v - s_v.
+
+            if holding_position {
+                // when holding, stop holding if
+                // we drift 100 meters away or if our
+                // relative speed hits 5 m/s.
+                if d_p < 100 and r_v:mag < 5.0 {
+                    return V(0,0,0). }
+                print "rdv:near out of position.".
+                set holding_position to false. }
+
+            if d_p < 40 and r_v:mag < 1.0 {
+                // when close and slow, hold position.
+                set holding_position to true.
+                print "rdv:near in position.".
+                return V(0,0,0). }
+
+            if d_p < 30 {
+                // when close but not slow,
+                // burn to cancel the velocity.
+                return r_v. }
+
+            // not close enough. burn to set velocity
+            // to close at a controlled rate.
+            //
+            // NOTE: once we accelerate to this rate,
+            // we need to FLIP THE ROCKET AROUND
+            // to be able to decelerate.
+
+            local cmd_X is d_p - 10.
+            local cmd_A is availablethrust * 0.10 / ship:mass.
+            local cmd_V is sqrt(2*cmd_A*cmd_X).
+            return r_v + t_p:normalized*cmd_V. }).
+
 
         ctrl:dv(dv, 1, 1, 15).
 
-        if dv():mag=0 { io:say("This is Fine.", false). return 0. }
+        if holding_position {
+            io:say("This is Fine.", false).
+            ctrl:dv(V(0,0,0),1,1,5).
+            clearvecdraws().
+            set fine_drawn_timeout to 0.
+            return 0. }
 
         return 5. }).
 
-    local holding_position is false.
-    local fine_drawn_timeout is 0.
-    local fine_drawn is list().
     rdv:add("fine", {                   // entirely engine based rescue fine control and posing
         if abort return 0.
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
@@ -241,7 +296,7 @@
         if kuniverse:timewarp:rate>1 {
             kuniverse:timewarp:cancelwarp().
             return 1/10. }
-        if target:position:mag>10 or target:velocity:mag>1 {
+        if target:position:mag>10 {
             io:say("Approacing to 5 m.", false).
             io:say("Please be patient.", false). }
         else {
