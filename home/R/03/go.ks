@@ -103,7 +103,7 @@
         "NEAR",         rdv:near,            // on main engine, approach within 100m and 1 m/s.
         "PAUSE",    {   phase:pose().
             if vang(steering:vector,facing:vector)>5 return 1.
-            if ship:angularvel>0.1 return 1.
+            if ship:angularvel:mag>0.1 return 1.
             return -5. },
         "RESCUE",       rdv:rcs_5m,          // use RCS to approach to 10m
 
