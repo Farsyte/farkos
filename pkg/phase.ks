@@ -449,13 +449,13 @@
             if e:decoupledin=s-1 and e:ignition and not e:flameout
                 return 1.
 
-        // print " ".
-        // print "autostager activating for stage "+stage:number.
-        // print "  MET: "+(time:seconds - nv:get("T0")).
-        // print "  altitude: "+altitude.
-        // print "  s velocity: "+velocity:surface:mag.
-        // print "  o velocity: "+velocity:orbit:mag.
-        // print "  delta-v: "+ship:deltav:vacuum.
+        print " ".
+        print "autostager activating for stage "+stage:number.
+        print "  MET: "+(time:seconds - nv:get("T0")).
+        print "  altitude: "+altitude.
+        print "  s velocity: "+velocity:surface:mag.
+        print "  o velocity: "+velocity:orbit:mag.
+        print "  delta-v: "+ship:deltav:vacuum.
 
         // stage to discard dead weight and activate
         // any currently not-yet-ignited engines.
