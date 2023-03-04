@@ -409,12 +409,11 @@
         else if phase:force_rcs_on>0                            rcs on.
         else if phase:force_rcs_off>0                           rcs off.
         else if altitude < body:atm:height                      rcs off.
-        else if ship:angularvel:mag>0.5                         rcs on.
-        else if 10<vang(facing:forevector, steering:forevector) rcs on.
-        else if 10<vang(facing:topvector, steering:topvector)   rcs on.
+        else if ship:angularvel:mag>0.1                         rcs on.
+        else if 4<vang(facing:forevector, steering:forevector)  rcs on.
+        else if 4<vang(facing:topvector, steering:topvector)    rcs on.
         else                                                    rcs off.
-        return 1/10.
-    }).
+        return 1/10. }).
 
     // {   // dump some info during boot.
     //     print " ".
