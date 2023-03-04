@@ -409,12 +409,11 @@
         else if phase:force_rcs_on>0                            rcs on.
         else if phase:force_rcs_off>0                           rcs off.
         else if altitude < body:atm:height                      rcs off.
-        else if ship:angularvel:mag>0.5                         rcs on.
-        else if 10<vang(facing:forevector, steering:forevector) rcs on.
-        else if 10<vang(facing:topvector, steering:topvector)   rcs on.
+        else if ship:angularvel:mag>0.1                         rcs on.
+        else if 4<vang(facing:forevector, steering:forevector)  rcs on.
+        else if 4<vang(facing:topvector, steering:topvector)    rcs on.
         else                                                    rcs off.
-        return 1/10.
-    }).
+        return 1/10. }).
 
     // {   // dump some info during boot.
     //     print " ".
@@ -450,13 +449,13 @@
             if e:decoupledin=s-1 and e:ignition and not e:flameout
                 return 1.
 
-        // print " ".
-        // print "autostager activating for stage "+stage:number.
-        // print "  MET: "+(time:seconds - nv:get("T0")).
-        // print "  altitude: "+altitude.
-        // print "  s velocity: "+velocity:surface:mag.
-        // print "  o velocity: "+velocity:orbit:mag.
-        // print "  delta-v: "+ship:deltav:vacuum.
+        print " ".
+        print "autostager activating for stage "+stage:number.
+        print "  MET: "+(time:seconds - nv:get("T0")).
+        print "  altitude: "+altitude.
+        print "  s velocity: "+velocity:surface:mag.
+        print "  o velocity: "+velocity:orbit:mag.
+        print "  delta-v: "+ship:deltav:vacuum.
 
         // stage to discard dead weight and activate
         // any currently not-yet-ignited engines.

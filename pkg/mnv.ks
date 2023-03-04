@@ -67,6 +67,7 @@
         local n is node(t, vdot(basis_r, dv), vdot(basis_n, dv), vdot(basis_p, dv)).
         add n. wait 0. return n. }).
 
+    local saved_maneuver_direction is V(0,0,0).
     mnv:add("step", {         // maneuver step computation for right now
         //
         // mnv:step() is intended to provide the same results
@@ -92,16 +93,23 @@
         local starttime is time:seconds + waittime.
         local good_enough is nv:get("mnv/step/good_enough", 0.001).
 
+        if waittime>0                               // until nominal time is reached,
+            set saved_maneuver_direction to bv.     // continuously update saved direction.
+
         local dv is {
             if not hasnode return V(0,0,0).         // node cancelled
             if nextnode<>n return V(0,0,0).         // node replaced
             local bv is n:burnvector.
+            if bv*saved_maneuver_direction<=0       // complete if deltav has rotated more than 90 degrees.
+                return V(0,0,0).
+
             if time:seconds<starttime               // before start, hold burn attitude.
                 return bv:normalized/10000.
             if availablethrust=0                    // during stating, hold burn attitude.
                 return bv:normalized/10000.
+
             local dt is bv:mag*ship:mass/availablethrust.
-            if dt < good_enough                     // check for burn complete.
+            if dt < good_enough                     // complete if remaining burn time is very small.
                 return V(0,0,0).
             return bv. }.
 
