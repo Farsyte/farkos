@@ -167,6 +167,9 @@
     local lamb_plan_chat is 0.
     lamb:add("plan_xfer", {             // lambert based transfer planning
 
+        unlock steering.
+        unlock throttle.
+
         if hastarget targ:save(). else targ:load().
 
         until not hasnode { remove nextnode. wait 0. }
