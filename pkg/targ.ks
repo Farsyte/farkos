@@ -19,7 +19,7 @@
     targ:add("target", "").                     // mission target (for KSP TARGET) (or "" if not set)
     targ:add("orbit", "").                      // mission target Orbit (or "" if not set)
 
-    targ:add("standoff_distance", 50).          // default standoff distance: 50 m (toward the body)
+    targ:add("standoff_distance", 200).          // default standoff distance (toward the body)
 
     local function nameof { parameter x.
         return choose x:name if x:hassuffix("name") else x:tostring. }

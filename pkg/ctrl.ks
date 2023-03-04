@@ -54,6 +54,7 @@
         set ctrl:gain to gain.
         set ctrl:emin to emin.
         set ctrl:emax to emax.
+        sas off.
         lock steering to ctrl:steering(dv_fd).
         lock throttle to ctrl:throttle(dv_fd).
         wait 0. }).
@@ -67,7 +68,7 @@
         ctrl:dv(V(0,0,0),1,1,5).
         return 0. }).
 
-    ctrl:add("rcs_dv_gain", 1/10).
+    ctrl:add("rcs_dv_gain", 1/2).
 
     // establish the delegate that will drive our delta-v based translation.
     // this uses LOCK STEERING to trigger the computations, and returns the
@@ -76,8 +77,6 @@
     // To cancel this, please call ctrl:rcs_off.
 
     ctrl:add("rcs_dv", { parameter dv_fd.  // delegate returning desired delta-v
-        local f is facing.
-        local fi is f:inverse.
 
         local rcs_list is list().
         local it is 0.
@@ -98,7 +97,7 @@
             local desired_accel is desried_deltav * ctrl:rcs_dv_gain.
             local desired_force is ship:mass * desired_accel.
             local desired_trans is desired_force * rcs_translation_gain.
-            local desired_trans_suf is fi*desired_trans.
+            local desired_trans_suf is facing:inverse * desired_trans.
             local desired_trans_suf_dir is desired_trans_suf:normalized.
             local trmag is desired_trans_suf:mag.
 
@@ -129,7 +128,7 @@
             // while we are mucking about with the thrusters,
             // please maintain our original orientation.
 
-            return f. }.
+            return facing. }.
 
         unlock throttle.
         unlock steering.
@@ -139,11 +138,12 @@
 
         return 0. }).
 
-    ctrl:add("rcs_dx_speed_limit", 1).
+    ctrl:add("rcs_dx_speed_limit", 2).
 
     ctrl:add("rcs_dx", { parameter dx_df.
-        return ctrl:rcs_dv({ local dx is eval(dx_df).
-
+        return ctrl:rcs_dv({
+            if not hastarget return V(0,0,0).
+            local dx is eval(dx_df).
             local cv_lin is dx/5.
 
             // cap commanded relative velocity to 1 m/s

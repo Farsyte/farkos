@@ -10,7 +10,7 @@
     local io is import("io").
     local dbg is import("dbg").
 
-    rdv:add("node", {
+    rdv:add("node", {                                               // place maneuver node at xfer/final
 
         until not hasnode { remove nextnode. wait 0. }
 
@@ -32,7 +32,8 @@
 
         return 0. }).
 
-    rdv:add("coarse", { parameter targ is target.
+    rdv:add("coarse", {                                             // coarse rendezvous from very far away
+        parameter targ is target.
         if abort return 0.
 
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
@@ -119,15 +120,48 @@
         lock throttle to clamp(0,1,Xr).
         return 1/100. }).
 
-    local holding_position is false.
-    local fine_drawn_timeout is 0.
-    local fine_drawn is list().
-    rdv:add("fine", {
+    rdv:add("near", {                   // engine based approach dist <= TSD and speed<=1 m/s
         if abort return 0.
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
 
-        local tsd is targ:standoff_distance.
+        local standoff_distance is targ:standoff_distance.
+        local closing_speed_limit is 10.
+
+        dbg:pv("rdv:near standoff_distance is ", standoff_distance).
+        dbg:pv("rdv:near closing_speed_limit is ", closing_speed_limit).
+
+        local dv is memo:getter({
+            local targ_from_ship is target:position.
+            local targ_vrel_ship is target:velocity:orbit - ship:velocity:orbit.
+            if targ_from_ship:mag>standoff_distance {
+                local cmd_X is targ_from_ship:mag - standoff_distance + 10.
+                local cmd_A is availablethrust * 0.10 / ship:mass.
+                local cmd_V is sqrt(2*cmd_A*cmd_X).
+                local cmd_V_lim is min(closing_speed_limit, cmd_V).
+                local corr_V is targ_vrel_ship + targ_from_ship:normalized * cmd_V_lim.
+                return corr_V. }
+            if targ_vrel_ship:mag>1 {
+                // fast. hit the brakes.
+                return targ_vrel_ship. }
+            // close and slow. all done.
+            return V(0,0,0). }).
+
+        ctrl:dv(dv, 1, 1, 15).
+
+        if dv():mag=0 { io:say("This is Fine.", false). return 0. }
+
+        return 5. }).
+
+    local holding_position is false.
+    local fine_drawn_timeout is 0.
+    local fine_drawn is list().
+    rdv:add("fine", {                   // entirely engine based rescue fine control and posing
+        if abort return 0.
+        if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
+        if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+
+        local standoff_distance is targ:standoff_distance.
 
         if time:seconds > fine_drawn_timeout {
             clearvecdraws().
@@ -135,7 +169,7 @@
             local tpos is {
                 return target:position. }.
             local stsov is {
-                return target:position-(target:position-body:position):normalized*tsd. }.
+                return target:position-(target:position-body:position):normalized*standoff_distance. }.
             local dv is {
                 return ship:velocity:orbit - target:velocity:orbit. }.
             fine_drawn:add(vecdraw(V(0,0,0), tpos, RGB(0,0,1), "To Target", 1.0, TRUE, 0.2, TRUE, TRUE)).
@@ -149,7 +183,7 @@
 
             // t_p is from ship to the target standoff point.
             local body_to_target is target:position-body:position.
-            local standoff_vector is body_to_target:normalized*tsd.
+            local standoff_vector is body_to_target:normalized*standoff_distance.
 
             // we can use a radius vector above, since the NORMALIZED vector
             // will not be rotating, but when computing and subtracting positions,
@@ -198,4 +232,25 @@
 
         if dv():mag=0 io:say("This is Fine.", false).
 
-        return 5. }). }
+        return 5. }).
+
+    rdv:add("rcs_5m", {
+        if abort return 0.
+        if not hastarget return 0.
+        if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+        if kuniverse:timewarp:rate>1 {
+            kuniverse:timewarp:cancelwarp().
+            return 1/10. }
+        if target:position:mag>10 or target:velocity:mag>1 {
+            io:say("Approacing to 5 m.", false).
+            io:say("Please be patient.", false). }
+        else {
+            io:say("Holding 5 m from Target.", false). }
+        ctrl:rcs_dx({
+            if not hastarget return V(0,0,0).
+            local p is target:position.
+            if p:mag=0 return V(0,0,0).
+            return p - p:normalized * 5. }).
+        return 5. }).
+
+}
