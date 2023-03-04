@@ -67,6 +67,7 @@
         local n is node(t, vdot(basis_r, dv), vdot(basis_n, dv), vdot(basis_p, dv)).
         add n. wait 0. return n. }).
 
+    local saved_maneuver_direction is V(0,0,0).
     mnv:add("step", {         // maneuver step computation for right now
         //
         // mnv:step() is intended to provide the same results
@@ -90,37 +91,43 @@
         local bv is n:burnvector.
         local waittime is n:eta - mnv:time(bv:mag)/2.
         local starttime is time:seconds + waittime.
-        local good_enough is nv:get("mnv/step/good_enough", 0.01).
+        local good_enough is nv:get("mnv/step/good_enough", 0.001).
+
+        if waittime>0                               // until nominal time is reached,
+            set saved_maneuver_direction to bv.     // continuously update saved direction.
 
         local dv is {
             if not hasnode return V(0,0,0).         // node cancelled
             if nextnode<>n return V(0,0,0).         // node replaced
             local bv is n:burnvector.
-            if time:seconds<starttime or availablethrust=0
-                return bv:normalized/10000.         // want steering but zero throttle.
+            if bv*saved_maneuver_direction<=0       // complete if deltav has rotated more than 90 degrees.
+                return V(0,0,0).
+
+            if time:seconds<starttime               // before start, hold burn attitude.
+                return bv:normalized/10000.
+            if availablethrust=0                    // during stating, hold burn attitude.
+                return bv:normalized/10000.
+
             local dt is bv:mag*ship:mass/availablethrust.
-            if dt < good_enough
+            if dt < good_enough                     // complete if remaining burn time is very small.
                 return V(0,0,0).
             return bv. }.
 
         if dv():mag=0 {
-            ctrl:dv(V(0,0,0)).
-            if hasnode and nextnode=n remove n.
+            ctrl:dv(V(0,0,0),1,1,5).
+            if hasnode remove nextnode.
             return -10. }
 
-        set ctrl:emin to 1.
-        set ctrl:emax to 5.
-
-        ctrl:dv(dv).
+        ctrl:dv(dv,1,1,5).
 
         if waittime > 60 {
-            if vang(steering:vector, facing:vector) < 5
-                warpto(starttime-30).
+            if vang(steering:vector, facing:vector) < 5 {
+                print "mnv:step warping to node".
+                warpto(starttime-30). }
+            print "mnv:step will warp to node when stable.".
             return 1. }
 
-        if waittime>0 return min(1, waittime).
-
-        return 5. }).
+        return 1. }).
 
     // mnv:EXEC(autowarp)
     //   autowarp         if true, autowarp to the node.
@@ -168,6 +175,14 @@
 
     mnv:add("time", {         // compute maneuver time.
         parameter dV.
+
+        // TODO handle staging event happening during the burn
+        // because the next stage may have significantly lower
+        // available thrust, and staging takes time.
+        //
+        // NOTE: if we go recursive, need some way to tell
+        // ourselves to use reduced initial mass, the thrust
+        // of the next stage, and its available DV.
 
         local F is availablethrust.
         local v_e is mnv:v_e().

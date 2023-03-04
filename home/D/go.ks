@@ -1,5 +1,5 @@
 @LAZYGLOBAL off.
-{   parameter go. // GO script for "O/02".
+{   parameter go. // GO script for "D" stacks.
 
     clearguis().
 
@@ -13,6 +13,9 @@
     local match is import("match").
     local mnv is import("mnv").
     local hill is import("hill").
+    local rdv is import("rdv").
+    local dbg is import("dbg").
+    local ctrl is import("ctrl").
 
     local orbit_altitude is nv:get("launch_altitude", 320000, true).
     local launch_azimuth is nv:get("launch_azimuth", 90, true).
@@ -26,13 +29,41 @@
     task:new("Circularize Here", always, nothing, phase:circ,nothing).
     task:new("Execute Node", has_node, nothing, mnv:step, nothing).
     task:new("Match Inclination", has_targ, targ:save, match:plane, nothing).
-    task:new("Plan Intercept", has_targ, targ:save, match:plan_xfer, nothing).
-    task:new("Plan Correction", has_targ, targ:save, match:plan_corr, nothing).
+    // task:new("Plan Intercept", has_targ, targ:save, match:plan_xfer, nothing).
+    // task:new("Plan Correction", has_targ, targ:save, match:plan_corr, nothing).
     task:new("Lamb Intercept", has_targ, targ:save, lamb:plan_xfer, nothing).
     task:new("Lamb Correction", has_targ, targ:save, lamb:plan_corr, nothing).
+    task:new("Rescue Node", has_targ, targ:save, rdv:node, nothing).
+    // task:new("Rescue Coarse", has_targ, targ:save, rdv:coarse, nothing).
+    task:new("Rescue Fine", has_targ, targ:save, rdv:fine, nothing).
 
     set task:idle:step to phase:pose.
 
+    local function rcs_vel_experiment {
+        if not hastarget return 0.
+
+        io:say("RCS velocity experiment", false).
+
+        ctrl:rcs_dv({ return target:velocity:orbit - ship:velocity:orbit. }).
+        return 5. }
+
+    task:new("RCS vel experiment", has_targ, targ:save, rcs_vel_experiment@, ctrl:rcs_off).
+
+    local function rcs_pos_experiment {
+        if not hastarget return 0.
+
+        io:say("RCS position experiment", false).
+
+        local parking_offset is 5.
+        io:say("Parking Offset: "+parking_offset, false).
+
+        ctrl:rcs_dx({ return target:position
+            + (body:position - target:position):normalized
+                * parking_offset. }).
+
+        return 5. }
+
+    task:new("RCS pos experiment", has_targ, targ:save, rcs_pos_experiment@, ctrl:rcs_off).
 
     function process_actions {
           // ABORT returns us from orbit, whatever we are doing.
@@ -66,8 +97,23 @@
         "POSE", phase:pose,
         //
         // In READY orbit. Set up for semi-automatic commanding.
+        // When ABORT is acdtivated, head home.
         //
-        "READY", task:step)).
+        "READY", { if abort return 0. return task:step(). },
+
+        "ABORT", { print "bringing the development lab home.".
+            lights on. brakes on. abort off.
+            ctrl:dv(V(0,0,0), 0, 0, 0). return -30. },
+
+        "DEORBIT", phase:deorbit,
+        "AERO", phase:aero,
+        "FALL", phase:fall,
+        // "DECEL", phase:decel,
+        "LIGHTEN", phase:lighten,
+        "PSAFE", phase:psafe,
+        "CHUTE", phase:chute,
+        "LAND", phase:land,
+        "PARK", phase:park)).
 
     go:add("go", {
         task:show().
