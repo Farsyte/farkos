@@ -11,8 +11,6 @@
     local dbg is import("dbg").
 
     local holding_position is false.
-    local fine_drawn_timeout is 0.
-    local fine_drawn is list().
 
     rdv:add("node", {                                               // place maneuver node at xfer/final
 
@@ -129,38 +127,18 @@
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
 
-        local standoff_distance is targ:standoff_distance.
-
-        if time:seconds > fine_drawn_timeout {
-            clearvecdraws().
-            set fine_drawn to list().
-            local tpos is {
-                if not hastarget return V(0,0,0).
-                return target:position. }.
-            local stsov is {
-                if not hastarget return V(0,0,0).
-                return target:position-(target:position-body:position):normalized*standoff_distance. }.
-            local dv is {
-                if not hastarget return V(0,0,0).
-                return ship:velocity:orbit - target:velocity:orbit. }.
-            fine_drawn:add(vecdraw(V(0,0,0), tpos, RGB(0,0,1), "To Target", 1.0, TRUE, 0.2, TRUE, TRUE)).
-            fine_drawn:add(vecdraw(V(0,0,0), stsov, RGB(0,1,0), "Hold Near Here", 1.0, TRUE, 0.2, TRUE, TRUE)).
-            fine_drawn:add(vecdraw(V(0,0,0), dv, RGB(1,0,0), "Velocity", 1.0, TRUE, 0.2, TRUE, TRUE)). }
-        set fine_drawn_timeout to time:seconds+10.
+        local standoff_distance to targ:standoff_distance.
+        set targ:parking_distance to standoff_distance.
+        targ:draw_parking().
 
         local dv is memo:getter({
 
             if not hastarget return V(0,0,0).
 
-            // t_p is from ship to the target standoff point.
-            local body_to_target is target:position-body:position.
-            local standoff_vector is body_to_target:normalized*standoff_distance.
+            // t_p is from ship to parking far enough from the target
+            // to allow "LF Engine Safe" maneuvering.
 
-            // we can use a radius vector above, since the NORMALIZED vector
-            // will not be rotating, but when computing and subtracting positions,
-            // avoid involving radius vectors.
-
-            local t_p is target:position - standoff_vector.
+            local t_p is targ:park_from_ship().
             local d_p is t_p:mag.
 
             local t_v is target:velocity:orbit.
@@ -169,32 +147,35 @@
 
             if holding_position {
                 // when holding, stop holding if
-                // we drift 100 meters away or if our
+                // we drift standoff_distance/2 meters away from parking or if our
                 // relative speed hits 5 m/s.
-                if d_p < 100 and r_v:mag < 5.0 {
+                if d_p < 0.50*standoff_distance and r_v:mag < 5.0 {
                     return V(0,0,0). }
                 print "rdv:near out of position.".
                 set holding_position to false. }
 
-            if d_p < 40 and r_v:mag < 1.0 {
-                // when close and slow, hold position.
+            if d_p < 0.20*standoff_distance and r_v:mag < 1.0 {
+                // when slow and within 20% of standoff distance from standoff, hold position.
                 set holding_position to true.
                 print "rdv:near in position.".
                 return V(0,0,0). }
 
-            if d_p < 30 {
-                // when close but not slow,
+            if d_p < 0.40*standoff_distance {
+                // when moving fast within 40% of standoff distance from parking,
                 // burn to cancel the velocity.
                 return r_v. }
 
             // not close enough. burn to set velocity
-            // to close at a controlled rate.
+            // to close at a controlled rate based on
+            // the stopping distance equation, using
+            // a distance that is reduced by 10% of the
+            // standoff distance.
             //
             // NOTE: once we accelerate to this rate,
             // we need to FLIP THE ROCKET AROUND
             // to be able to decelerate.
 
-            local cmd_X is d_p - 10.
+            local cmd_X is d_p - 0.10*standoff_distance.
             local cmd_A is availablethrust * 0.10 / ship:mass.
             local cmd_V is sqrt(2*cmd_A*cmd_X).
             return r_v + t_p:normalized*cmd_V. }).
@@ -211,26 +192,13 @@
 
         return 5. }).
 
+    // TODO update rdv:fine from rdv:near.
     rdv:add("fine", {                   // entirely engine based rescue fine control and posing
         if abort return 0.
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
 
         local standoff_distance is targ:standoff_distance.
-
-        if time:seconds > fine_drawn_timeout {
-            clearvecdraws().
-            set fine_drawn to list().
-            local tpos is {
-                return target:position. }.
-            local stsov is {
-                return target:position-(target:position-body:position):normalized*standoff_distance. }.
-            local dv is {
-                return ship:velocity:orbit - target:velocity:orbit. }.
-            fine_drawn:add(vecdraw(V(0,0,0), tpos, RGB(0,0,1), "To Target", 1.0, TRUE, 0.2, TRUE, TRUE)).
-            fine_drawn:add(vecdraw(V(0,0,0), stsov, RGB(0,1,0), "Hold Near Here", 1.0, TRUE, 0.2, TRUE, TRUE)).
-            fine_drawn:add(vecdraw(V(0,0,0), dv, RGB(1,0,0), "Velocity", 1.0, TRUE, 0.2, TRUE, TRUE)). }
-        set fine_drawn_timeout to time:seconds+10.
 
         local dv is memo:getter({
 
@@ -296,16 +264,21 @@
         if kuniverse:timewarp:rate>1 {
             kuniverse:timewarp:cancelwarp().
             return 1/10. }
-        if target:position:mag>10 {
-            io:say("Approacing to 5 m.", false).
+
+        set targ:parking_distance to 5.
+
+        // SURPRISE: target:orbit:position <> target:position
+        // dbg:pv("      target:position", target:position).
+        // dbg:pv("target:orbit:position", target:orbit:position).
+        // dbg:pv("  targ:orbit:position", targ:orbit:position).
+
+        if targ:park_from_ship():mag>(2*targ:parking_distance) {
+            io:say("Approacing to "+targ:parking_distance+" m.", false).
             io:say("Please be patient.", false). }
         else {
-            io:say("Holding 5 m from Target.", false). }
-        ctrl:rcs_dx({
-            if not hastarget return V(0,0,0).
-            local p is target:position.
-            if p:mag=0 return V(0,0,0).
-            return p - p:normalized * 5. }).
+            io:say("Holding "+targ:parking_distance+" m from Target.", false). }
+        ctrl:rcs_dx(targ:park_from_ship).
+        targ:draw_parking().
         return 5. }).
 
 }
