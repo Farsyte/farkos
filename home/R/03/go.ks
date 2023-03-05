@@ -109,6 +109,9 @@
 
         // flight engineer will activate ABORT to return to Kerbin.
 
+        // erase the vectors we maintained during RESCUE.
+        {   clearvecdraws(). return 0. },
+
         // rdv:fine holds position, velocity, and pose
         // until we activate the abort signal.
 
