@@ -17,6 +17,12 @@
         if targ:orbit:hassuffix("position") return targ:orbit:position.
         return V(0,0,0). }).
 
+    targ:add("facing", {
+        if hastarget return target:facing.
+        if targ:target:hassuffix("facing") return targ:target:facing.
+        // final fallback is to use ship facing if we do not have a target facing.
+        return ship:facing. }).
+
     targ:add("park_from_ship", {
         parameter d is targ:parking_distance.
         local p is targ:targ_from_ship().
@@ -39,7 +45,8 @@
 
         // draw a vector from the target along its +Z axis.
         draw_parking_vecdraws:add(      // represent target as vector in target facing Z direction.
-            vecdraw(targ:targ_from_ship, { return target:facing*V(0,0,1)*5. }, RGB(0,1,1),
+            vecdraw(targ:targ_from_ship, {
+                return targ:facing()*V(0,0,1)*5. }, RGB(0,1,1),
                 "", 1.0, true, 0.2, true, true)).
 
         } ).
