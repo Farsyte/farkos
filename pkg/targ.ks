@@ -17,6 +17,13 @@
         if targ:orbit:hassuffix("position") return targ:orbit:position.
         return V(0,0,0). }).
 
+    targ:add("targ_vrel_ship", {
+        local svo is ship:velocity:orbit.
+        if hastarget return target:velocity:orbit - svo.
+        if targ:target:hassuffix("velocity") return targ:target:velocity:orbit - svo.
+        if targ:orbit:hassuffix("velocity") return targ:orbit:velocity:orbit - svo.
+        return V(0,0,0). }).
+
     targ:add("facing", {
         if hastarget return target:facing.
         if targ:target:hassuffix("facing") return targ:target:facing.
@@ -43,7 +50,10 @@
             vecdraw(targ:park_from_ship, { return facing*V(0,1,0)*5. }, RGB(0,1,1),
                 "", 1.0, true, 0.2, true, true)).
 
-        // draw a vector from the target along its +Z axis.
+        draw_parking_vecdraws:add(      // add a vector from parking spot showing relative velocity
+            vecdraw(targ:park_from_ship, { return targ:targ_vrel_ship()*5. }, RGB(1,0,0),
+                "", 1.0, true, 0.2, true, true)).
+
         draw_parking_vecdraws:add(      // represent target as vector in target facing Z direction.
             vecdraw(targ:targ_from_ship, {
                 return targ:facing()*V(0,0,1)*5. }, RGB(0,1,1),

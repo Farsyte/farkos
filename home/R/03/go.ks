@@ -109,11 +109,10 @@
 
         // flight engineer will activate ABORT to return to Kerbin.
 
-        // erase the vectors we maintained during RESCUE.
-        {   clearvecdraws(). return 0. },
-
-        // rdv:fine holds position, velocity, and pose
-        // until we activate the abort signal.
+        {   // clean up after the rescue phase.
+            ctrl:rcs_off().                 // remove the "keep RCS on" override.
+            clearvecdraws().                // erase all the vectors we drew.
+            return 0. },
 
         "DEORBIT", phase:deorbit,
         "AERO", phase:aero,
