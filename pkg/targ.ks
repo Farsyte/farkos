@@ -4,12 +4,49 @@
     local nv is import("nv").
     local io is import("io").
     local dbg is import("dbg").
+    local memo is import("memo").
     local predict is import("predict").
 
-    // TODO handle TARGET:TYPENAME is DockingPort
+    // TODO verify support for DockingPort as TARGET.
 
-    // work out a "standoff" position that is near target
-    // but not so close we "bulls-eye" it when we arrive.
+    targ:add("parking_distance", 5).
+
+    targ:add("targ_from_ship", {
+        if hastarget return target:position.
+        if targ:target:hassuffix("position") return targ:target:position.
+        if targ:orbit:hassuffix("position") return targ:orbit:position.
+        return V(0,0,0). }).
+
+    targ:add("park_from_ship", {
+        parameter d is targ:parking_distance.
+        local p is targ:targ_from_ship().
+        return p - p:normalized*targ:parking_distance. }).
+
+    local draw_parking_vecdraws is list().
+
+    targ:add("draw_parking", {
+        local d is targ:parking_distance.
+        local axes is list (
+            V(1,0,0),V(-1,0,0),
+            V(0,1,0),V(0,-1,0),
+            V(0,0,1),V(0,0,-1)).
+        local axis is V(0,0,0).
+        draw_parking_vecdraws:clear().
+
+        draw_parking_vecdraws:add(      // represent parking position as vector in ship facing Y direction.
+            vecdraw(targ:park_from_ship, { return facing*V(0,1,0)*5. }, RGB(0,1,1),
+                "", 1.0, true, 0.2, true, true)).
+
+        // draw a vector from the target along its +Z axis.
+        draw_parking_vecdraws:add(      // represent target as vector in target facing Z direction.
+            vecdraw(targ:targ_from_ship, { return target:facing*V(0,0,1)*5. }, RGB(0,1,1),
+                "", 1.0, true, 0.2, true, true)).
+
+        } ).
+
+    // targ:standoff(t) returns the predicted standoff target
+    // at some specific universal time t, for use by long range
+    // planning.
     targ:add("standoff", {
         parameter t is time:seconds.
         local t_p is predict:pos(t, target).
