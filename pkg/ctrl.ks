@@ -1,6 +1,5 @@
 @LAZYGLOBAL off.
-{
-    parameter ctrl is lex().    // augmented control package
+{   parameter ctrl is lex().    // augmented control package
 
     local phase is import("phase").
     local io is import("io").
@@ -10,7 +9,7 @@
     ctrl:add("emin", 1).    // if facing within this angle, use computed throttle
     ctrl:add("emax", 15).   // if facing outside this angle, use zero throttle
 
-    ctrl:add("pose", {
+    ctrl:add("pose", {                  // establish an idle pose
         if altitude>body:atm:height
             return lookdirup(vcrs(ship:velocity:orbit, -body:position), -body:position).
         if verticalspeed>10
@@ -47,7 +46,7 @@
         local df is (facing_error-ctrl:emin) / (ctrl:emax-ctrl:emin).
         return round(df*desired_throttle,4). }).
 
-    ctrl:add("dv", { parameter dv_fd.
+    ctrl:add("dv", { parameter dv_fd.   // dv based throttle & steering
         parameter gain is ctrl:gain.
         parameter emin is ctrl:emin.
         parameter emax is ctrl:emacs.
@@ -59,8 +58,7 @@
         lock throttle to ctrl:throttle(dv_fd).
         wait 0. }).
 
-    // cancel CTRL-mediated RCS translation.
-    ctrl:add("rcs_off", {
+    ctrl:add("rcs_off", {               // cancel CTRL-mediated RCS translation.
         io:say("CTRL: terminating RCS translation.").
         set ship:control:neutralize to true.
         set phase:force_rcs_on to 0.
@@ -69,14 +67,7 @@
         return 0. }).
 
     ctrl:add("rcs_dv_gain", 1/2).
-
-    // establish the delegate that will drive our delta-v based translation.
-    // this uses LOCK STEERING to trigger the computations, and returns the
-    // desired stable facing.
-    //
-    // To cancel this, please call ctrl:rcs_off.
-
-    ctrl:add("rcs_dv", { parameter dv_fd.  // delegate returning desired delta-v
+    ctrl:add("rcs_dv", { parameter dv_fd.  // DV based RCS control
 
         local rcs_list is list().
         local it is 0.
@@ -139,8 +130,7 @@
         return 0. }).
 
     ctrl:add("rcs_dx_speed_limit", 2).
-
-    ctrl:add("rcs_dx", { parameter dx_df.
+    ctrl:add("rcs_dx", { parameter dx_df.   // DX based RCS control
         return ctrl:rcs_dv({
             if not hastarget return V(0,0,0).
             local dx is eval(dx_df).

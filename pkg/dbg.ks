@@ -6,6 +6,7 @@
         parameter h is terminal:height.
         set terminal:height to h.
         set terminal:width to w.
+
         // TERMINAL:WIDTH               terminal width in characters
         // TERMINAL:HEIGHT              terminal height in characters
         // TERMINAL:REVERSE             swap foreground and background colors
@@ -22,7 +23,7 @@
         if career():candoactions
             core:doAction("open terminal", true). }).
 
-    local pr_d is lex(
+    local pr_d is lex(      // map typename to formatter
         "Boolean",      { parameter value.
             return choose "TRUE" if value else "FALSE". },
         "String",       { parameter value.
@@ -56,4 +57,5 @@
         return "<"+value:typename+"> "+value:tostring. }).
 
     dbg:add("pv", { parameter name, value.      // print name and representation of value
-        print name+": "+dbg:pr(value). }). }
+        print name+": "+dbg:pr(value). }).
+}

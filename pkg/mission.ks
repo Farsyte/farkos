@@ -15,6 +15,7 @@
 
     mission:add("pname", {                      // return most recent mission phase label
         return nv:get("mission/phase/name", ""). }).
+
     mission:add("phase", {                      // return current mission phase number
         return max(0,min(plan:length-1,nv:get("mission/phase/number"))). }).
 
@@ -53,4 +54,5 @@
             local dt is task().
             if dt<=0 return false.
             set trigger_time to time:seconds + dt.
-            return true. } }). }
+            return true. } }).
+}

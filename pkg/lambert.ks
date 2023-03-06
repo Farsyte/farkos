@@ -1,6 +1,5 @@
 @LAZYGLOBAL off.
-{
-    parameter lambert is lex(). // lambert equation solver.
+{   parameter lambert is lex(). // lambert equation solver.
 
     // the content below was imported from
     // https://raw.githubusercontent.com/maneatingape/rsvp/main/src/lambert.ks
@@ -15,7 +14,8 @@
     // what finally found it for me. Many thanks!
     //
     // NOTE: I have added some comments to the code to help me follow why
-    // it is doing what it is doing.
+    // it is doing what it is doing. I have also adjusted some style points
+    // to make this behave within the VS Code "folding" mechanism.
     //
     //
     // This code is a Kerboscript port of the PyKep project Lambert's problem solver,
@@ -82,8 +82,7 @@
         if flip_direction {
             set it1 to -it1.
             set it2 to -it2.
-            set lambda to -lambda.
-        }
+            set lambda to -lambda. }
 
         // The clever part of this algorithm is reducing the problem down to a
         // function of a single variable "x" (the Lancaster-Blanchard variable).
@@ -107,8 +106,7 @@
         local v1 is (gamma / m1) * (vr1 * ir1 + vt * it1).
         local v2 is (gamma / m2) * (vr2 * ir2 + vt * it2).
 
-        return lex("v1", v1, "v2", v2).
-    }).
+        return lex("v1", v1, "v2", v2). }).
 
     // Helper function to run iterative root finding algorithms.
     local function iterative_root_finder {
@@ -121,11 +119,9 @@
         until abs(delta) < 0.00001 or iterations = 15 {
             set delta to householders_method(lambda, t, x).
             set x to x - delta.
-            set iterations to iterations + 1.
-        }
+            set iterations to iterations + 1. }
 
-        return x.
-    }
+        return x. }
 
     // The formulas for the initial guess of "x" are so accurate that on average
     // only 2 to 3 iterations of Householder's method are needed to converge.
@@ -136,13 +132,11 @@
         local t1 is (2 / 3) * (1 - lambda ^ 3).
 
         if t >= t0 {
-            return (t0 / t) ^ (2 / 3) - 1.
-        } else if t <= t1 {
-            return (5 * t1 * (t1 - t)) / (2 * t * (1 - lambda ^ 5)) + 1.
-        } else {
-            return (t0 / t) ^ (ln(t1 / t0) / ln(2)) - 1.
-        }
-    }
+            return (t0 / t) ^ (2 / 3) - 1. }
+        else if t <= t1 {
+            return (5 * t1 * (t1 - t)) / (2 * t * (1 - lambda ^ 5)) + 1. }
+        else {
+            return (t0 / t) ^ (ln(t1 / t0) / ln(2)) - 1. } }
 
     // 3rd order Householder's method. For some context the method of order 1 is the
     // well known Newton's method and the method of order 2 is Halley's method.
@@ -158,8 +152,7 @@
         local ddt is (3 * tau + 5 * x * dt + 2 * (1 - lambda ^ 2) * (lambda ^ 3) / (y ^ 3)) / a.
         local dddt is (7 * x * ddt + 8 * dt - 6 * (1 - lambda ^ 2) * (lambda ^ 5) * x / (y ^ 5)) / a.
 
-        return delta * (dt ^ 2 - delta * ddt / 2) / (dt * (dt ^ 2 - delta * ddt) + (dddt * delta ^ 2) / 6).
-    }
+        return delta * (dt ^ 2 - delta * ddt / 2) / (dt * (dt ^ 2 - delta * ddt) + (dddt * delta ^ 2) / 6). }
 
     // Calculate the time of flight using Lancaster's formula.
     local function time_of_flight {
@@ -175,6 +168,6 @@
         // guard in this case to prevent errors when taking the log of this value.
         local psi is choose constant:degtorad * arccos(g) if a > 0 else ln(max(1e-300, f + g)).
 
-        return (psi / b - x + lambda * y) / a.
-    }
+        return (psi / b - x + lambda * y) / a. }
+
 }

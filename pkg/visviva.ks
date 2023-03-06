@@ -11,4 +11,5 @@
         parameter mu is body:mu.        // gravitational field strength
         local a is (rp+ra)/2.           // semi-major axis
         local v2 is mu*(2/r1 - 1/a).    // v^2/mu = 2/r1 - 1/a
-        return choose sqrt(v2) if v2>0 else 0. }). }
+        return choose sqrt(v2) if v2>0 else 0. }).
+}

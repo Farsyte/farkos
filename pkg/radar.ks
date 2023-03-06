@@ -25,4 +25,5 @@
         return a. }).
 
     radar:add("alt", {                                          // report altitude above calibration point
-        return round(alt:radar - radar:cal(), 3). }). }
+        return round(alt:radar - radar:cal(), 3). }).
+}

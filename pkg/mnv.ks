@@ -34,7 +34,6 @@
     local e is constant:e.
     local G0 is constant:G0. // converion factor for Isp
 
-
     mnv:add("update_dv_at_t", {     // update maneuver for dv at time t
         parameter n.                // node to update.
         parameter dv.               // Body-rel change in velocity
@@ -191,5 +190,4 @@
         if F=0 or v_e=0 return 0.   // staging.
 
         return M0 * (1 - e^(-dV/v_e)) * v_e / F. }).
-
 }
