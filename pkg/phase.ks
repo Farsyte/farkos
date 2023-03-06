@@ -1,6 +1,6 @@
 @LAZYGLOBAL off.
-{
-    parameter phase is lex(). // stock mission phase library.
+{   parameter phase is lex(). // stock mission phase library.
+
     local nv is import("nv").
     local io is import("io").
     local ctrl is import("ctrl").
@@ -18,8 +18,7 @@
     function phase_unwarp {
         if kuniverse:timewarp:rate <= 1 return.
         kuniverse:timewarp:cancelwarp().
-        wait until kuniverse:timewarp:issettled.
-    }
+        wait until kuniverse:timewarp:issettled. }
 
     function phase_apowarp {
         if not kuniverse:timewarp:issettled return.
@@ -38,8 +37,7 @@
         kuniverse:timewarp:warpto(time:seconds+eta:apoapsis-45).
         wait 5.
         wait until kuniverse:timewarp:rate <= 1.
-        wait until kuniverse:timewarp:issettled.
-    }
+        wait until kuniverse:timewarp:issettled. }
 
     phase:add("countdown", {    // countdown, ignite, wait for thrust.
         if availablethrust>0 return 0.
@@ -91,8 +89,7 @@
             return cmd_steering:vector:normalized*speed_change_wanted. }).
 
         ctrl:dv(dv, 1, max_facing_error/2, max_facing_error).
-        return 5.
-    }).
+        return 5. }).
 
     phase:add("coast", {                // coast to near apoapsis
         if abort return 0.
@@ -159,8 +156,7 @@
 
         ctrl:dv(dv, 1, 1, max_facing_error).
 
-        return 5.
-    }).
+        return 5. }).
 
     local hold_in_pose is false.
     phase:add("hold", {
@@ -241,8 +237,7 @@
 
         ctrl:dv(dv, 1, 1, 5).
 
-        return 1.
-    }).
+        return 1. }).
 
     phase:add("aero", {
 
@@ -460,4 +455,5 @@
         // stage to discard dead weight and activate
         // any currently not-yet-ignited engines.
         stage.
-        return 1. }). }
+        return 1. }).
+}

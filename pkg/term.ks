@@ -7,4 +7,5 @@
         set terminal:height to h.
         set terminal:width to w.
         if career():candoactions
-            core:doAction("open terminal", true). }). }
+            core:doAction("open terminal", true). }).
+}

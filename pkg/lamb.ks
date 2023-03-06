@@ -1,7 +1,5 @@
 @LAZYGLOBAL off.
-
-{
-    parameter lamb is lex(). // lambert solver wrappers
+{   parameter lamb is lex(). // lambert solver wrappers
 
     local predict is import("predict").
     local scan is import("scan").
@@ -297,8 +295,7 @@
         if ts:hour>0 bits:add(ts:hour+"h").
         if ts:minute>0 bits:add(ts:minute+"m").
         if ts:second>0 or bits:length<1 bits:add(ts:second+"s").
-        return bits:join(" ").
-    }
+        return bits:join(" "). }
 
     lamb:add("plan_corr", {
 
@@ -445,7 +442,6 @@
         io:say("Lambert Correction predicted error: "+round((rt-rs):mag,3)+" m.").
 
         mnv:schedule_dv_at_t(result:b2, t2).
-        return 0.
-    }).
+        return 0. }).
 
 }

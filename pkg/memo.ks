@@ -1,13 +1,13 @@
 @LAZYGLOBAL off.
-{
-    parameter memo is lex(). // memoization package
+{   parameter memo is lex(). // memoization package
 
     memo:add("getter", {    // memoize a getter (invariant during a phys tick)
         parameter getter.
         local memoized_time is 0.
         local memoized_value is 0.
-        return {
+        return {            // constructed delegate memoizing getter results
             if memoized_time<>time:seconds
                 set memoized_value to getter().
             set memoized_time to time:seconds.
-            return memoized_value. }. }). }
+            return memoized_value. }. }).
+}

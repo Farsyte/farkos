@@ -33,17 +33,17 @@
         f:clear().
         return f. }.
 
-    local nv_enc_t is lex().
-    nv_enc_t:add("Scalar", { parameter val. return val:tostring. }).
-    nv_enc_t:add("String", { parameter val. return quot+val. }).
-    nv_enc_t:add("Vessel", { parameter val. return "V"+val:name. }).
-    nv_enc_t:add("Body", { parameter val. return "B"+val:name. }).
+    local nv_enc_t is lex(                      // map type name to encoder
+        "Scalar", { parameter val. return val:tostring. },
+        "String", { parameter val. return quot+val. },
+        "Vessel", { parameter val. return "V"+val:name. },
+        "Body", { parameter val. return "B"+val:name. }).
 
-    function nv_enc { parameter val.
+    function nv_enc { parameter val.            // encode value for NV storage.
         local t is val:typename.
         return nv_enc_t[t](val). }
 
-    function nv_dec { parameter s.
+    function nv_dec { parameter s.              // decode value from NV storage.
         if s[0]=quot return s:remove(0,1).
         if s[0]="V" return vessel(s:remove(0,1)).
         if s[0]="B" return body(s:remove(0,1)).
@@ -88,4 +88,6 @@
 
     nv:add("clr", { parameter name.             // erase the named nonvolatile.
         nvram:remove(name).
-        if exists(name) deletepath(name). }). }
+        if exists(name) deletepath(name). }).
+
+}

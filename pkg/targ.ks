@@ -9,35 +9,35 @@
 
     // TODO verify support for DockingPort as TARGET.
 
-    targ:add("parking_distance", 5).
+    targ:add("parking_distance", 5).            // distance from targ to parking
 
-    targ:add("targ_from_ship", {
+    targ:add("targ_from_ship", {                // vector to targ (from ship)
         if hastarget return target:position.
         if targ:target:hassuffix("position") return targ:target:position.
         if targ:orbit:hassuffix("position") return targ:orbit:position.
         return V(0,0,0). }).
 
-    targ:add("targ_vrel_ship", {
+    targ:add("targ_vrel_ship", {                // velocity of targ (relative to ship)
         local svo is ship:velocity:orbit.
         if hastarget return target:velocity:orbit - svo.
         if targ:target:hassuffix("velocity") return targ:target:velocity:orbit - svo.
         if targ:orbit:hassuffix("velocity") return targ:orbit:velocity:orbit - svo.
         return V(0,0,0). }).
 
-    targ:add("facing", {
+    targ:add("facing", {                        // facing of targ
         if hastarget return target:facing.
         if targ:target:hassuffix("facing") return targ:target:facing.
         // final fallback is to use ship facing if we do not have a target facing.
         return ship:facing. }).
 
-    targ:add("park_from_ship", {
+    targ:add("park_from_ship", {                // vector to parking (from ship)
         parameter d is targ:parking_distance.
         local p is targ:targ_from_ship().
         return p - p:normalized*targ:parking_distance. }).
 
-    local draw_parking_vecdraws is list().
+    local draw_parking_vecdraws is list().      // hold the vectors we drew
 
-    targ:add("draw_parking", {
+    targ:add("draw_parking", {                  // create the vectors showing parking
         local d is targ:parking_distance.
         local axes is list (
             V(1,0,0),V(-1,0,0),
@@ -57,14 +57,12 @@
         draw_parking_vecdraws:add(      // represent target as vector in target facing Z direction.
             vecdraw(targ:targ_from_ship, {
                 return targ:facing()*V(0,0,1)*5. }, RGB(0,1,1),
-                "", 1.0, true, 0.2, true, true)).
-
-        } ).
+                "", 1.0, true, 0.2, true, true)). } ).
 
     // targ:standoff(t) returns the predicted standoff target
     // at some specific universal time t, for use by long range
     // planning.
-    targ:add("standoff", {
+    targ:add("standoff", {                      // standoff position, for long range planning
         parameter t is time:seconds.
         local t_p is predict:pos(t, target).
         return t_p - t_p:normalized*targ:standoff_distance. }).
@@ -73,9 +71,9 @@
     targ:add("target", "").                     // mission target (for KSP TARGET) (or "" if not set)
     targ:add("orbit", "").                      // mission target Orbit (or "" if not set)
 
-    targ:add("standoff_distance", 100).          // default standoff distance (toward the body)
+    targ:add("standoff_distance", 100).         // default standoff distance
 
-    local function nameof { parameter x.
+    local function nameof { parameter x.        // return name of x using :name, or :tostring.
         return choose x:name if x:hassuffix("name") else x:tostring. }
 
     targ:add("load", {                          // set TARGET to mission target (or nothing)
@@ -108,16 +106,16 @@
             set targ:port to "". }              // remember selected is not a port.
 
         if sel:istype("Orbitable") {            // can specify with an Orbitable object.
-            set targ:orbitable to sel.             // remember the selected orbitable
+            set targ:orbitable to sel.          // remember the selected orbitable
             set sel to sel:orbit. }             // get its associated Orbit.
         else {
-            set targ:orbitable to "". }            // remember selected is not an orbitable.
+            set targ:orbitable to "". }         // remember selected is not an orbitable.
 
         if sel:istype("Orbit") {                // can specify with an Orbit object.
             set targ:orbit to sel.              // remember the selected orbit.
-            nv_put_orbit(sel). }                 // persist the orbital parameters.
+            nv_put_orbit(sel). }                // persist the orbital parameters.
         else {
-            set targ:orbit to "". }              // if we do not have an Orbit, clear the mission target.
+            set targ:orbit to "". }             // if we do not have an Orbit, clear the mission target.
 
         nv_put_name().
         nv_put_orbit().
@@ -147,7 +145,7 @@
         // if targ/name is persisted, set it as our mission target.
         // clear targ/name if it is a name of a thing that does not exist.
 
-        if nv:has("targ/name") {
+        if nv:has("targ/name") {                // try to pick target by name
             local n is nv:get("targ/name", "").
             set n to named(n).
             if n<>"" return targ:save(n).
@@ -203,17 +201,17 @@
 
     local map is create_map().
 
-    local function create_map {
+    local function create_map {                 // create map of names to targets.
         local m is lex(), l is list(), e is "".
         list targets in l. for e in l set m[e:name] to e.
         list bodies in l. for e in l set m[e:name] to e.
         list parts in l. for e in l if e:istype("DockingPort") set m[e:name] to e.
         return m. }
 
-    local function named { parameter n.
+    local function named { parameter n.         // get target with this name, or "" if there is not one.
         return choose map[n] if map:haskey(n) else "". }
 
-    local function nv_put_name {            // persist current mission target orbitable
+    local function nv_put_name {                // persist current mission target orbitable
         parameter name is targ:name.
         if name:hassuffix("name") set name to name:name.
         nv:put("targ/name", name). }
@@ -234,4 +232,6 @@
         else {
             nv:clr("targ"). } }
 
-    targ:restore(). }
+    // restore target from NV storage during import.
+    targ:restore().
+}

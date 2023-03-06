@@ -6,4 +6,5 @@
         io:say(LIST(
             "No 'GO' package found",
             "for "+ship:name+",",
-            "releasing control.")). }). }
+            "releasing control.")). }).
+}

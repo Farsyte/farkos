@@ -1,4 +1,5 @@
 @LAZYGLOBAL off.
+// Standard Library: GLOBAL things for FarKOS packages.
 
 local pkg is lex().
 

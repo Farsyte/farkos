@@ -153,8 +153,7 @@
 
             if next_Ct>0.1 and wr>1 {
                 kuniverse:timewarp:cancelwarp().
-                return 1/10. }
-        }
+                return 1/10. } }
 
         // TODO: refactor to use CTRL package.
 
@@ -164,8 +163,8 @@
         if match_throttle_prev=0 {
             lock throttle to 0.
             if next_ct<0.1 return 1.
-            if next_ct<0.4 return 1/100.
-        }
+            if next_ct<0.4 return 1/100. }
+
         set match_throttle_prev to next_Ct.
 
         local facing_error is vang(facing:vector,steering:vector).
@@ -218,7 +217,7 @@
         lock steering to prograde.
         lock throttle to _throttle().
 
-        return 5.}).
+        return 5. }).
 
     match:add("plan_xfer", {        // build MANEUVER to enter Hohmann toward Targ
         local pi is constant:pi.
@@ -313,8 +312,6 @@
             nv:put("xfer/final", t2). }
 
         return 0. }).
-
-
 
     match:add("plan_corr", {    // build MANEUVER to enter Hohmann toward Targ
         //

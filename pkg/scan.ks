@@ -1,7 +1,5 @@
 @LAZYGLOBAL off.
-
-{
-    parameter scan is lex(). // unidirectional hillclimb with backstep
+{   parameter scan is lex(). // unidirectional hillclimb with backstep
 
     // To use this:
     // - define fitness, a function of a state, to be maximized.
@@ -23,9 +21,9 @@
         return choose val if val:istype("Scalar") else val:copy(). }
 
     scan:add("init", {      // create the scanner state lexicon.
-        parameter fitness. // fitness function we will maximize
-        parameter fitincr. // function to increment the state vector
-        parameter fitfine. // function to reduce step size
+        parameter fitness.  // fitness function we will maximize
+        parameter fitincr.  // function to increment the state vector
+        parameter fitfine.  // function to reduce step size
         parameter fitstate. // state to provide to above.
 
         local c is list().
@@ -34,7 +32,7 @@
             "result", "fail",
             "failed", true ).
 
-        scanner:add("step", {
+        scanner:add("step", {       // the preconfigured scanner delegate we will return.
 
             // termination case 1: fitness says to stop searching.
             local score is fitness(fitstate).
@@ -54,8 +52,10 @@
                 local sc is c[1][0].
                 local il is sc - c[0][0].
                 local ir is sc - c[2][0].
+
                 if il<0 or ir<0
                     c:remove(0).    // not bracketing a maximum. make room for next.
+
                 else {              // bracketing a maximum.
                     // register the bracketed maximum as a reasonable result
                     set scanner:failed to false.
@@ -69,7 +69,7 @@
                     // keep only the old pre-max result,
                     // and set up to increment from it.
                     until c:length < 2 c:remove(1).
-                    set c[0][1] to copyof(fitstate). }}
+                    set c[0][1] to copyof(fitstate). } }
 
             // step to the next grid point for searching.
             set fitstate to fitincr(fitstate).
