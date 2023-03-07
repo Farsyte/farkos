@@ -176,7 +176,7 @@
             // we need to FLIP THE ROCKET AROUND
             // to be able to decelerate.
 
-            local cmd_X is d_p - 0.10*standoff_distance.
+            local cmd_X is d_p - 0.05*standoff_distance.
             local cmd_A is availablethrust * 0.10 / ship:mass.
             local cmd_V is sqrt(2*cmd_A*cmd_X).
             return r_v + t_p:normalized*cmd_V. }).
@@ -222,25 +222,28 @@
                 // we drift 100 meters away or if our
                 // relative speed hits 0.1 m/s.
 
-                if d_p < 100 and r_v:mag < 1.0 {
+                if d_p < 0.50*standoff_distance and r_v:mag < 5.0 {
                     return V(0,0,0). }
 
                 print "rdv:fine starting maneuver.".
                 set holding_position to false. }
 
-            if d_p < 40 and r_v:mag < 0.02 {
+            if d_p < 0.20*standoff_distance and r_v:mag < 1.0 {
                 // when close and slow, hold position.
                 set holding_position to true.
                 print "rdv:fine holding position.".
                 return V(0,0,0). }
 
-            if d_p < 30 {
+            if d_p < 0.40*standoff_distance {
                 // when close but not slow,
                 // burn to cancel the velocity.
                 return r_v. }
 
             // not close enough. burn to set velocity
-            // to close at a controlled rate.
+            // to close at a controlled rate based on
+            // the stopping distance equation, using
+            // a distance that is reduced by 10% of the
+            // standoff distance.
             //
             // NOTE: once we accelerate to this rate,
             // we need to FLIP THE ROCKET AROUND
