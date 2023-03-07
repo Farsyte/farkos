@@ -66,6 +66,7 @@ and will try to document the abbreviations here.
     T       Tourist Vessels
     G       Ground Vehicles
     C       Communication Satellites
+    D       Development Platform
 
 ** Module system and bootstrap
 
