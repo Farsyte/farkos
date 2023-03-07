@@ -25,7 +25,7 @@
         parameter h_set is 100.
         parameter v_set is 0.
 
-        local Kav is 10. // TUNING PARAMETER: accel per velocity error
+        local Kav is 10.                // TUNING PARAMETER: accel per velocity error
 
         local r2 is body:position:sqrmagnitude.                 // radius for gravity computation
         local g is body:mu/r2.                                  // current gravitational acceleration
@@ -40,7 +40,7 @@
 
         local h_obs is radar:alt().                             // current altitude above cal point
 
-        {   // equations of motion:
+        {                               // equations of motion:
             //      V = A*T
             //      X = A*T^2/2
             // elimiating T,
@@ -62,9 +62,9 @@
             // including acceleration of gravity.
         }
 
-        local v_cmd is v_set.       // in the absence of error, command the speed setpoint.
+        local v_cmd is v_set.           // in the absence of error, command the speed setpoint.
 
-        if h_obs > h_set {          // above the set point
+        if h_obs > h_set {                                      // above the set point
             if h_obs > h_set+10 {   // far above the set point
 
                 // vessel more than 10m above the set point.
@@ -82,7 +82,7 @@
                 local v_sub_10m is sqrt(2*a_nom*10).
                 set v_cmd to v_cmd - v_sub_10m*(h_obs-h_set)/10. } }
 
-        else if h_obs < h_set {   // below the set point
+        else if h_obs < h_set {                                 // below the set point
             if h_obs < h_set-10 {   // far below the set point
 
                 // vessel more than 10m below the set point.

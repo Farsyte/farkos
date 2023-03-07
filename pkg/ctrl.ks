@@ -9,7 +9,7 @@
     ctrl:add("emin", 1).    // if facing within this angle, use computed throttle
     ctrl:add("emax", 15).   // if facing outside this angle, use zero throttle
 
-    ctrl:add("pose", {                  // establish an idle pose
+    ctrl:add("pose", {                          // establish an idle pose
         if altitude>body:atm:height
             return lookdirup(vcrs(ship:velocity:orbit, -body:position), -body:position).
         if verticalspeed>10
@@ -20,13 +20,13 @@
             return lookdirup(srfprograde:vector, facing:topvector).
         return lookdirup(up:vector, facing:topvector). }).
 
-    ctrl:add("steering", {              // steer based on delta-v
+    ctrl:add("steering", {                      // steer based on delta-v
         parameter dv_fd.                   // lambda that returns delta-v
         local dv is eval(dv_fd).
         if dv:mag>0 return lookdirup(dv, facing:topvector).
         return ctrl:pose(). }).
 
-    ctrl:add("throttle", {              // thrust based on delta-v.
+    ctrl:add("throttle", {                      // thrust based on delta-v.
         parameter dv_fd.                   // lambda that returns delta-v
         parameter raw is false.         // add ", true" to see un-discounted value
 
@@ -46,7 +46,7 @@
         local df is (facing_error-ctrl:emin) / (ctrl:emax-ctrl:emin).
         return round(df*desired_throttle,4). }).
 
-    ctrl:add("dv", { parameter dv_fd.   // dv based throttle & steering
+    ctrl:add("dv", { parameter dv_fd.           // dv based throttle & steering
         parameter gain is ctrl:gain.
         parameter emin is ctrl:emin.
         parameter emax is ctrl:emacs.
@@ -58,7 +58,7 @@
         lock throttle to ctrl:throttle(dv_fd).
         wait 0. }).
 
-    ctrl:add("rcs_off", {               // cancel CTRL-mediated RCS translation.
+    ctrl:add("rcs_off", {                       // cancel CTRL-mediated RCS translation.
         io:say("CTRL: terminating RCS translation.").
         set ship:control:neutralize to true.
         set phase:force_rcs_on to 0.
@@ -67,7 +67,7 @@
         return 0. }).
 
     ctrl:add("rcs_dv_gain", 1/2).
-    ctrl:add("rcs_dv", { parameter dv_fd.  // DV based RCS control
+    ctrl:add("rcs_dv", { parameter dv_fd.       // DV based RCS control
 
         local rcs_list is list().
         local it is 0.
@@ -130,7 +130,7 @@
         return 0. }).
 
     ctrl:add("rcs_dx_speed_limit", 2).
-    ctrl:add("rcs_dx", { parameter dx_df.   // DX based RCS control
+    ctrl:add("rcs_dx", { parameter dx_df.       // DX based RCS control
         return ctrl:rcs_dv({
             if not hastarget return V(0,0,0).
             local dx is eval(dx_df).
