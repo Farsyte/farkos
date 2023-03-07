@@ -122,7 +122,7 @@
 
         return 0. }).
 
-    targ:add("clear", {                         // clear mission target.
+    targ:add("clr", {                         // clear mission target.
         nv:clr("targ").
         set targ:name to "".
         set targ:port to "".
@@ -188,16 +188,18 @@
         nv:clr("targ/name").
         nv:put("targ/euler/ecc", ecc).
         nv:put("targ/euler/sma", sma).
-        return targ:load(). }).
+        set target to "".
+        return targ:restore(). }).
 
     targ:add("incline", {                       // change orbital plane
         parameter inc.                          // inclination is in degrees
         parameter aop is                        // default to no AOP change
-            targ:orbit:argumentofperiapsis.
+            targ:orbit():argumentofperiapsis.
         nv:clr("targ/name").
         nv:put("targ/euler/inc", inc).
         nv:put("targ/euler/aop", aop).
-        return targ:load(). }).
+        set target to "".
+        return targ:restore(). }).
 
     local map is create_map().
 
@@ -217,7 +219,7 @@
         nv:put("targ/name", name). }
 
     local function nv_put_orbit {                // persist current mission target orbit
-        parameter sel is targ:orbit.
+        parameter sel is targ:orbit().
 
         if sel:istype("Orbit") {
             nv:put("targ/euler/inc", sel:inclination).

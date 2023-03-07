@@ -56,6 +56,12 @@
 
         return 1. }).
 
+    // TODO replace this with a plane-change planner:
+    // - obtain ship orbit H vector
+    // - obtain targ orbit H vector
+    // - work out the next nodal point in our orbit
+    // - plan the correct burn at that point to transition.
+
     match:add("plane", {            // match orbital planes with target
         if abort return 0.
 
@@ -67,7 +73,7 @@
         // ... current logic may end up going the wrong way.
 
         local max_facing_error is nv:get("match/incl/max_facing_error", 15).
-        local max_i_r is nv:get("match/incl/good_enough", 0.01).
+        local max_i_r is nv:get("match/incl/good_enough", 0.2).
 
         local b is body.
         local o_t is targ:orbit.
