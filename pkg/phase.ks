@@ -429,13 +429,18 @@
         // PAUSE if we have not yet launched.
         // This will also trigger during the very last moments
         // of a landing if we have no thrust. Not a problem.
+        // this condition also will fire if we have not yet
+        // terminated the autostager and are within 100 meters
+        // of touching down.
         if alt:radar<100 and availablethrust<=0 return 1.
 
         // END if the engine list is empty.
         // - staging will not jettison anything useful.
         local engine_list is list().
         list engines in engine_list.
-        if engine_list:length<1 return 0.
+        if engine_list:length<1 {
+            print "autostager: terminating, no more engines.".
+            return 0. }
 
         // Return without staging if we have an ignited engine
         // that is not yet flamed out.
@@ -444,8 +449,20 @@
             if e:decoupledin=s-1 and e:ignition and not e:flameout
                 return 1.
 
+        // NOTE: in one case, we were on Stage 0 of the
+        // tourist mission, and were staging every second,
+        // despite that stage having no actual engines?
+
+        // Return TERMINATING the autostager if we are on stage zero.
+        if s=0 {
+            print "autostager special cancel!".
+            print "  current stage numer is "+s.
+            print "  engines remaining: "+engine_list:length.
+            return 0. }
+
         print " ".
         print "autostager activating for stage "+stage:number.
+        print "  engine count: "+engine_list:length.
         print "  MET: "+(time:seconds - nv:get("T0")).
         print "  altitude: "+altitude.
         print "  s velocity: "+velocity:surface:mag.
