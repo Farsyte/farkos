@@ -163,8 +163,8 @@
 
         local max_facing_error is nv:get("hold_max_facing_error", 5, true).
 
-        local hold_peri is nv:get("hold/periapsis").
-        local hold_apo is nv:get("hold/apoapsis").
+        local hold_peri is nv:get("hold/periapsis", periapsis).
+        local hold_apo is nv:get("hold/apoapsis", apoapsis).
 
         local dv is memo:getter({
 
