@@ -29,6 +29,7 @@
     task:new("Circularize Here", always, nothing, phase:circ,nothing).
     task:new("Execute Node", has_node, nothing, mnv:step, nothing).
     task:new("Match Inclination", has_targ, targ:save, match:plane, nothing).
+    task:new("New Incl Fix Plan", has_targ, targ:save, match:plan_incl, nothing).
     task:new("Old Match Plan Xfer", has_targ, targ:save, match:plan_xfer, nothing).
     task:new("Old Match Plan Corr", has_targ, targ:save, match:plan_corr, nothing).
     task:new("Lamb Intercept", has_targ, targ:save, lamb:plan_xfer, nothing).
