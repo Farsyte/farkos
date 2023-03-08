@@ -6,6 +6,9 @@
     local predict is import("predict").
     local visviva is import("visviva").
     local lambert is import("lambert").
+    local mnv is import("mnv").
+    local scan is import("scan").
+    local dbg is import("dbg").
     local io is import("io").
     local nv is import("nv").
 
@@ -56,13 +59,73 @@
 
         return 1. }).
 
-    // TODO replace this with a plane-change planner:
+    // TODO plane-change planner:
     // - obtain ship orbit H vector
     // - obtain targ orbit H vector
     // - work out the next nodal point in our orbit
     // - plan the correct burn at that point to transition.
 
-    match:add("plane", {            // match orbital planes with target
+    local plan_incl_drawn is list().
+    match:add("plan_incl", {
+
+        until not hasnode { remove nextnode. wait 0. }
+
+        targ:save().
+
+        local b is body.
+        local os is ship:orbit.
+        local ot is targ:orbit().
+
+        local rs is -b:position.
+        local vs is velocity:orbit.
+        local hs is vcrs(vs,rs).            // normal to ship orbital plane
+
+        local ro is rs+ot:position.
+        local vo is ot:velocity:orbit.
+        local ho is vcrs(vo,ro).            // normal to targ orbital plane
+
+        local nv is vcrs(ho,hs).            // vector from body to ascending node
+
+        local t1 is find_node(nv).          // scan for when we arrive at the node
+
+        // we want to rotate our velocity vector, at t1,
+        // by the rotation from hs to ho.
+        local rot is rotatefromto(hs,ho).   // rotation from ship to targ plane
+        local v1 is predict:vel(t1, ship).
+        local v2 is rot*v1.
+        local dv is v2 - v1.
+
+        local n is mnv:schedule_dv_at_t(dv, t1).
+        print "Inclination Correction Planned.".
+        print "  Initial inclination error: "+vang(ho,hs).
+        print "  Burn ETA: "+dbg:pr(timespan(n:eta)).
+        print "  Burn DV: "+n:deltav:mag.
+        print "  Burn Vector: "+dbg:pr(n:deltav).
+
+        return 0. }).
+
+    // find the time (at least 2 minutes in the future)
+    // where our position is along the NV vector.
+    local function find_node { parameter nv.
+        local t1 is time:seconds + 120.
+        local dt is 64.
+        local function fitness { parameter t1.
+            local rt is predict:pos(t1, ship).
+            local n2 is vxcl(nv, rt).
+            return -n2:mag. }
+        local function fitincr { parameter t1. return t1 + dt. }
+        local function fitfine { parameter t1, ds.
+            if ds<100 return true.
+            if dt<0.1 return true.
+            set dt to dt/4. return false. }
+        local scanner is scan:init( fitness@, fitincr@, fitfine@, t1).
+        until scanner:step() {}
+        if scanner:failed {
+            print "find_node: scanner failed.".
+            wait until false. }
+        return scanner:result. }
+
+    match:add("plane", {            // DEPERECATED: use match:plan_incl and mnv:step
         if abort return 0.
 
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
