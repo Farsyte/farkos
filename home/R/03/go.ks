@@ -57,15 +57,7 @@
 
         "CIRC", phase:circ,
 
-        // Procedures above should place our orbital plane fairly
-        // close to the right inclination. Get it even closer.
-        //
-        // if this were not a small change, we would want to assure
-        // that we did this as far from the body as possible, but
-        // with small changes, it's OK to do it in our initial orbit
-        // even if the target is far far above us.
-
-        "PLANE",        match:plane,
+        "PLANE", match:plan_incl, mnv:step,
 
         // observed: we come to a nice pose, but jam so quickly
         // into lambert planning that we end up in a rapid roll.

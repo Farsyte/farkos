@@ -5,6 +5,8 @@
     local nv is import("nv").
     local mission is import("mission").
     local phase is import("phase").
+    local match is import("match").
+    local mnv is import("mnv").
 
     local goal is import("goal").
 
@@ -43,9 +45,10 @@
             {   // extend the antennae.
                 lights on. return 0. },
 
-            "COAST", {   // modified coast: stop when above requested periapsis.
-                return choose phase:coast() if altitude<goal:periapsis else 0. },
-
+            "COAST", phase:coast,
+            "CIRC", phase:circ,
+            "PLANE", match:plan_incl, mnv:step,
+            // TODO do we make "USE RCS" the default (after it is working)?
             "HOLD", { return max(1, phase:hold()). })).
 
         mission:bg(phase:autostager).
