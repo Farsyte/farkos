@@ -3,6 +3,7 @@
 
     local nv is import("nv").
     local io is import("io").
+    local dbg is import("dbg").
     local ctrl is import("ctrl").
     local memo is import("memo").
     local radar is import("radar").
@@ -405,6 +406,8 @@
         else if phase:force_rcs_off>0                           rcs off.
         else if altitude < body:atm:height                      rcs off.
         else if ship:angularvel:mag>0.1                         rcs on.
+        else if not steering:istype("Direction")                rcs off.
+        else if not facing:istype("Direction")                  rcs off.
         else if 4<vang(facing:forevector, steering:forevector)  rcs on.
         else if 4<vang(facing:topvector, steering:topvector)    rcs on.
         else                                                    rcs off.
@@ -460,17 +463,19 @@
             print "  engines remaining: "+engine_list:length.
             return 0. }
 
+        local dv0 is ship:deltav:vacuum.
+        stage. wait 0.
+        local dv1 is ship:deltav:vacuum.
+        local loss is dv0-dv1.
         print " ".
         print "autostager activating for stage "+stage:number.
         print "  engine count: "+engine_list:length.
-        print "  MET: "+(time:seconds - nv:get("T0")).
-        print "  altitude: "+altitude.
-        print "  s velocity: "+velocity:surface:mag.
-        print "  o velocity: "+velocity:orbit:mag.
-        print "  delta-v: "+ship:deltav:vacuum.
-
-        // stage to discard dead weight and activate
-        // any currently not-yet-ignited engines.
-        stage.
+        print "  MET: "+dbg:pr(TimeSpan(time:seconds - nv:get("T0"))).
+        print "  altitude: "+round(altitude/1000,1)+" km".
+        print "  s velocity: "+round(velocity:surface:mag)+" m/s".
+        print "  o velocity: "+round(velocity:orbit:mag)+" m/s".
+        print "  delta-v: "+round(dv0)+" m/s in vaccum". //  before staging".
+        // print "  delta-v: "+round(dv1)+" m/s in vaccum after staging".
+        if loss>0 print "  lost "+loss+" m/s during staging.".
         return 1. }).
 }

@@ -64,9 +64,10 @@
             {   // extend the antennae.
                 lights on. return 0. },
 
+
             "COAST", phase:coast,
             "CIRC", phase:circ,
-            "PLANE", match:plane,
+            "PLANE", match:plan_incl, mnv:step,
 
             // TODO use a hold variant that applies RCS.
             "HOLD", { return max(5, phase:hold()). })).

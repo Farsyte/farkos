@@ -49,6 +49,14 @@
             return "[y="+dbg:pr(value:yaw)
                 +" p="+dbg:pr(value:pitch)
                 +" r="+dbg:pr(value:roll)+"]". },
+        "TimeSpan",     { parameter value.
+            local ret is list().
+            if value:year>0 ret:add(value:year+"y").
+            if value:day>0 ret:add(value:day+"d").
+            if value:hour>0 ret:add(value:hour+"h").
+            if value:minute>0 ret:add(value:minute+"m").
+            local sfff is value:second + round(value:seconds - floor(value:seconds), 3).
+            ret:add(sfff+"s"). return ret:join(" "). },
         "UserDelegate", { parameter value. return "@"+dbg:pr(value()). } ).
 
     dbg:add("pr", { parameter value.            // useful printable representation
