@@ -129,7 +129,6 @@
 
         local standoff_distance to targ:standoff_distance.
         set targ:parking_distance to standoff_distance.
-        targ:draw_parking().
 
         local dv is memo:getter({
 
@@ -186,8 +185,6 @@
         if holding_position {
             io:say("This is Fine.", false).
             ctrl:dv(V(0,0,0),1,1,5).
-            clearvecdraws().
-            set fine_drawn_timeout to 0.
             return 0. }
 
         return 5. }).
@@ -200,7 +197,6 @@
 
         local standoff_distance to targ:standoff_distance.
         set targ:parking_distance to standoff_distance.
-        targ:draw_parking().
 
         local dv is memo:getter({
 
@@ -284,6 +280,5 @@
             io:say("Holding "+targ:parking_distance+" m from Target.", false). }
 
         ctrl:rcs_dx(targ:park_from_ship).
-        targ:draw_parking().
         return 5. }).
 }
