@@ -121,9 +121,7 @@
 
         if waittime > 60 {
             if vang(steering:vector, facing:vector) < 5 {
-                print "mnv:step warping to node".
                 warpto(starttime-30). }
-            print "mnv:step will warp to node when stable.".
             return 1. }
 
         return 1. }).
