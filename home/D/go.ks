@@ -26,44 +26,18 @@
 
     local act_num is 0.
 
+
     task:new("Circularize Here", always, nothing, phase:circ,nothing).
     task:new("Execute Node", has_node, nothing, mnv:step, nothing).
-    task:new("Match Inclination", has_targ, targ:save, match:plane, nothing).
-    task:new("New Incl Fix Plan", has_targ, targ:save, match:plan_incl, nothing).
-    task:new("Old Match Plan Xfer", has_targ, targ:save, match:plan_xfer, nothing).
-    task:new("Old Match Plan Corr", has_targ, targ:save, match:plan_corr, nothing).
+    task:new("Plan Plane Change", has_targ, targ:save, match:plan_incl, nothing).
     task:new("Lamb Intercept", has_targ, targ:save, lamb:plan_xfer, nothing).
     task:new("Lamb Correction", has_targ, targ:save, lamb:plan_corr, nothing).
     task:new("RDV Node", has_targ, targ:save, rdv:node, nothing).
-    task:new("RDV Coarse", has_targ, targ:save, rdv:coarse, nothing).
-    task:new("RDV Fine", has_targ, targ:save, rdv:fine, nothing).
     task:new("RDV Near", has_targ, targ:save, rdv:near, nothing).
-    task:new("RCS Velocity Match", has_targ, targ:save, rcs_vel_match@, ctrl:rcs_off).
-    task:new("RCS Position Match", has_targ, targ:save, rcs_pos_match@, ctrl:rcs_off).
+    task:new("RDV RCS 5m", has_targ, targ:save, rdv:rcs_5m, nothing).
+    task:new("REBOOT", has_targ, targ:save, just_reboot@, nothing).
 
-    set task:idle:step to phase:pose.
-
-    local function rcs_vel_match {
-        if not hastarget return 0.
-
-        io:say("RCS Velocity Match", false).
-
-        ctrl:rcs_dv({ return target:velocity:orbit - ship:velocity:orbit. }).
-        return 5. }
-
-    local function rcs_pos_match {
-        if not hastarget return 0.
-
-        local parking_offset is 10.
-
-        io:say("RCS Position Match", false).
-        io:say("  Standoff Distance: "+parking_offset+" m.", false).
-
-        ctrl:rcs_dx({ return target:position
-            - target:position:normalized
-                * parking_offset. }).
-
-        return 5. }
+    local function just_reboot { reboot. return 1. }
 
     function process_actions {
           // ABORT returns us from orbit, whatever we are doing.
