@@ -248,7 +248,6 @@
         dbg:pv("plan_xfer_best:t2", plan_xfer_best:t2).
         dbg:pv("transition time", time:seconds + nextnode:orbit:eta:transition).
 
-
         if plan_xfer_best:t2 < time:seconds + nextnode:orbit:eta:transition
             mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
 
@@ -355,8 +354,9 @@
 
         until plan_corr_scanner:step() { }
 
-        set result to choose sMin if plan_corr_scanner:failed
-            else plan_corr_scanner:result.
+        local result is sMin.
+        if not plan_corr_scanner:failed
+            set result to plan_corr_scanner:result.
 
         mnv:schedule_dv_at_t(result:b1, result:t1).
         if t2 < time:seconds + nextnode:orbit:eta:transition
