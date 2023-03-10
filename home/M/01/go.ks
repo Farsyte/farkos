@@ -44,7 +44,7 @@
         "Launch", phase:launch,
         "Ascent", phase:ascent,
         "Coast", phase:coast,
-        {   set mapview to true. return 0. },
+                {   set mapview to true. return 0. },
         "Circularize", phase:circ,
         "Match Inclination", match:plan_incl,
         "Mun Xfer Inject", lamb:plan_xfer, mnv:step,
@@ -52,13 +52,14 @@
 
         "Coast to Mun", wait_for:bind("Mun"),
 
+        // do more here in future missions.
+
         "Coast past Mun", wait_for:bind("Kerbin"),
 
-        "DEORBIT", phase:deorbit,
         "AERO", phase:aero,
         "LIGHTEN", phase:lighten,
         "PSAFE", phase:psafe,
-        {   set mapview to false. return 0. },
+            {   set mapview to false. return 0. },
         "CHUTE", phase:chute,
         "LAND", phase:land,
         "PARK", phase:park)).
