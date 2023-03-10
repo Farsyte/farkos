@@ -237,22 +237,19 @@
             t1_scan_setup(result:t1+60, result:t1min, result:t1end, result:t1max).
             return 1/10. }
 
-        until not hasnode { remove nextnode. wait 0. }
-
-        mnv:schedule_dv_at_t(plan_xfer_best:b1, plan_xfer_best:t1).
-        mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
-
-        local t2 is plan_xfer_best:t2.
-        local rs is predict:pos(t2, ship).
-        local rt is targ:standoff(t2).
-        local dist is (rs-rt):mag.
-        local vs is predict:vel(t2, ship).
-        local vt is predict:vel(t2, target).
-        local aspd is (vs-vt):mag.
+        nv:put("xfer/final", plan_xfer_best:t2).
 
         io:say("Lambert Planning Successful.").
 
-        nv:put("xfer/final", t2).
+        until not hasnode { remove nextnode. wait 0. }
+
+        mnv:schedule_dv_at_t(plan_xfer_best:b1, plan_xfer_best:t1).
+
+        dbg:pv("plan_xfer_best:t2", plan_xfer_best:t2).
+        dbg:pv("transition time", time:seconds + nextnode:orbit:eta:transition).
+
+        if plan_xfer_best:t2 < time:seconds + nextnode:orbit:eta:transition
+            mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
 
         return 0. }).
 
@@ -358,14 +355,13 @@
         until plan_corr_scanner:step() { }
 
         local result is sMin.
-
         if not plan_corr_scanner:failed
             set result to plan_corr_scanner:result.
 
-        set t1 to result:t1.
+        mnv:schedule_dv_at_t(result:b1, result:t1).
+        if t2 < time:seconds + nextnode:orbit:eta:transition
+            mnv:schedule_dv_at_t(result:b2, t2).
 
-        mnv:schedule_dv_at_t(result:b1, t1).
-        mnv:schedule_dv_at_t(result:b2, t2).
         return 0. }).
 
 }

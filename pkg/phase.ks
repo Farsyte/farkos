@@ -70,7 +70,10 @@
         local max_facing_error is nv:get("ascent_max_facing_error", 90, true).
         local ascent_apo_grace is nv:get("ascent_apo_grace", 0.5).
 
-        if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height return 0.
+        if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height {
+            lock throttle to 0.
+            lock steering to prograde.
+            return 0. }
 
         if not kuniverse:timewarp:issettled return 1/10.
         if kuniverse:timewarp:rate > 1 {
@@ -90,6 +93,74 @@
             return cmd_steering:vector:normalized*speed_change_wanted. }).
 
         ctrl:dv(dv, 1, max_facing_error/2, max_facing_error).
+        return 5. }).
+
+    phase:add("ascent_v2", { // throttle back to manage Apoapsis ETA
+        if abort return 0.
+
+        // Data collected from the M/01 launch configuration:
+
+        // vacuum delta-v using ascent v1
+        // TODO rerun with pitchover at 3 degrees
+        //   6656 at launch
+        //   6049 at stage 4,  3.1 km altitude
+        //   5219 at stage 3, 13.4 km altitude
+        //   3927 before circ from periapsis of about -450 km.
+        //   3892 at stage 2, 79.3 km altitude (just after starting circ)
+        //   3007 after circ (apo 79446, peri 78495, MET 04:39)
+
+        // vacuum delta-v using ascent v2, range 45 to 90 seconds
+        // going full throttle when periapsis is above atmosphere
+        //   6656 at launch
+        //   6049 at stage 4,  3.1 km altitude
+        //   5219 at stage 3, 14.2 km altitude
+        //   3892 at stage 2, 51.9 km altitude
+        //   3074 before circ from periapsis of about -18.6 km.
+        //   2984 after circ (apo 79845, peri 79018, MET 06:36)
+        //   NOTE: circularized with 367 m/s remaining in stage 2!
+        //   at stage 1
+
+        // conclusion: original ascent is very slightly more efficient
+        // and quite a bit faster, but the V2 ascent might allow the
+        // use of more efficient but lower thrust engines.
+
+        local eta_min is nv:get("ascent/eta/min", 45, false).
+        local eta_max is nv:get("ascent/eta/max", 90, false).
+
+        local radius_body is body:radius.
+
+        local orbit_altitude is nv:get("launch_altitude", 80000, true).
+        local launch_azimuth is nv:get("launch_azimuth", 90, true).
+        local launch_pitchover is nv:get("launch_pitchover", 3, false).
+        local max_facing_error is nv:get("ascent_max_facing_error", 90, true).
+        local ascent_apo_grace is nv:get("ascent_apo_grace", 0.5).
+
+        if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height {
+            lock steering to prograde.
+            lock throttle to 0.
+            return 0. }
+
+        if not kuniverse:timewarp:issettled return 1/10.
+        if kuniverse:timewarp:rate > 1 {
+            kuniverse:timewarp:cancelwarp().
+            return 1/10. }
+
+        local _throttle is {
+            if periapsis >= body:atm:height return 1.
+            local eta_curr is eta:apoapsis.
+            if eta_curr <= eta_min return 1.
+            if eta_curr >= eta_max return 0.
+            return (eta_max - eta_curr)/(eta_max - eta_min). }.
+
+        local _steering is {
+            local altitude_fraction is clamp(0,1,altitude / min(80000,orbit_altitude)).
+            local pitch_wanted is (90-launch_pitchover)*(1 - sqrt(altitude_fraction)).
+            // TODO limit angle of attack?
+            return heading(launch_azimuth,pitch_wanted,0). }.
+
+        lock steering to _steering().
+        lock throttle to _throttle().
+        // ctrl:dv(dv, 1, max_facing_error/2, max_facing_error).
         return 5. }).
 
     phase:add("coast", {                // coast to near apoapsis
@@ -234,7 +305,7 @@
             local desired_speed is visviva:v(radius_body+altitude, radius_body+h-1, radius_body+apoapsis).
             local current_speed is velocity:orbit:mag.
             local desired_speed_change is max(0, current_speed - desired_speed).
-            return retrograde:vector*desired_speed_change. }).
+            return 0.10*retrograde:vector*desired_speed_change. }).
 
         ctrl:dv(dv, 1, 1, 5).
 
@@ -265,12 +336,19 @@
         if periapsis > hi {
             print "lowering periapsis from "
                 +round(periapsis)+" to "+round(hi).
+
             local dv is memo:getter({
                 if periapsis <= hi return V(0,0,0).
                 local radius_body is body:radius.
                 local v0 is ship:velocity:orbit.
-                local v1 is visviva:v(radius_body + altitude, radius_body + apoapsis, radius_body + hi) *v0:normalized.
-                return v1 - v0. }).
+                local r0 is radius_body + altitude.
+                local r1 is radius_body + apoapsis.
+                local r2 is radius_body + hi.
+                local v1 is visviva:v(r0, r1, r2) *v0:normalized.
+                // aero final altitude is VERY sensitive to velocity,
+                // so I'm going to pre-apply a 0.1 gain.
+                return 0.1 * (v1 - v0). }).
+
             ctrl:dv(dv, 1, 1, 5).
             return 1/10. }
 
@@ -321,15 +399,15 @@
 
         ctrl:dv(V(0,0,0), 0, 0, 0).
 
-        // print " ".
-        // print "lighten activating for stage "+stage:number.
-        // print "  MET: "+round(time:seconds - nv:get("T0")).
-        // print "  altitude: "+round(altitude).
-        // print "  apoapsis: "+round(apoapsis).
-        // print "  periapsis: "+round(periapsis).
-        // print "  s velocity: "+round(velocity:surface:mag).
-        // print "  o velocity: "+round(velocity:orbit:mag).
-        // print "  vacuum delta-v: "+round(ship:deltav:vacuum).
+        print " ".
+        print "lighten activating for stage "+stage:number.
+        print "  MET: "+round(time:seconds - nv:get("T0")).
+        print "  altitude: "+round(altitude).
+        print "  apoapsis: "+round(apoapsis).
+        print "  periapsis: "+round(periapsis).
+        print "  s velocity: "+round(velocity:surface:mag).
+        print "  o velocity: "+round(velocity:orbit:mag).
+        print "  vacuum delta-v: "+round(ship:deltav:vacuum).
         wait 1.
         wait until stage:ready. stage.
         return 1. }).
@@ -413,14 +491,14 @@
         else                                                    rcs off.
         return 1/10. }).
 
-    // {   // dump some info during boot.
-    //     print " ".
-    //     print "autostager initializing at stage "+stage:number.
-    //     print "  MET: "+(time:seconds - nv:get("T0")).
-    //     print "  altitude: "+altitude.
-    //     print "  s velocity: "+velocity:surface:mag.
-    //     print "  o velocity: "+velocity:orbit:mag.
-    //     print "  delta-v: "+ship:deltav:vacuum. }
+    {   // dump some info during boot.
+        print " ".
+        print "autostager initializing at stage "+stage:number.
+        print "  MET: "+(time:seconds - nv:get("T0")).
+        print "  altitude: "+altitude.
+        print "  s velocity: "+velocity:surface:mag.
+        print "  o velocity: "+velocity:orbit:mag.
+        print "  delta-v: "+ship:deltav:vacuum. }
 
     phase:add("autostager", {   // stage when appropriate.
 

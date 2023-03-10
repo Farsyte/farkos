@@ -65,7 +65,17 @@
     targ:add("standoff", {                      // standoff position, for long range planning
         parameter t is time:seconds.
         local t_p is predict:pos(t, target).
-        return t_p - t_p:normalized*targ:standoff_distance. }).
+        local t_d is t_p:normalized.
+        local t_r is t_p:mag.
+
+        if target:istype("Body") {
+            local inside_soi to target:radius + 0.90 * (target:soiradius - target:radius).
+            if t_r < predict:pos(t, ship):mag {
+                return t_d * (t_r + inside_soi). }
+            else {
+                return t_d * (t_r - inside_soi). } }
+
+        return t_d*(t_r - targ:standoff_distance). }).
 
     targ:add("name", "").                       // mission target String  (or "" if not set)
     targ:add("target", "").                     // mission target (for KSP TARGET) (or "" if not set)

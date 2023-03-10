@@ -1,0 +1,315 @@
+
+
+This is a recording of an automated Mun Fly-By mission.
+
+The autopilot code now has all of the capabilities needed to
+run this mission, completely unattended, from launch to landing.
+
+I will pause the mission periodically to add some WRITTEN
+notes on what is going on, as a review of the capabilities that
+have been set up.
+
+I will TRY to pause while we are in the SOI of Mun to get an EVA
+report to bring back, so we can unlock more parts.
+
+
+
+* The Stack
+
+Mission M/01 uses a rocket that is somewhat overdesigned
+for this particular mission: it includes a full set of
+science instruments, and far too much RCS capabilities.
+
+This ship uses Asparagus staging to get the most out of
+its seven engines, and has an overpowered upper stage for
+joyriding out around Mun.
+
+Always check your staging. CAREFULLY.
+
+
+* LAUNCH
+
+My missions that have a Mission Target -- whether that is an
+assigned satellite orbit, or a target to be rescued, or a body
+to be approached -- all start with a *PADHOLD* phase, where
+we wait on the ground until the launch pad is on (or close to)
+the target orbital plane.
+
+It then has a *COUNTDOWN* phase giving us ten seconds to interrupt.
+
+It then does a *LAUNCH* directly upward to clear the gantry, and
+starts an *ASCENT* toward the destination orbit.
+
+Our destination is an 80 km altitude circular orbit, and as Mun
+has no inclination, we will not be waiting before launch.
+
+
+* ASCENT
+
+This phase does an immediate pitch-over of just a few degrees, in
+whatever direction we want to be going in orbit -- in this case,
+to the east (heading 090), to match Mun.
+
+The pitch angle is smoothly rotated; it is computed based only
+on our altitude, and meets the horizon as we leave the atmosphere.
+
+
+* STAGING
+
+We start with essentially seven large tanks of fuel feeding
+our seven engines. The "Asparagus" configuration means that
+we use Fuel Ducts to move fuel around: once two tanks of fuel
+have been used (by all engines), we can jettison the two empty
+tanks, leaving five full tanks, and five engines. This is what
+just happened, and you can see the two tanks (with their engines)
+flying off to the right and left.
+
+In a few moments, the second pair will be jettisoned, leaving us
+with three full tanks.
+
+
+* ASCENT
+
+At this point in our flight, about 18 km above Kerbin, we have
+pitched over half way to the horizon. If we were to cut engines
+right now, we would glide up to about 30 km (a bit less due to
+air drag) before falling back.
+
+We will continue at full throttle until our highest point reaches
+where we want to go -- about 80 km high. We throttle down as we
+get close, but keep some throttle going as long as we are pushing
+our way through the atmosphere.
+
+Once we are above the atmosphere, we can cut off the engines.
+
+
+
+* GETTING HOT OVER HERE
+
+Keeping full throttle as we ascend cause us to eventually go
+fast enough that we see heating. This particular craft does not
+get so hot that we have any real trouble.
+
+Some players will reduce throttle, but this is not needed on
+this craft, and indeed is not wanted (this particular vessel
+takes MORE fuel to achieve orbit if we delay thrust).
+
+
+Sorry, forgot to pause the recording while typing that ...
+
+
+* REDUCING THROTTLE
+
+Our apoapsis is getting close to 80 km, so the autopilot has reduced
+the throttle, in order to avoid overshooting our desired altitude.
+
+It does not cut throttle entirely, as we are still inside the
+atmosphere, which would slow us down and reduce our apoapsis.
+
+
+* COASTING TO APOAPSIS and CIRCULARIZATION
+
+Once our apoapsis is high enough, and we are out of the atmosphere,
+we can coast until we are near the apoapsis.
+
+Interestingly, we still have 35 m/s of Delta-V remaining in our
+final pair of ascent boosters. These will empty and have to be
+jettisoned almost immediately when we circluarize.
+
+The autopilot does not use a maneuver node to circularize. Instead
+it uses an Error Controller: it computes the velocity we would have
+in a circular orbit at the current altitude, then applies thrust to
+correct our velocity to that figure. This thrust will mainly be
+in the prograde direction for what we are doing now, but will have
+a radial component becuase we are circularizing *HERE* at each
+instant of the burn.
+
+
+* CIRCULARIZATION
+
+Switching to the orbital view, we can watch our orbit, the blue
+line arcing up from Kerbin and back, "inflate" until it is a circle
+going all the way around.
+
+On completion, notice that the Kerbin Periapsis is very close to
+the same as our current altitude and the apoapsis altitude.
+
+
+
+* Mun Transfer
+
+The autopilot finds an efficient transfer to the SOI of Mun
+by looking at many candidates for the initial burn, and at
+many values for the Time of Flight. Given these two values
+we can determine the starting and ending position of the
+trajectory, which -- with the time of flight -- can be used
+by a Lambert Solution to tell us how fast we are moving at
+each end of that trajectory.
+
+It is a simple matter of comparing a lot of trajectories to
+find the one that costs the least fuel.
+
+This takes a few seconds.
+
+
+* The Planned Trajectory
+
+The autopilot has found a transfer orbit that takes
+us out to the neighborhood of where the Mun will be,
+and dips into its sphere of influence briefly. This
+is the yellow dotted line.
+
+Because we are not changing anything while moving
+through Mun's SOI, we exit it, establishing a new
+and slightly different orbit, shown as green dots.
+
+This is all just "planned" and depends on us executing
+the Maneuver Node, buried in the noise there on the
+lower left side of Kerbin. We can also see the planned
+burn on the nav ball: 861.9 meters per second, which
+will take 1m 17s, starting in 12m 30s.
+
+Hold on, I'll show you what happens around Mun ...
+
+The long purple arc below Mun is our path, relative to Mun,
+as we enter its SOI (from the left), sweep past it, then
+back out to the right. Actually, Mun is overtaking us.
+
+However, small errors in our exection of the maneuver node
+will have big consequences, so we do not put too much
+reliance in the currently shown projections.
+
+Let it happen!
+
+(make it so?)
+
+
+* WHAT HAPPENED?
+
+We looked like we were right on the blue mark but our burn did
+not have the exact result ... this is partly because we had tiny
+errors, plus we staged, plus the END of the burn was "tapered"
+meaning some of the burn happened later than expected.
+
+Believe it or not, it is a very tiny error indeed that is needed
+to cause such a large deviation in the far side of that orbit.
+
+No problem, tho, as we will apply a correction burn in a moment.
+
+
+* CORRECTION BURN
+
+This is a much smaller burn -- only 26 m/s, which normally will
+take about two seconds. We will still have some error in the burn
+but it will be a smaller error due to it being a smaller burn, and
+we should be very close to our original transfer orbit.
+
+
+* LOOKING GOOD.
+
+After the corection burn, our transfer trajectory now matches
+with the desired trajectory -- you saw the "entering SOI" markers
+from the planned and actual come together, and we now see our
+nice yellow path through the SOI of Mun on the right.
+
+Now it is just a matter of waiting.
+
+Kerbal Alarm Clock has done surprising things to me when I asked
+it to sleep until the SOI. Fortunately, the autopilot code can
+handle the timewarping.
+
+I will be attempting to interrupt the autopilot while were are
+inside the SOI of Mun, so I can take a few seconds to get an
+EVA report.
+
+Oh interesting. If I do nothing, our orbit upon leaving Mun
+takes us down to about 9 km. Our "deorbit" and "aerobraking"
+phases have no work to do.
+
+Onward to Mun!
+
+
+* Flying Past Mun
+
+For some reason, we never rotated the craft to place ourselves
+properly in the Selfie Pose for Mun -- we are still facing Kerbin.
+
+Double checking that I have an EVA over Mun, not Kerbin ...
+
+oh foo. jeb can't science.
+
+AHA. Do it from inside the pod.
+
+Next time, add "gather science" to an action group.
+
+Anyway, got the science ...
+
+Apparently collect all in the container interacts badly
+with one of my science add-on modules. I hope we managed
+to get all the science SOMEWHERE we will have it when we
+land after this mission.
+
+Now I need to reboot the kOS processor ...
+
+.. and I hope it picks up with "get us back to Kerbin"
+
+
+* DEORBIT and AERO phases
+
+Deorbit wants to burn retrograde until our periapsis
+is down in the atmosphere.
+
+Aero is similar but is better at picking altitudes for
+decent aerobraking. Really, we don't need Deorbit if we
+are doing Aero ...
+
+And currently, we are already headed too far down, so
+neither is going to do any work.
+
+
+* LIGHTEN and PSAFE
+
+LIGHTEN activates all stage separators to lighten the
+craft. The autopilot does this after we have established
+a trajectory ending deep inside Kerbin's atmosphere.
+
+PSAFE is the phase that waits until it is safe to
+deploy the parachute.
+
+These two phase notifications just went past in a flash.
+
+Nothing more happens until we are ready to pop the chutes.
+
+Normally we trigger these when we are deep in the atmosphere,
+so I'm going to need to manually timewarp.
+
+This also means we won't be getting a lot of deceleration
+from our final stage, which Aero normally handles.
+
+We might actually burn up because we are coming in very fast
+from very far and are going to head right down to the ground.
+
+*BUCKLE UP!*
+
+The heat shield might be overpowered. Might be enough.
+
+
+* LANDING
+
+How about that. We got through the worst of it. However, the
+parachute got deployed at 12 km, when normally I prefer to
+wait until we are down around 4 km. We are also moving a bit
+faster than I would like, 270 m/s, when I thought 250 was the
+safe limit. *Good Luck Jeb!*
+
+
+* WELCOME HOME, JEB!
+
+*276 Science* should open a bunch of parts.
+
+
+And that's it for this mission.
+
+Nothing spactacular, just connecting up the bits and bobs
+we have been working on to make one whole mission.
+
