@@ -334,8 +334,6 @@
         // of the height of the atmosphere. Be careful
         // to avoid overshooting.
         if periapsis > hi {
-            print "lowering periapsis from "
-                +round(periapsis)+" to "+round(hi).
 
             local dv is memo:getter({
                 if periapsis <= hi return V(0,0,0).
@@ -343,11 +341,9 @@
                 local v0 is ship:velocity:orbit.
                 local r0 is radius_body + altitude.
                 local r1 is radius_body + apoapsis.
-                local r2 is radius_body + hi.
+                local r2 is radius_body + hi - 5000.
                 local v1 is visviva:v(r0, r1, r2) *v0:normalized.
-                // aero final altitude is VERY sensitive to velocity,
-                // so I'm going to pre-apply a 0.1 gain.
-                return 0.1 * (v1 - v0). }).
+                return v1 - v0. }).
 
             ctrl:dv(dv, 1, 1, 5).
             return 1/10. }
