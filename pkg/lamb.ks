@@ -245,9 +245,6 @@
 
         mnv:schedule_dv_at_t(plan_xfer_best:b1, plan_xfer_best:t1).
 
-        dbg:pv("plan_xfer_best:t2", plan_xfer_best:t2).
-        dbg:pv("transition time", time:seconds + nextnode:orbit:eta:transition).
-
         if plan_xfer_best:t2 < time:seconds + nextnode:orbit:eta:transition
             mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
 

@@ -49,7 +49,7 @@
     ctrl:add("dv", { parameter dv_fd.           // dv based throttle & steering
         parameter gain is ctrl:gain.
         parameter emin is ctrl:emin.
-        parameter emax is ctrl:emacs.
+        parameter emax is ctrl:emax.
         set ctrl:gain to gain.
         set ctrl:emin to emin.
         set ctrl:emax to emax.
