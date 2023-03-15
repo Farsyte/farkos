@@ -3,7 +3,6 @@
 
     local nv is import("nv").
     local io is import("io").
-    local dbg is import("dbg").
     local memo is import("memo").
     local predict is import("predict").
 
@@ -99,12 +98,11 @@
             if sel="" {                         // explicit "clear target" request
                 return targ:clr(). }
             local obj is named(sel).              // convert to something we can target
-            if obj="" {
-                print "targ:save rejecting '"+sel+"'".
-                return 0. }
+            if obj=""
+                return 0.
             set sel to obj. }
 
-        if sel:hassuffix("name") {              // update targ:name before moving from sel to its parent.
+        if sel:hassuffix("name") and not sel:istype("Orbit") {
             set targ:name to sel:name. }
         else {
             set targ:name to "". }
