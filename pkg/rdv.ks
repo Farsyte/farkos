@@ -27,10 +27,6 @@
         local dv is v1 - v2.
         mnv:schedule_dv_at_t(dv, t2).
 
-        // dbg:pv("rdv node dt", dt).
-        // dbg:pv("rdv node dv", dv).
-        // dbg:pv("rdv dist", r2-r1).
-
         return 0. }).
 
     rdv:add("coarse", {                                             // coarse rendezvous from very far away
@@ -74,48 +70,45 @@
 
         local margin is 20.
 
-        local dir is prograde:vector.                               // pv("dir", dir).
+        local dir is prograde:vector.
 
         local r_p is targ:standoff(time:seconds).
-        local t_p is r_p+body:position.                               // pv("t_p", t_p).
-        local t_v is target:velocity:orbit.                         // pv("t_v", t_v).
-        local s_v is ship:velocity:orbit.                           // pv("s_v", s_v).
+        local t_p is r_p+body:position.
+        local t_v is target:velocity:orbit.
+        local s_v is ship:velocity:orbit.
 
         // if we descended, ship are overtaking. Xc and Vc are positive.
         // if we ascended, target is overtaking. Xc and Vc are negative.
 
-        local Xc is vdot(t_p, dir).                     // pv("Xc", xc). // distance available to stop
-        local Vc is vdot(s_v - t_v, dir).               // pv("Vc", Vc). // speed toward the stopping point
+        local Xc is vdot(t_p, dir).                     // distance available to stop
+        local Vc is vdot(s_v - t_v, dir).               // speed toward the stopping point
 
         if Xc > 0 {
             lock steering to retrograde. }
 
         else {
-            set Xc to -Xc.      // pv("Xc", xc).
-            set Vc to -Vc.      // pv("Vc", Vc).
+            set Xc to -Xc.
+            set Vc to -Vc.
             lock steering to prograde. }
 
-        set Xc to Xc - margin.  // pv("Vc", Vc).
+        set Xc to Xc - margin.
 
         if Vc<=0 or Xc<=0 {
             lock throttle to 0.
             return 0. }
 
-        local cmd_A is availablethrust / ship:mass.                 // available acceleration
-        if cmd_A=0 return 1/100.                                    // staging. deal with it.
-        local cmd_X is Vc^2 / (2*cmd_A).                                // minimum stopping distance.
+        local cmd_A is availablethrust / ship:mass.     // available acceleration
+        if cmd_A=0 return 1/100.                        // staging. deal with it.
+        local cmd_X is Vc^2 / (2*cmd_A).                // minimum stopping distance.
 
-        if Xc < cmd_X {// we overshot.
-            return 0. }
+        if Xc < cmd_X return 0.                         // we overshot.
 
         local Xr is cmd_X / Xc.
-        if throttle=0 {
-            if Xr<0.90 {
-                // wait until we are closer.
-                lock throttle to 0.
-                return 1/100. } }
+        if throttle=0 and Xr<0.90 {                     // wait until we are closer.
+            lock throttle to 0.
+            return 1/100. }
 
-        if Xr < 0.01 {
+        if Xr < 0.01 {                                  // we are good.
             lock throttle to 0.
             return 0. }
 
@@ -129,7 +122,6 @@
 
         local standoff_distance to targ:standoff_distance.
         set targ:parking_distance to standoff_distance.
-        targ:draw_parking().
 
         local dv is memo:getter({
 
@@ -186,13 +178,10 @@
         if holding_position {
             io:say("This is Fine.", false).
             ctrl:dv(V(0,0,0),1,1,5).
-            clearvecdraws().
-            set fine_drawn_timeout to 0.
             return 0. }
 
         return 5. }).
 
-    // TODO update rdv:fine from rdv:near.
     rdv:add("fine", {                   // entirely engine based rescue fine control and posing
         if abort return 0.
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
@@ -200,7 +189,6 @@
 
         local standoff_distance to targ:standoff_distance.
         set targ:parking_distance to standoff_distance.
-        targ:draw_parking().
 
         local dv is memo:getter({
 
@@ -222,22 +210,20 @@
                 // we drift 100 meters away or if our
                 // relative speed hits 0.1 m/s.
 
-                if d_p < 0.50*standoff_distance and r_v:mag < 5.0 {
-                    return V(0,0,0). }
+                if d_p < 0.50*standoff_distance and r_v:mag < 5.0
+                    return V(0,0,0).
 
-                print "rdv:fine starting maneuver.".
                 set holding_position to false. }
 
             if d_p < 0.20*standoff_distance and r_v:mag < 1.0 {
                 // when close and slow, hold position.
                 set holding_position to true.
-                print "rdv:fine holding position.".
                 return V(0,0,0). }
 
-            if d_p < 0.40*standoff_distance {
+            if d_p < 0.40*standoff_distance
                 // when close but not slow,
                 // burn to cancel the velocity.
-                return r_v. }
+                return r_v.
 
             // not close enough. burn to set velocity
             // to close at a controlled rate based on
@@ -271,11 +257,6 @@
 
         set targ:parking_distance to 5.
 
-        // SURPRISE: target:orbit:position <> target:position
-        // dbg:pv("      target:position", target:position).
-        // dbg:pv("target:orbit:position", target:orbit:position).
-        // dbg:pv("  targ:orbit:position", targ:orbit:position).
-
         if targ:park_from_ship():mag>(2*targ:parking_distance) {
             io:say("Approacing to "+targ:parking_distance+" m.", false).
             io:say("Please be patient.", false). }
@@ -284,6 +265,5 @@
             io:say("Holding "+targ:parking_distance+" m from Target.", false). }
 
         ctrl:rcs_dx(targ:park_from_ship).
-        targ:draw_parking().
         return 5. }).
 }

@@ -121,9 +121,7 @@
 
         if waittime > 60 {
             if vang(steering:vector, facing:vector) < 5 {
-                print "mnv:step warping to node".
                 warpto(starttime-30). }
-            print "mnv:step will warp to node when stable.".
             return 1. }
 
         return 1. }).
@@ -175,13 +173,20 @@
     mnv:add("time", {         // compute maneuver time.
         parameter dV.
 
-        // TODO handle staging event happening during the burn
-        // because the next stage may have significantly lower
-        // available thrust, and staging takes time.
+        // TODO: we might stage during the maneuver node burn!
         //
-        // NOTE: if we go recursive, need some way to tell
-        // ourselves to use reduced initial mass, the thrust
-        // of the next stage, and its available DV.
+        // Compare the DV of the burn with the DV remaining in
+        // the current stage. If we can do it in this stage,
+        // the current code is right.
+        //
+        // Otherwise, add up
+        // - the DT for the DV available in this stage
+        // - padding for the time to stage
+        // - time for the remaining DV using the ship
+        //   after this stage is staged away.
+        // This will require working out F, V_e and M0
+        // for the ship *after* we stage to ignite the
+        // next set of engines.
 
         local F is availablethrust.
         local v_e is mnv:v_e().

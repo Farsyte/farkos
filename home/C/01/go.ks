@@ -65,8 +65,7 @@
 
             "COAST", phase:coast,
             "CIRC", phase:circ,
-            "PLANE", match:plane,
-
+            "PLANE", match:plan_incl, mnv:step,
             "HOLD", { return max(5, phase:hold()). })).
 
         mission:bg(phase:autostager).

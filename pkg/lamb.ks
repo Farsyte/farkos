@@ -27,9 +27,9 @@
         parameter t1.                       // instant of correction burn
         parameter t2.                       // instant of target match
 
-        local tof is t2-t1.
-
         if t1=dv_of_t12_last_t1 and t2=dv_of_t12_last_t2 return dv_of_t12_last_dv.
+
+        local tof is t2-t1.
 
         local r1 is predict:pos(t1, ship).
         local r2 is targ:standoff(t2). // predict:pos(t2, target).
@@ -81,7 +81,7 @@
                 local tof is state:tof.
                 if tof<=0 return "skip".
                 local t2 is t1 + tof.
-                local r2 is targ:standoff(t2). // predict:pos(t2, target).
+                local r2 is targ:standoff(t2).
                 local v2 is predict:vel(t2, target).
 
                 if vang(r1,r2)>170 set r2 to vxcl(onv,r2).
@@ -107,45 +107,25 @@
                 if ds<scorethresh return true.
                 if tofstep<=tofeps return true.
                 set tofstep to max(tofeps,tofstep/3).
-                // dbg:pv("t2_fine tofstep", state:tofstep).
                 return false. },
 
             lex("tof", state:tofmin, "score", 0,
                 "t2", 0, "b1", V(0,0,0), "b2", V(0,0,0))).
         //
-        // I am perfectly OK with stalling the master sequencer
-        // while we riffle through times of flight, even though
-        // this is taking us hundreds of ms.
+        // NOTE: yes, this stalls the master sequence while we
+        // look at various times of flight. This is acceptable.
         until plan_xfer_scan_t2:step() { }.
 
-        if plan_xfer_scan_t2:failed {
-            print "t1_fit["+round(t1pct)+"%]:"
-                + "t2 scan failed".
-            return "skip". }
+        if plan_xfer_scan_t2:failed
+            return "skip".
 
         local result is plan_xfer_scan_t2:result.
-        // dbg:pv("plan_xfer_scan_t2:result:t1 now+", result:t1-time:seconds).
-        // dbg:pv("plan_xfer_scan_t2:result:t2 now+", result:t2-time:seconds).
-        // dbg:pv("plan_xfer_scan_t2:result:tof", result:tof).
-        // dbg:pv("plan_xfer_scan_t2:result:b1", result:b1).
-        // dbg:pv("plan_xfer_scan_t2:result:b2", result:b2).
 
         set state:tof to result:tof.
         set state:t2 to result:t2.
         set state:b1 to result:b1.
         set state:b2 to result:b2.
         set state:score to result:score.
-
-        // print "t1_fit["+round(t1pct,2)+"%]:"
-        //     +" t2 scan yields"
-        //     +" eta "+round(t1-time:seconds)
-        //     +" burn "+round(result:b1:mag)
-        //     +" tof "+round(result:tof)
-        //     +" burn "+round(result:b2:mag)
-        //     +" score "+round(result:score).
-
-        // mnv:update_dv_at_t(t1_scan_n1, state:b1, state:t1).
-        // mnv:update_dv_at_t(t1_scan_n2, state:b2, state:t2).
 
         return result:score. }
 
@@ -214,10 +194,6 @@
 
         if t1_scan_do_start {
 
-            print " ".
-            print "Lambert-based Transfer Planing Starts.".
-            print " ".
-
             set plan_xfer_best to lex("score", -2^64).
 
             // start looking 10 minutes out,
@@ -231,8 +207,6 @@
             local t1min is time:seconds + 600.
             local t1end is t1min + 3.0*P.
             local t1max is t1min + 4.0*P.
-            // local t1step is P / 8.
-            // local t1eps is P / 3600.
 
             t1_scan_setup(t1min, t1min, t1end, t1max). }
 
@@ -249,8 +223,6 @@
             io:say("Lambert Planning Failed.").
             return 0. }
 
-        // scanner has found a LOCAL OPTIMUM.
-
         local result is plan_xfer_t1_scanner:result.
 
         local t1 is result:t1.
@@ -265,46 +237,24 @@
             t1_scan_setup(result:t1+60, result:t1min, result:t1end, result:t1max).
             return 1/10. }
 
+        nv:put("xfer/final", plan_xfer_best:t2).
+
+        io:say("Lambert Planning Successful.").
+
         until not hasnode { remove nextnode. wait 0. }
 
         mnv:schedule_dv_at_t(plan_xfer_best:b1, plan_xfer_best:t1).
-        mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
 
-        local t2 is plan_xfer_best:t2.
-        local rs is predict:pos(t2, ship).
-        local rt is targ:standoff(t2). // predict:pos(t2, target).
-        local dist is (rs-rt):mag.
-        local vs is predict:vel(t2, ship).
-        local vt is predict:vel(t2, target).
-        local aspd is (vs-vt):mag.
-
-        io:say("Lambert Planning Successful.").
-        io:say("Initial Burn: "+round(plan_xfer_best:b1:mag)+" m/s").
-        io:say("B2 Distance: "+round(dist)).
-        io:say("B2 Delta-V: "+round(plan_xfer_best:b2:mag)).
-
-        nv:put("xfer/final", t2).
+        if plan_xfer_best:t2 < time:seconds + nextnode:orbit:eta:transition
+            mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
 
         return 0. }).
 
-    local function hms { parameter dt.
-        local ts is timespan(abs(dt)).
-        local bits is list().
-        if ts:year>0 bits:add(ts:year+"y").
-        if ts:day>0 bits:add(ts:day+"d").
-        if ts:hour>0 bits:add(ts:hour+"h").
-        if ts:minute>0 bits:add(ts:minute+"m").
-        if ts:second>0 or bits:length<1 bits:add(ts:second+"s").
-        return bits:join(" "). }
-
     lamb:add("plan_corr", {
 
-        if not hastarget {
-            io:say("Lambert Correction: TARGET not set.").
-            return 0. }
+        if not hastarget return 0.
 
-        until not hasnode { remove nextnode. wait 0. }
-        wait 1.
+        if hasnode { remove nextnode. return 1/100. }
 
         local mu is body:mu.
         local onv is vcrs(body:position, ship:velocity:orbit):normalized.
@@ -315,7 +265,6 @@
         local tof is t2 - t1.
 
         if tof < 60 {               // too close to use this method.
-            io:say("Lambert Correction: no time.").
             lock steering to facing.
             lock throttle to 0.
             return 0. }
@@ -323,8 +272,7 @@
         local r2 is targ:standoff(t2). // predict:pos(t2, target).
         local r2e is r2 - predict:pos(t2, ship).
 
-        io:say("Lambert Correction: position error is "+r2e:mag).
-        if r2e:mag<1000 {
+        if r2e:mag<1000 {           // already close enough, no correction needed.
             return 0. }
 
         local sInit is lex("t1", t1, "score", 0,
@@ -335,8 +283,10 @@
         local v2 is predict:vel(t2, target).
 
         local lr2 is r2.
-        if vang(r1,lr2)>170 set lr2 to vxcl(onv,lr2).
+        if vang(r1,lr2)>170                 // if nearly 180-degree transfer,
+            set lr2 to vxcl(onv,lr2).       // ignore plane change.
 
+        // check normal and flipped, pick the one that is lower delta-v at v1.
         local s is lambert:v1v2(r1, lr2, tof, mu, false).
         local sR is lambert:v1v2(r1, lr2, tof, mu, true).
         if (s:v1-v1):mag>(sR:v1-v1):mag
@@ -351,14 +301,6 @@
         set sMin:b1 to b1.
         set sMin:b2 to b2.
         set sMin:score to -(b1:mag+b2:mag).
-
-        // print "corr_min["+round(t1pct,2)+"%]:"
-        //     +" t1 scan yields"
-        //     +" eta "+round(t1-time:seconds)
-        //     +" burn "+round(sMin:b1:mag)
-        //     +" tof "+round(tof)
-        //     +" burn "+round(sMin:b2:mag)
-        //     +" score "+round(sMin:score).
 
         local scorethresh is 1/10.
         local t1step is (t2-t1)/8.
@@ -375,8 +317,10 @@
                 local v1 is predict:vel(t1, ship).
 
                 local lr2 is r2.
-                if vang(r1,lr2)>170 set lr2 to vxcl(onv,lr2).
+                if vang(r1,lr2)>170                 // if nearly 180-degree transfer,
+                    set lr2 to vxcl(onv,lr2).       // ignore plane change.
 
+                // check normal and flipped, pick the one that is lower delta-v at v1.
                 local s is lambert:v1v2(r1, lr2, tof, mu, false).
                 local sR is lambert:v1v2(r1, lr2, tof, mu, true).
                 if (s:v1-v1):mag>(sR:v1-v1):mag
@@ -390,14 +334,6 @@
                 set state:score to -(b1:mag+b2:mag).
 
                 local t1pct is (t1-time:seconds)*100/(t2-time:seconds).
-
-                // print "corr_fit["+round(t1pct,2)+"%]:"
-                //     +" t1 scan yields"
-                //     +" eta "+round(t1-time:seconds)
-                //     +" burn "+round(state:b1:mag)
-                //     +" tof "+round(tof)
-                //     +" burn "+round(state:b2:mag)
-                //     +" score "+round(state:score).
 
                 return state:score. },
 
@@ -416,32 +352,13 @@
         until plan_corr_scanner:step() { }
 
         local result is sMin.
+        if not plan_corr_scanner:failed
+            set result to plan_corr_scanner:result.
 
-        if plan_corr_scanner:failed {
-            io:say("Lambert Correction: using sMin."). }
+        mnv:schedule_dv_at_t(result:b1, result:t1).
+        if t2 < time:seconds + nextnode:orbit:eta:transition
+            mnv:schedule_dv_at_t(result:b2, t2).
 
-        else {
-            io:say("Lambert Correction: using located optimum.").
-            set result to plan_corr_scanner:result. }
-
-        set t1 to result:t1.
-
-        // print "lamb:plan_corr selected burn time.".
-        // dbg:pv("  at", "T+"+hms(t1 - time:seconds)).
-        // dbg:pv("  eta(burn)/eta(match)",
-        //     (t1 - time:seconds) /
-        //     (t2 - time:seconds)).
-
-        // print "lamb:plan_corr retaining arrival time.".
-        // dbg:pv("  at", "T+"+hms(t2 - time:seconds)).
-
-        mnv:schedule_dv_at_t(result:b1, t1).
-
-        local rs is predict:pos(t2, ship).
-        local rt is targ:standoff(t2). // predict:pos(t2, target).
-        io:say("Lambert Correction predicted error: "+round((rt-rs):mag,3)+" m.").
-
-        mnv:schedule_dv_at_t(result:b2, t2).
         return 0. }).
 
 }
