@@ -70,8 +70,6 @@
 
         until not hasnode { remove nextnode. wait 0. }
 
-        targ:save().
-
         local b is body.
         local os is ship:orbit.
         local ot is targ:orbit().
