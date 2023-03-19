@@ -5,11 +5,10 @@
     local nv is import("nv").
     local mission is import("mission").
     local phase is import("phase").
-    local lamb is import("lamb").
     local task is import("task").
     local targ is import("targ").
+    local plan is import("plan").
     local match is import("match").
-    local mnv is import("mnv").
     local hill is import("hill").
     local rdv is import("rdv").
     local dbg is import("dbg").
@@ -46,9 +45,9 @@
         "Coast", phase:coast,
                 {   set mapview to true. return 0. },
         "Circularize", phase:circ,
-        "Match Inclination", match:plan_incl,
-        "Mun Xfer Inject", lamb:plan_xfer, mnv:step,
-        "Mun Xfer Correct", lamb:plan_corr, mnv:step,
+        "Match Inclination", plan:match_incl,
+        "Mun Xfer Inject", plan:xfer, plan:go,
+        "Mun Xfer Correct", plan:corr, plan:go,
 
         "Coast to Mun", wait_for:bind("Mun"),
 

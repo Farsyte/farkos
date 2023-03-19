@@ -8,7 +8,7 @@
     local dbg is import("dbg").
     local io is import("io").
     local nv is import("nv").
-    local mnv is import("mnv").
+    local plan is import("plan").
     local ctrl is import("ctrl").
     local memo is import("memo").
 
@@ -243,10 +243,10 @@
 
         until not hasnode { remove nextnode. wait 0. }
 
-        mnv:schedule_dv_at_t(plan_xfer_best:b1, plan_xfer_best:t1).
+        plan:dvt(plan_xfer_best:b1, plan_xfer_best:t1).
 
         if plan_xfer_best:t2 < time:seconds + nextnode:orbit:eta:transition
-            mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
+            plan:dvt(plan_xfer_best:b2, plan_xfer_best:t2).
 
         return 0. }).
 
@@ -355,9 +355,9 @@
         if not plan_corr_scanner:failed
             set result to plan_corr_scanner:result.
 
-        mnv:schedule_dv_at_t(result:b1, result:t1).
+        plan:dvt(result:b1, result:t1).
         if t2 < time:seconds + nextnode:orbit:eta:transition
-            mnv:schedule_dv_at_t(result:b2, t2).
+            plan:dvt(result:b2, t2).
 
         return 0. }).
 
