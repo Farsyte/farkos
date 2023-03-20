@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter go is lex(). // Mission G/01
 
     local mission is import("mission").

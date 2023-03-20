@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter go. // GO script for "O/01".
     local io is import("io").
     local nv is import("nv").

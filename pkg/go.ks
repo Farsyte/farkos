@@ -1,3 +1,4 @@
+@LAZYGLOBAL off.
 {   parameter go is lex(). // default GO script.
     local io is import("io").
 
@@ -5,4 +6,5 @@
         io:say(LIST(
             "No 'GO' package found",
             "for "+ship:name+",",
-            "releasing control.")). }). }
+            "releasing control.")). }).
+}

@@ -1,7 +1,7 @@
-{
-    parameter hover is lex(). // HOVER package
-    local radar is import("radar").
+@LAZYGLOBAL off.
+{   parameter hover is lex(). // HOVER package
 
+    local radar is import("radar").
     local dbg is import("dbg").
 
     hover:add("hold", {                 // HOVER:HOLD(h_set,v_set): hover controller
@@ -25,7 +25,7 @@
         parameter h_set is 100.
         parameter v_set is 0.
 
-        local Kav is 10. // TUNING PARAMETER: accel per velocity error
+        local Kav is 10.                // TUNING PARAMETER: accel per velocity error
 
         local r2 is body:position:sqrmagnitude.                 // radius for gravity computation
         local g is body:mu/r2.                                  // current gravitational acceleration
@@ -40,7 +40,7 @@
 
         local h_obs is radar:alt().                             // current altitude above cal point
 
-        {   // equations of motion:
+        {                               // equations of motion:
             //      V = A*T
             //      X = A*T^2/2
             // elimiating T,
@@ -62,9 +62,9 @@
             // including acceleration of gravity.
         }
 
-        local v_cmd is v_set.       // in the absence of error, command the speed setpoint.
+        local v_cmd is v_set.           // in the absence of error, command the speed setpoint.
 
-        if h_obs > h_set {          // above the set point
+        if h_obs > h_set {                                      // above the set point
             if h_obs > h_set+10 {   // far above the set point
 
                 // vessel more than 10m above the set point.
@@ -72,18 +72,17 @@
                 // upward at a_nom m/s^2 bringing V to 0 at Hobs=Hset.
                 local h_dist is h_obs - h_set.                      // how far we are above set point
                 local v_sub is sqrt(2*a_nom*h_dist).                // additional descent speed
-                set v_cmd to v_cmd - v_sub.                         // net ascent speed
+                set v_cmd to v_cmd - v_sub. }                       // net ascent speed
 
-            } else {                // close above the set point
+            else {                // close above the set point
 
                 // vessel above set point by 10m or less.
                 // proportional control where the control at 10m error
                 // matches the control above.
                 local v_sub_10m is sqrt(2*a_nom*10).
-                set v_cmd to v_cmd - v_sub_10m*(h_obs-h_set)/10.
+                set v_cmd to v_cmd - v_sub_10m*(h_obs-h_set)/10. } }
 
-            }
-        } else if h_obs < h_set {   // below the set point
+        else if h_obs < h_set {                                 // below the set point
             if h_obs < h_set-10 {   // far below the set point
 
                 // vessel more than 10m below the set point.
@@ -91,18 +90,15 @@
                 // downward due to gravity, bringing V to 0 at Hobs=Hset.
                 local h_dist is h_set - h_obs.                      // how far we are above set point
                 local v_add is sqrt(2*g*h_dist).                    // abs(speed) for that acceleration
-                set v_cmd to v_cmd + v_add.                         // net ascent speed
+                set v_cmd to v_cmd + v_add. }                       // net ascent speed
 
-            } else {                // close below the set point
+            else {                // close below the set point
 
                 // vessel below set point by 10m or less.
                 // proportional control where the control at 10m error
                 // matches the control above.
                 local v_add_10m is sqrt(2*g*10).
-                set v_cmd to v_cmd + v_add_10m*(h_set-h_obs)/10.
-
-            }
-        }
+                set v_cmd to v_cmd + v_add_10m*(h_set-h_obs)/10. } }
 
         local v_obs is verticalspeed.                           // current ascent speed
         local v_err is v_cmd - v_obs.                           // positive is descending too fast.
@@ -111,4 +107,5 @@
         local a_cnet is a_cmd + g.                              // net acceleration from throttle
         local t_cmd is a_cnet / a_net.                          // throttle setting 0..1
 
-        return t_cmd. }). }
+        return t_cmd. }).
+}
