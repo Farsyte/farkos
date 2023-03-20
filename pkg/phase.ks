@@ -169,7 +169,7 @@
 
         if verticalspeed<0 {            // terminate: we overshot apoapsis.
             if kuniverse:timewarp:rate > 1 { kuniverse:timewarp:cancelwarp(). return 1/10. }
-            ctrl:dv(prograde:srfretrograde/10000, 1, 1, 5).
+            ctrl:dv(srfretrograde:vector/10000, 1, 1, 5).
             if vang(steering:vector, facing:vector)>5 return 1.
             return 0. }
 
@@ -302,7 +302,7 @@
         local radius_body is body:radius.
 
         local dv is memo:getter({
-            local desired_speed is visviva:v(radius_body+altitude, radius_body+h-1, radius_body+apoapsis).
+            local desired_speed is visviva:v(radius_body+altitude, radius_body+h-100, radius_body+apoapsis).
             local current_speed is velocity:orbit:mag.
             local desired_speed_change is max(0, current_speed - desired_speed).
             return 0.10*retrograde:vector*desired_speed_change. }).
