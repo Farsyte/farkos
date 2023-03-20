@@ -3,12 +3,17 @@
 
     local nv is import("nv").
     local io is import("io").
-    local dbg is import("dbg").
     local memo is import("memo").
     local predict is import("predict").
 
     // TODO verify support for DockingPort as TARGET.
 
+    // phase offset from target to destination (0..360)
+    // used for long range planning only
+    targ:add("phase_offset", 0).
+
+    // distance from target to our "parking" place.
+    // used for very short range maneuvering only.
     targ:add("parking_distance", 5).            // distance from targ to parking
 
     targ:add("targ_from_ship", {                // vector to targ (from ship)
@@ -64,6 +69,17 @@
     // planning.
     targ:add("standoff", {                      // standoff position, for long range planning
         parameter t is time:seconds.
+        local ph is targ:phase_offset.
+        local p is targ:orbit:period.
+        // if we have a nonzero phase offset, and the target has
+        // a positive period, then our destination is the point
+        // exactly on the target orbit that leads it by some fraction
+        // of the orbital period, which for convenience we express
+        // as an angle (180 is half the period in advance). If the target
+        // orbit is circular, then ph is the phase angle we will get.
+        if ph<>0 and p>0
+            return predict:pos(t + ph*p/360, target).
+
         local t_p is predict:pos(t, target).
         local t_d is t_p:normalized.
         local t_r is t_p:mag.
@@ -99,12 +115,11 @@
             if sel="" {                         // explicit "clear target" request
                 return targ:clr(). }
             local obj is named(sel).              // convert to something we can target
-            if obj="" {
-                print "targ:save rejecting '"+sel+"'".
-                return 0. }
+            if obj=""
+                return 0.
             set sel to obj. }
 
-        if sel:hassuffix("name") {              // update targ:name before moving from sel to its parent.
+        if sel:hassuffix("name") and not sel:istype("Orbit") {
             set targ:name to sel:name. }
         else {
             set targ:name to "". }

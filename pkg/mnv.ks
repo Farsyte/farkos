@@ -5,6 +5,7 @@
     local predict is import("predict").
     local memo is import("memo").
     local ctrl is import("ctrl").
+    local plan is import("plan").
     local dbg is import("dbg").
 
     //
@@ -19,52 +20,10 @@
     // at https://github.com/gisikw/ksprogramming.git
     // in episodes/e039/mnv.v0.1.0.ks
     //
-    // Changes:
-    // - added attribution comment above
-    // - added limited documentation of the API
-    // - refactored for my IMPORT mechanism
-    // - create and export mnv:step
-    // - export mnv:time
-    // - separate ISP computation out of mnv:time
-    // - correct Isp computation for non-identical engines
-    // - prefer using exhaust velocity over Isp
-    // - compute aggregate exhaust velocity using g₀
-    // - removed staging logic (see PHASES:BG_STAGER)
+    // This code has evolved a bit since then.
 
     local e is constant:e.
     local G0 is constant:G0. // converion factor for Isp
-
-    mnv:add("update_dv_at_t", {     // update maneuver for dv at time t
-        parameter n.                // node to update.
-        parameter dv.               // Body-rel change in velocity
-        parameter t.                // universal time to apply change.
-
-        local pos_t is predict:pos(t, ship).
-        local vel_t is predict:vel(t, ship).
-
-        local basis_p is vel_t:normalized.
-        local basis_n is vcrs(vel_t, pos_t):normalized.
-        local basis_r is vcrs(basis_n, basis_p).
-
-        set n:time to t.
-        set n:radialout to vdot(basis_r, dv).
-        set n:normal to vdot(basis_n, dv).
-        set n:prograde to vdot(basis_p, dv).
-        add n. wait 0. return n. }).
-
-    mnv:add("schedule_dv_at_t", {   // create maneuver for dv at time t
-        parameter dv.               // Body-rel change in velocity
-        parameter t.                // universal time to apply change.
-
-        local pos_t is predict:pos(t, ship).
-        local vel_t is predict:vel(t, ship).
-
-        local basis_p is vel_t:normalized.
-        local basis_n is vcrs(vel_t, pos_t):normalized.
-        local basis_r is vcrs(basis_n, basis_p).
-
-        local n is node(t, vdot(basis_r, dv), vdot(basis_n, dv), vdot(basis_p, dv)).
-        add n. wait 0. return n. }).
 
     local saved_maneuver_direction is V(0,0,0).
     mnv:add("step", {         // maneuver step computation for right now

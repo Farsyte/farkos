@@ -5,7 +5,7 @@
     local nv is import("nv").
     local mission is import("mission").
     local phase is import("phase").
-    local match is import("match").
+    local plan is import("plan").
     local targ is import("targ").
     local dbg is import("dbg").
 
@@ -65,7 +65,7 @@
 
             "COAST", phase:coast,
             "CIRC", phase:circ,
-            "PLANE", match:plan_incl, mnv:step,
+            "PLANE", plan:match_incl, plan:go,
             "HOLD", { return max(5, phase:hold()). })).
 
         mission:bg(phase:autostager).
