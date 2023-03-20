@@ -3,6 +3,7 @@
     local dbg is import("dbg").
     local mnv is import("mnv").
     local lamb is import("lamb").
+    local targ is import("targ").
     local scan is import("scan").
     local predict is import("predict").
     local visviva is import("visviva").
@@ -12,8 +13,6 @@
     plan:add("dvt", {               // create maneuver for dv at time t
         parameter dv.               // Body-rel change in velocity
         parameter t.                // universal time to apply change.
-
-        until not hasnode { remove nextnode. wait 0. }
 
         local ship_radial_dir is predict:pos(t, ship):normalized.
         local prograde_dir is predict:vel(t, ship):normalized.
@@ -70,7 +69,7 @@
         local t is t_min.
         local scanner is scan:init(
             {   parameter t.
-                local pos_t is positionat(ship, t) - body:position.
+                local pos_t is predict:pos(t, ship).
                 local rad_t is pos_t:mag.
                 local alt_t is rad_t - body:radius.
                 return abs(des_alt - alt_t). },
@@ -152,6 +151,27 @@
         print "  Burn Vector: "+dbg:pr(n:deltav).
 
         return 0. }).
+
+    // find the time (at least 2 minutes in the future)
+    // where our position is along the NV vector.
+    local function find_node { parameter nv.
+        local t1 is time:seconds + 120.
+        local dt is 64.
+        local function fitness { parameter t1.
+            local rt is predict:pos(t1, ship).
+            local n2 is vxcl(nv, rt).
+            return -n2:mag. }
+        local function fitincr { parameter t1. return t1 + dt. }
+        local function fitfine { parameter t1, ds.
+            if ds<100 return true.
+            if dt<0.1 return true.
+            set dt to dt/4. return false. }
+        local scanner is scan:init( fitness@, fitincr@, fitfine@, t1).
+        until scanner:step() {}
+        if scanner:failed {
+            print "find_node: scanner failed.".
+            wait until false. }
+        return scanner:result. }
 
     plan:add("xfer", lamb:plan_xfer).
     plan:add("corr", lamb:plan_corr).
