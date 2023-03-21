@@ -381,8 +381,8 @@
 
         // we are in, or just above, atmosphere. burn retrograde
         // to help shed our orbital energy. direction is somewhat important
-        // and magnitude needs to be enough to get us full throttle.
-        ctrl:dv(-ship:velocity:orbit, 1, 5, 15).
+        // and magnitude is how much velocity we would like to shed.
+        ctrl:dv(-ship:velocity:surface, 1, 5, 15).
         return 1. }).
 
     phase:add("lighten", {
