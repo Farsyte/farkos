@@ -12,15 +12,28 @@
 
     plan:add("dvt", {               // create maneuver for dv at time t
         parameter dv.               // Body-rel change in velocity
-        parameter t.                // universal time to apply change.
+        parameter t.                // universal
 
-        local ship_radial_dir is predict:pos(t, ship):normalized.
-        local prograde_dir is predict:vel(t, ship):normalized.
-        local normal_dir is vcrs(prograde_dir, ship_radial_dir).
-        local node_radial_dir is vcrs(normal_dir, prograde_dir).
+        // the vector DV is in body-raw coordinates.
+        // need to find its representation in the coordinate
+        // system "radial out, normal, prograde" at the time
+        // of the burn, where "prograde" is the direction of
+        // our velocity, "normal" is parallel to our angular
+        // momentum, and "radial out" is the vector perpendicular
+        // to them that is rougly "outward" from the body.
 
-        local n is node(t, vdot(node_radial_dir, dv), vdot(normal_dir, dv), vdot(prograde_dir, dv)).
-        add n. wait 0. return n. }).
+        local ship_from_body is predict:pos(t, ship).
+        local ship_vrel_body is predict:vel(t, ship).
+
+        local normal_dir is vcrs(ship_vrel_body, ship_from_body):normalized.
+        local prograde_dir is ship_vrel_body:normalized.
+
+        local dir is lookdirup(prograde_dir, normal_dir).
+        local rnp is dir:inverse*dv.
+
+        local n is node(t, rnp:x, rnp:y, rnp:z).
+        add n. wait 0.
+        return n. }).
 
     plan:add("circ_ap", {           // circularize at apoapsis
 
