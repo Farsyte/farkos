@@ -501,7 +501,44 @@
         print "  o velocity: "+velocity:orbit:mag.
         print "  delta-v: "+ship:deltav:vacuum. }
 
-    phase:add("autostager", {   // stage when appropriate.
+    {
+        local mt is 0.
+        local sn is stage:number.
+        phase:add("autostager", {   // stage when appropriate.
+
+            if stage:number<2 {
+                print "autostager: done; stage number was "+stage:number.
+                return 0. }
+
+            if not stage:ready return 1.
+            if alt:radar<100 and availablethrust<=0 return 1.
+
+            local mt_old is mt.
+            set mt to ship:maxthrustat(0).
+
+            local sn_old is sn.
+            set sn to stage:number.
+
+            // TODO check if some future high tech engines
+            // might change their maxthrustat(0) in some
+            // situation other than ignition or flameout.
+
+            if sn<>sn_old or (mt>0 and mt=mt_old)
+                return 1.
+
+            if mt=0 {
+                local engine_list is list().
+                list engines in engine_list.
+                if engine_list:length<1 {
+                    print "autostager: no more engines.".
+                    return 0. } }
+
+            print "autostager: staging; stage number was "+stage:number.
+            stage.
+            return 1. }).
+    }
+
+    phase:add("autostager_enginelist", {   // stage when appropriate.
 
         // PAUSE if STAGE:READY is false.
         // - catches "we are doing an EVA"
