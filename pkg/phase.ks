@@ -475,17 +475,22 @@
     phase:add("force_rcs_off", 0).
     lock steering to facing. // have to set it at least once ...
     phase:add("autorcs", {      // enable RCS when appropriate.
+        local f is facing.
+        local s is steering.
         if has_no_rcs()                                         return 0.
-        else if phase:force_rcs_on>0                            rcs on.
-        else if phase:force_rcs_off>0                           rcs off.
+        else if 0<phase:force_rcs_on                            rcs on.
+        else if 0<phase:force_rcs_off                           rcs off.
         else if altitude < body:atm:height                      rcs off.
-        else if ship:angularvel:mag>0.1                         rcs on.
-        else if not steering:istype("Direction")                rcs off.
-        else if not facing:istype("Direction")                  rcs off.
-        else if 4<vang(facing:forevector, steering:forevector)  rcs on.
-        else if 4<vang(facing:topvector, steering:topvector)    rcs on.
+        else if not s:istype("Direction")                       rcs off.
+        else if not f:istype("Direction")                       rcs off.
+        else if 0.1<ship:angularvel:mag                         rcs on.
+        else if 4<vang(f:forevector, s:forevector)              rcs on.
+        else if 4<vang(f:topvector, s:topvector)                rcs on.
+        else if 0.01<ship:angularvel:mag                        return 1.
+        else if 1<vang(f:forevector, s:forevector)              return 1.
+        else if 1<vang(f:topvector, s:topvector)                return 1.
         else                                                    rcs off.
-        return 1/10. }).
+        return 1. }).
 
     {   // dump some info during boot.
         print " ".
