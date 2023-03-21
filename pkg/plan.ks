@@ -12,15 +12,28 @@
 
     plan:add("dvt", {               // create maneuver for dv at time t
         parameter dv.               // Body-rel change in velocity
-        parameter t.                // universal time to apply change.
+        parameter t.                // universal
 
-        local ship_radial_dir is predict:pos(t, ship):normalized.
-        local prograde_dir is predict:vel(t, ship):normalized.
-        local normal_dir is vcrs(prograde_dir, ship_radial_dir).
-        local node_radial_dir is vcrs(normal_dir, prograde_dir).
+        // the vector DV is in body-raw coordinates.
+        // need to find its representation in the coordinate
+        // system "radial out, normal, prograde" at the time
+        // of the burn, where "prograde" is the direction of
+        // our velocity, "normal" is parallel to our angular
+        // momentum, and "radial out" is the vector perpendicular
+        // to them that is rougly "outward" from the body.
 
-        local n is node(t, vdot(node_radial_dir, dv), vdot(normal_dir, dv), vdot(prograde_dir, dv)).
-        add n. wait 0. return n. }).
+        local ship_from_body is predict:pos(t, ship).
+        local ship_vrel_body is predict:vel(t, ship).
+
+        local normal_dir is vcrs(ship_vrel_body, ship_from_body):normalized.
+        local prograde_dir is ship_vrel_body:normalized.
+
+        local dir is lookdirup(prograde_dir, normal_dir).
+        local rnp is dir:inverse*dv.
+
+        local n is node(t, rnp:x, rnp:y, rnp:z).
+        add n. wait 0.
+        return n. }).
 
     plan:add("circ_ap", {           // circularize at apoapsis
 
@@ -30,8 +43,8 @@
 
         local r0 is body:radius + apoapsis.
         local vc is sqrt(body:mu/r0).
-        local vs is predict:vel(ut, ship):orbit.
-        local dv is vs*(vc-vs:mag).
+        local vs is predict:vel(ut, ship).
+        local dv is vs:normalized*(vc-vs:mag).
         local n is plan:dvt(dv, ut).
 
         print "Circularization at Apoapsis planned.".
@@ -45,12 +58,13 @@
 
         until not hasnode { remove nextnode. wait 0. }
 
-        local ut is time:seconds + eta:apoapsis.
+        local ut is time:seconds + eta:periapsis.
 
         local r0 is body:radius + periapsis.
         local vc is sqrt(body:mu/r0).
-        local vs is predict:vel(ut, ship):orbit.
-        local dv is vs*(vc-vs:mag).
+        local vs is predict:vel(ut, ship).
+        local dv is vs:normalized*(vc-vs:mag).
+
         local n is plan:dvt(dv, ut).
 
         print "Circularization at Periapsis planned.".
