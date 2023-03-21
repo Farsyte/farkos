@@ -411,7 +411,7 @@
     phase:add("fall", {         // fall into atmosphere
         if body:atm:height<10000 return 0.
         if altitude<body:atm:height/2 return 0.
-        ctrl:dv(V(0,0,0), 0, 0, 0).
+        ctrl:dv(srfretrograde:vector, 0, 0, 0).
         return 1. }).
 
     phase:add("decel", {        // active deceleration
