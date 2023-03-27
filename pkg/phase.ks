@@ -381,8 +381,8 @@
 
         // we are in, or just above, atmosphere. burn retrograde
         // to help shed our orbital energy. direction is somewhat important
-        // and magnitude needs to be enough to get us full throttle.
-        ctrl:dv(-ship:velocity:orbit, 1, 5, 15).
+        // and magnitude is how much velocity we would like to shed.
+        ctrl:dv(-ship:velocity:surface, 1, 5, 15).
         return 1. }).
 
     phase:add("lighten", {
@@ -411,7 +411,7 @@
     phase:add("fall", {         // fall into atmosphere
         if body:atm:height<10000 return 0.
         if altitude<body:atm:height/2 return 0.
-        ctrl:dv(V(0,0,0), 0, 0, 0).
+        ctrl:dv(srfretrograde:vector, 0, 0, 0).
         return 1. }).
 
     phase:add("decel", {        // active deceleration
@@ -475,17 +475,22 @@
     phase:add("force_rcs_off", 0).
     lock steering to facing. // have to set it at least once ...
     phase:add("autorcs", {      // enable RCS when appropriate.
+        local f is facing.
+        local s is steering.
         if has_no_rcs()                                         return 0.
-        else if phase:force_rcs_on>0                            rcs on.
-        else if phase:force_rcs_off>0                           rcs off.
+        else if 0<phase:force_rcs_on                            rcs on.
+        else if 0<phase:force_rcs_off                           rcs off.
         else if altitude < body:atm:height                      rcs off.
-        else if ship:angularvel:mag>0.1                         rcs on.
-        else if not steering:istype("Direction")                rcs off.
-        else if not facing:istype("Direction")                  rcs off.
-        else if 4<vang(facing:forevector, steering:forevector)  rcs on.
-        else if 4<vang(facing:topvector, steering:topvector)    rcs on.
+        else if not s:istype("Direction")                       rcs off.
+        else if not f:istype("Direction")                       rcs off.
+        else if 0.1<ship:angularvel:mag                         rcs on.
+        else if 4<vang(f:forevector, s:forevector)              rcs on.
+        else if 4<vang(f:topvector, s:topvector)                rcs on.
+        else if 0.01<ship:angularvel:mag                        return 1.
+        else if 1<vang(f:forevector, s:forevector)              return 1.
+        else if 1<vang(f:topvector, s:topvector)                return 1.
         else                                                    rcs off.
-        return 1/10. }).
+        return 1. }).
 
     {   // dump some info during boot.
         print " ".
@@ -496,7 +501,44 @@
         print "  o velocity: "+velocity:orbit:mag.
         print "  delta-v: "+ship:deltav:vacuum. }
 
-    phase:add("autostager", {   // stage when appropriate.
+    {
+        local mt is 0.
+        local sn is stage:number.
+        phase:add("autostager", {   // stage when appropriate.
+
+            if stage:number<2 {
+                print "autostager: done; stage number was "+stage:number.
+                return 0. }
+
+            if not stage:ready return 1.
+            if alt:radar<100 and availablethrust<=0 return 1.
+
+            local mt_old is mt.
+            set mt to ship:maxthrustat(0).
+
+            local sn_old is sn.
+            set sn to stage:number.
+
+            // TODO check if some future high tech engines
+            // might change their maxthrustat(0) in some
+            // situation other than ignition or flameout.
+
+            if sn<>sn_old or (mt>0 and mt=mt_old)
+                return 1.
+
+            if mt=0 {
+                local engine_list is list().
+                list engines in engine_list.
+                if engine_list:length<1 {
+                    print "autostager: no more engines.".
+                    return 0. } }
+
+            print "autostager: staging; stage number was "+stage:number.
+            stage.
+            return 1. }).
+    }
+
+    phase:add("autostager_enginelist", {   // stage when appropriate.
 
         // PAUSE if STAGE:READY is false.
         // - catches "we are doing an EVA"
