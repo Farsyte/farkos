@@ -15,10 +15,10 @@
 
     local r0 is body:radius.
     local target_sma is goal:sma.
-    local target_alt is target_sma + r0.
+    local target_alt is target_sma - r0.
     local target_period is goal:period.
 
-    nv:put("launch_altitude", target_sma+1000).
+    nv:put("launch_altitude", target_alt+1000).
     nv:put("launch_azimuth", 90).
     nv:put("launch_pitchover", 3).
 
@@ -49,7 +49,7 @@
             {   // extend the antennae.
                 lights on. return 0. },
 
-            "CIRC", plan:circ_at:bind(target_alt), plan:go,
+            "CIRC", plan:circ_at:bind(target_alt), plan:go, phase:circ,
 
             "HOLD", {
                 if not lights lights on.

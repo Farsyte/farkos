@@ -93,41 +93,41 @@
         "CORRECT",      plan:corr,
         {   if hasnode mission:jump(nv:get("to/exec")). return 0. },
 
-        "CIRC", plan:circ_at:bind(target_altitude), plan:go,
+        "CIRC", plan:circ_at:bind(target_altitude), plan:go, phase:circ,
 
-            "HOLD", {
-                if not lights lights on.
+        "HOLD", {
+            if not lights lights on.
 
-                dbg:pv("observed period: ", TimeSpan(orbit:period)).
-                dbg:pv("assigned period: ", TimeSpan(target_period)).
-                dbg:pv("period error: ", TimeSpan(orbit:period - target_period)).
+            dbg:pv("observed period: ", TimeSpan(orbit:period)).
+            dbg:pv("assigned period: ", TimeSpan(target_period)).
+            dbg:pv("period error: ", TimeSpan(orbit:period - target_period)).
 
-                if abs(orbit:period - target_period) > 0.1 {
+            if abs(orbit:period - target_period) > 0.1 {
 
-                // this will not only try to fix our sma,
-                // but also minimizes our eccentricity.
+            // this will not only try to fix our sma,
+            // but also minimizes our eccentricity.
 
-                    ctrl:rcs_dv({
-                        if abs(orbit:period - target_period) < 0.1 return V(0,0,0).
-                        local obs_v is ship:velocity:orbit.
-                        local r1 is r0 + altitude.
-                        local r2 is target_sma * 2 - r1.
-                        local des_s is visviva:v(r1, r1, r2).
-                        // would be sqrt(mu/target_sma) if our sma were perfect.
-                        local des_v is vxcl(body:position, obs_v):normalized*des_s.
-                        local dv is des_v - obs_v.
-                        return dv. }).
+                ctrl:rcs_dv({
+                    if abs(orbit:period - target_period) < 0.1 return V(0,0,0).
+                    local obs_v is ship:velocity:orbit.
+                    local r1 is r0 + altitude.
+                    local r2 is target_sma * 2 - r1.
+                    local des_s is visviva:v(r1, r1, r2).
+                    // would be sqrt(mu/target_sma) if our sma were perfect.
+                    local des_v is vxcl(body:position, obs_v):normalized*des_s.
+                    local dv is des_v - obs_v.
+                    return dv. }).
 
-                } else {
-                    set ship:control:neutralize to true.
-                    set phase:force_rcs_on to 0.
-                    sas off. rcs off.
-                    lock throttle to 0.
-                    lock steering to lookdirup(V(0,1,0),V(1,0,0)).
-                }
+            } else {
+                set ship:control:neutralize to true.
+                set phase:force_rcs_on to 0.
+                sas off. rcs off.
+                lock throttle to 0.
+                lock steering to lookdirup(V(0,1,0),V(1,0,0)).
+            }
 
-                return 5.
-            })).
+            return 5.
+        })).
 
     go:add("go", {
 
