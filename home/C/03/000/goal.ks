@@ -13,10 +13,10 @@
     local b is body("Kerbin").
 
     local mu is b:mu.
-    local r0 is b:radius.
     local t is b:rotationperiod.
     local pi is constant:pi.
 
     local a is (mu * (t/(2*pi))^2)^(1/3).
 
-    goal:add("altitude", a-r0). }
+    goal:add("period", t).
+    goal:add("sma", a). }

@@ -35,6 +35,11 @@
             for e in value
                 ret:add(dbg:pr(e)).
             return "["+ret:join(" ")+"]". },
+        "ListValue`1",         { parameter value.
+            local ret is list().
+            for e in value
+                ret:add(dbg:pr(e)).
+            return "["+ret:join(" ")+"]". },
         "Lexicon",       { parameter value.
             local ret is list().
             local nl is "". // char(10).

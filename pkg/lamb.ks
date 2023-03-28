@@ -32,7 +32,7 @@
         local tof is t2-t1.
 
         local r1 is predict:pos(t1, ship).
-        local r2 is targ:standoff(t2). // predict:pos(t2, target).
+        local r2 is targ:standoff(t2).
         local mu is body:mu.
 
         local onv is vcrs(body:position, ship:velocity:orbit):normalized.
@@ -82,7 +82,7 @@
                 if tof<=0 return "skip".
                 local t2 is t1 + tof.
                 local r2 is targ:standoff(t2).
-                local v2 is predict:vel(t2, target).
+                local v2 is targ:standoff_v(t2).
 
                 if vang(r1,r2)>170 set r2 to vxcl(onv,r2).
 
@@ -280,11 +280,11 @@
 
         local r1 is predict:pos(t1, ship).
         local v1 is predict:vel(t1, ship).
-        local v2 is predict:vel(t2, target).
+        local v2 is targ:standoff_v(t2). // predict:vel(t2, target).
 
         local lr2 is r2.
-        if vang(r1,lr2)>170                 // if nearly 180-degree transfer,
-            set lr2 to vxcl(onv,lr2).       // ignore plane change.
+        if vang(r1,lr2)>120                  // if over 120-degree transfer,
+            set lr2 to vxcl(onv,lr2).       // leave plane change for later.
 
         // check normal and flipped, pick the one that is lower delta-v at v1.
         local s is lambert:v1v2(r1, lr2, tof, mu, false).
@@ -317,7 +317,7 @@
                 local v1 is predict:vel(t1, ship).
 
                 local lr2 is r2.
-                if vang(r1,lr2)>170                 // if nearly 180-degree transfer,
+                if vang(r1,lr2)>120                 // if more than 120-degree transfer,
                     set lr2 to vxcl(onv,lr2).       // ignore plane change.
 
                 // check normal and flipped, pick the one that is lower delta-v at v1.
