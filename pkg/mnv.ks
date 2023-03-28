@@ -47,7 +47,7 @@
             return 1/10.
 
         local bv is n:burnvector.
-        local waittime is n:eta - mnv:time(bv:mag)/2.
+        local waittime is n:eta - mnv:time(bv:mag)/2 - 1.5.
         local starttime is time:seconds + waittime.
         local good_enough is nv:get("mnv/step/good_enough", 0.001).
 
@@ -80,10 +80,20 @@
 
         if waittime > 60 {
             if vang(steering:vector, facing:vector) < 5 {
+
+                if kuniverse:timewarp:mode = "PHYSICS" {
+                    set kuniverse:timewarp:mode to "RAILS".
+                    return 1.
+                }
+
                 warpto(starttime-30). }
             return 1. }
 
-        return 1. }).
+        if waittime > 2
+            return 1.
+        if waittime > 0
+            return waittime.
+        return 1/1000. }).
 
     // mnv:EXEC(autowarp)
     //   autowarp         if true, autowarp to the node.

@@ -8,6 +8,7 @@
     local predict is import("predict").
     local visviva is import("visviva").
 
+
     plan:add("go", mnv:step).
 
     plan:add("dvt", {               // create maneuver for dv at time t
@@ -75,6 +76,10 @@
         return 0. }).
 
     local function next_time_near_altitude { parameter des_alt.
+
+        if (des_alt >= apoapsis) return time:seconds + eta:apoapsis.
+        if (des_alt <= periapsis) return time:seconds + eta:periapsis.
+
         local ddt_min is 1.
         local scorethresh is 100.
         local dt is 300.
@@ -86,7 +91,7 @@
                 local pos_t is predict:pos(t, ship).
                 local rad_t is pos_t:mag.
                 local alt_t is rad_t - body:radius.
-                return abs(des_alt - alt_t). },
+                return -abs(des_alt - alt_t). },
             {   parameter t. return t + dt. },
             {   parameter t, ds.
                 if ds <= scorethresh return true.
@@ -141,9 +146,12 @@
         local vs is velocity:orbit.
         local hs is vcrs(vs,rs).            // normal to ship orbital plane
 
-        local ro is rs+ot:position.
+        local ro is ot:position+rs.
         local vo is ot:velocity:orbit.
         local ho is vcrs(vo,ro).            // normal to targ orbital plane
+
+        local ea is vang(ho,hs).            // inclination error angle
+        if (ea < 0.5) return 0.
 
         local nv is vcrs(ho,hs).            // vector from body to ascending node
 
@@ -159,12 +167,13 @@
         local n is plan:dvt(dv, t1).
 
         print "Inclination Correction Planned.".
-        print "  Initial inclination error: "+vang(ho,hs).
+        print "  Initial inclination error: "+ea.
         print "  Burn ETA: "+dbg:pr(timespan(n:eta)).
         print "  Burn DV: "+n:deltav:mag.
         print "  Burn Vector: "+dbg:pr(n:deltav).
 
         return 0. }).
+
 
     // find the time (at least 2 minutes in the future)
     // where our position is along the NV vector.

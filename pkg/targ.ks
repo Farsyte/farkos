@@ -93,6 +93,18 @@
 
         return t_d*(t_r - targ:standoff_distance). }).
 
+    // standoff is the positition at the time,
+    // and when the phase angle is nonzero, it
+    // is well around the orbit. We need a similar
+    // prediction of the velocity at the time,
+    // which accounts for the phase angle as well.
+    targ:add("standoff_v", {
+        parameter t is time:seconds.
+        local ph is targ:phase_offset.
+        local p is targ:orbit:period.
+        if ph<>0 and p>0 set t to t + ph*p/360.
+        return predict:vel(t, target). }).
+
     targ:add("name", "").                       // mission target String  (or "" if not set)
     targ:add("target", "").                     // mission target (for KSP TARGET) (or "" if not set)
     targ:add("orbit", "").                      // mission target Orbit (or "" if not set)
