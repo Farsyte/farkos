@@ -1,5 +1,6 @@
 {   parameter plan is lex().        // generate maneuver nodes.
 
+    local io is import("io").
     local dbg is import("dbg").
     local mnv is import("mnv").
     local lamb is import("lamb").
@@ -38,6 +39,10 @@
 
     plan:add("circ_ap", {           // circularize at apoapsis
 
+        // could be implemented via adj_at
+        //     plan:adj_at(apoapsis, apoapsis, apoapsis)
+        // but that would do a lot of extra work.
+
         until not hasnode { remove nextnode. wait 0. }
 
         local ut is time:seconds + eta:apoapsis.
@@ -49,13 +54,17 @@
         local n is plan:dvt(dv, ut).
 
         print "Circularization at Apoapsis planned.".
-        print "  Burn ETA: "+dbg:pr(timespan(n:eta)).
-        print "  Burn DV: "+n:deltav:mag.
-        print "  Burn Vector: "+dbg:pr(n:deltav).
+        dbg:pv("  Burn ETA: ", timespan(n:eta)).
+        dbg:pv("  Burn DV: ", n:deltav:mag).
+        dbg:pv("  Burn Vector: ", n:deltav).
 
         return 0. }).
 
     plan:add("circ_pe", {           // circularize at periapsis
+
+        // could be implemented via adj_at
+        //     plan:adj_at(periapsis, periapsis, periapsis)
+        // but that would do a lot of extra work.
 
         until not hasnode { remove nextnode. wait 0. }
 
@@ -69,9 +78,9 @@
         local n is plan:dvt(dv, ut).
 
         print "Circularization at Periapsis planned.".
-        print "  Burn ETA: "+dbg:pr(timespan(n:eta)).
-        print "  Burn DV: "+n:deltav:mag.
-        print "  Burn Vector: "+dbg:pr(n:deltav).
+        dbg:pv("  Burn ETA: ", timespan(n:eta)).
+        dbg:pv("  Burn DV: ", n:deltav:mag).
+        dbg:pv("  Burn Vector: ", n:deltav).
 
         return 0. }).
 
@@ -102,37 +111,64 @@
         until scanner:step() {}
         return choose t_min if scanner:failed else scanner:result. }
 
-    plan:add("circ_at", {           // circularize at bound altitude
-        parameter des_alt.
+    plan:add("adj_at", {    // when we are near altitude h1, adjust to h1-by-h2 orbit.
+        parameter h1.
+        parameter h2.
+        parameter h3.
 
         until not hasnode { remove nextnode. wait 0. }
 
-        local ut is next_time_near_altitude(des_alt).
+        local r0 is body:radius.
+        local des_rad_pe is r0 + min(h2, h3).
+        local des_rad_ap is r0 + max(h2, h3).
+
+        local ut is next_time_near_altitude(h1).
 
         local r0 is body:radius.
 
         local ship_from_body is predict:pos(ut, ship).
         local ship_vrel_body is predict:vel(ut, ship).
-        local radius_ship is ship_from_body:mag.
-        local radius_other is 2*des_alt + 2*r0 - radius_ship.
-        local speed_desired is visviva:v(radius_ship, radius_ship, radius_other).
+        local burn_ship_radius is ship_from_body:mag.
 
         local ship_lat_dir is vxcl(ship_from_body, ship_vrel_body):normalized.
-        local desired_velocity is ship_lat_dir * speed_desired.
+        local desired_velocity is V(0,0,0).
+
+        if ((des_rad_pe < burn_ship_radius) and (burn_ship_radius < des_rad_ap)) {
+            // desired velocity has a nonzero radial component
+            // in the same direction as ship vertical speed.
+
+            local des_speed_prograde is visviva:v(burn_ship_radius, des_rad_pe, des_rad_ap).
+            local des_speed_pe is visviva:v(des_rad_pe, des_rad_pe, des_rad_ap).
+            local des_lateral_speed is des_speed_pe * des_rad_pe / burn_ship_radius.
+            local des_radial_speed is safe_sqrt(des_speed_prograde^2 - des_lateral_speed^2).
+            if (ship_from_body * ship_vrel_body < 0)
+                set des_radial_speed to -des_radial_speed.
+
+            set desired_velocity to ship_lat_dir * des_lateral_speed
+                + ship_from_body:normalized * des_radial_speed.
+
+        } else {
+            // desired velocity is purely horizontal.
+            local ship_far_radius is des_rad_pe + des_rad_ap - burn_ship_radius.
+            local speed_desired is visviva:v(burn_ship_radius, burn_ship_radius, ship_far_radius).
+            set desired_velocity to ship_lat_dir * speed_desired.
+        }
 
         local dv is desired_velocity - ship_vrel_body.
         local n is plan:dvt(dv, ut).
 
-        print "Circularization at Altitude planned.".
-        print "  Original Apoapsis: "+dbg:pr(apoapsis).
-        print "  Desired ALT: "+dbg:pr(des_alt).
-        print "  Burn ALT: "+dbg:pr(radius_ship - r0).
-        print "  Other ALT: "+dbg:pr(radius_other - r0).
-        print "  Burn ETA: "+dbg:pr(timespan(n:eta)).
-        print "  Burn DV: "+n:deltav:mag.
-        print "  Burn Vector: "+dbg:pr(n:deltav).
+        print "Orbital Adjustment at Altitude planned.".
+        dbg:pv("  Burn ETA: ", TimeSpan(n:eta)).
+        dbg:pv("  Burn DV: ", n:deltav:mag).
+        dbg:pv("  Burn Vector: ", n:deltav).
 
-        return 0. }).
+        return 0.
+    }).
+
+    plan:add("circ_at", {           // circularize at specified altitude
+        parameter des_alt.
+
+        return plan:adj_at(des_alt, des_alt, des_alt). }).
 
     plan:add("match_incl", {
 
@@ -168,9 +204,9 @@
 
         print "Inclination Correction Planned.".
         print "  Initial inclination error: "+ea.
-        print "  Burn ETA: "+dbg:pr(timespan(n:eta)).
-        print "  Burn DV: "+n:deltav:mag.
-        print "  Burn Vector: "+dbg:pr(n:deltav).
+        dbg:pv("  Burn ETA: ", timespan(n:eta)).
+        dbg:pv("  Burn DV: ", n:deltav:mag).
+        dbg:pv("  Burn Vector: ", n:deltav).
 
         return 0. }).
 
@@ -195,6 +231,113 @@
             print "find_node: scanner failed.".
             wait until false. }
         return scanner:result. }
+
+    local approach_ap_drawvec_list is list().
+    local approach_ap_debug_flag is false.
+
+    plan:add("approach_ap", { parameter aop, ap.
+
+        until not hasnode { remove nextnode. wait 0. }
+
+        // the earliest we want to do this is in two minutes.
+        local t1 is time:seconds() + 120.
+
+        if aop:istype("Scalar") {
+            // hmmf. need eta of ascending node.
+
+            // ASSUMPTION: we are in a (very nearly) circular orbit.
+
+            local rvec is -body:position.               // ship (from body)
+            local vvec is ship:velocity:orbit.          // ship (vrel body)
+            local hvec is vcrs(vvec, rvec).             // ship ang mom vec
+            local pole is V(0,1,0).                     // body north pole
+            local nvec is vcrs(hvec,pole).              // ascending node vector
+
+            local nang is vang(rvec, nvec).
+
+            // if we are moving forward from the ascending node
+            // in a circular orbit, then the dot product of our
+            // velocity with the nodal vector is negative. Correct
+            // the angle to be 360 degrees minus the angle computed
+            // above which is the "wrong way" around the orbit.
+            //
+            // this can misbehave wildly if our orbit is eccentric.
+
+            if vvec*nvec < 0
+                set nang to 360 - nang.
+
+            // nang is the angle forward in our orbit from our
+            // current position to the ascending node.
+
+            set pang to nang + aop.
+
+            // pang is the angle forward in our orbit to the
+            // periapsis.
+
+            local eta_pe is pang * orbit:period / 360.0.
+            local ut_pe is time:seconds() + eta_pe.
+
+            if (ut_pe < t1)
+                set ut_pe to ut_pe + orbit:period.
+
+            until (ut_pe - t1 < orbit:period)
+                set ut_pe to ut_pe - orbit:period.
+
+            set t1 to ut_pe.
+
+            if (approach_ap_debug_flag) {
+                local pos_at_burn is predict:pos(t1, ship).
+                local vel_before_burn is predict:vel(t1, ship).
+
+                local r0 is rvec:mag.
+                local vlen is r0 * 3.
+
+                print "-- compute eta of ascending node.".
+                dbg:pv("aop", aop).
+                dbg:pv("ap", ap).
+                dbg:pv("nvec*vvec", nvec*vvec).
+                dbg:pv("nang", nang).
+                dbg:pv("pang", pang).
+                dbg:pv("eta_pe", TimeSpan(eta_pe)).
+                dbg:pv("period", TimeSpan(orbit:period)).
+                dbg:pv("eta_t1", TimeSpan(t1 - time:seconds())).
+
+                clearvecdraws().
+                approach_ap_drawvec_list:clear().
+                approach_ap_drawvec_list:add(vecdraw(
+                    -rvec, 3*rvec, RGB(1,1,1), "Ship Position", 1.0, true, 0.1, true, true)).
+                approach_ap_drawvec_list:add(vecdraw(
+                    V(0,0,0), vlen*velocity:orbit:normalized, RGB(1,1,1), "Ship Velocity", 1.0, true, 0.1, true, true)).
+                approach_ap_drawvec_list:add(vecdraw(
+                    -rvec, vlen*hvec:normalized, RGB(1,1,1), "Ship Orbital Plane normal", 1.0, true, 0.1, true, true)).
+                approach_ap_drawvec_list:add(vecdraw(
+                    -rvec, vlen*pole:normalized, RGB(1,1,1), "Body North", 1.0, true, 0.1, true, true)).
+                approach_ap_drawvec_list:add(vecdraw(
+                    -rvec, vlen*nvec:normalized, RGB(1,1,1), "Ship Ascending Node", 1.0, true, 0.1, true, true)).
+                approach_ap_drawvec_list:add(vecdraw(
+                    -rvec, 3*pos_at_burn, RGB(1,1,1), "BURN HERE", 1.0, true, 0.1, true, true)).
+                approach_ap_drawvec_list:add(vecdraw(
+                    pos_at_burn-rvec, vlen*vel_before_burn:normalized, RGB(1,1,1), "BURN DIR", 1.0, true, 0.1, true, true)).
+            }
+        }
+
+        local pos_at_burn is predict:pos(t1, ship).
+        local vel_before_burn is predict:vel(t1, ship).
+
+        local rad_at_burn is pos_at_burn:mag.
+        local spd_after_burn is visviva:v(rad_at_burn, rad_at_burn, body:radius + ap).
+        local vel_after_burn is vel_before_burn:normalized * spd_after_burn.
+        local burn_dv is vel_after_burn - vel_before_burn.
+
+        local n is plan:dvt(burn_dv, t1).
+
+        print "Approaching AP at AoP Planned.".
+        dbg:pv("  Burn ETA", timespan(n:eta)).
+        dbg:pv("  Burn DV", n:deltav:mag).
+        dbg:pv("  Burn Vector", n:deltav).
+
+        return 0.
+    }).
 
     plan:add("xfer", lamb:plan_xfer).
     plan:add("corr", lamb:plan_corr).
