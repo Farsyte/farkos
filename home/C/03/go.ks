@@ -27,12 +27,12 @@
     local name is ship:name.
     local nary is name:split("/").
     local nlen is nary:length.
-    local nddd is nary[nlen-1].
+    local nddd is nary[2].
     local lang is nddd:toscalar(0).
 
     set targ:phase_offset to lang.
 
-    set nary[nlen-1] to "000".
+    set nary[2] to "000".
     local lead is nary:join("/").
 
     set target to lead.
@@ -98,11 +98,16 @@
             "HOLD", {
                 if not lights lights on.
 
+                local te is abs(orbit:period - target_period).
+                io:say(ship:name, false).
+                io:say("Holding position", false).
+                io:say("Period error "+dbg:pr(TimeSpan(te)), false).
+
                 dbg:pv("observed period: ", TimeSpan(orbit:period)).
                 dbg:pv("assigned period: ", TimeSpan(target_period)).
-                dbg:pv("period error: ", TimeSpan(orbit:period - target_period)).
+                dbg:pv("period error: ", TimeSpan(te)).
 
-                if abs(orbit:period - target_period) > 0.1 {
+                if te > 0.1 {
 
                 // this will not only try to fix our sma,
                 // but also minimizes our eccentricity.

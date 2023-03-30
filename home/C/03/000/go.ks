@@ -14,13 +14,17 @@
     local goal is import("goal").
 
     local r0 is body:radius.
-    local target_sma is goal:sma.
-    local target_alt is target_sma + r0.
-    local target_period is goal:period.
 
-    nv:put("launch_altitude", target_sma+1000).
-    nv:put("launch_azimuth", 90).
-    nv:put("launch_pitchover", 3).
+    nv:put("launch_altitude", 81000).
+    nv:put("launch_azimuth", goal:az).
+    nv:put("launch_pitchover", 5).
+
+    io:say(ship:name).
+    io:say("launch azimuth: " + dbg:pr(goal:az)+" deg.").
+    io:say("assigned period: " + dbg:pr(TimeSpan(goal:t))).
+    io:say("assigned periapsis: " + dbg:pr(goal:pe/1000.0)+" km.").
+    io:say("assigned apoapsis: " + dbg:pr(goal:ap/1000.0)+" km.").
+    io:say("assigned angle of periapsis: " + dbg:pr(goal:aop)).
 
     // The idea is that C/03/a will establish the orbit for the constellation,
     // and C/03/b and subsequent launches will settle into the same orbit at
@@ -35,44 +39,58 @@
             "COUNTDOWN", phase:countdown,
             "LAUNCH", phase:launch,
             "ASCENT", phase:ascent,
+            "CIRC", plan:circ_ap, plan:go, phase:circ,
+
+            {   if not lights lights on. },
+
+            "APPROACH_AP", plan:approach_ap:bind(goal:aop, goal:ap), plan:go,
+
             "LIGHTEN", phase:lighten,
 
-            {   // make sure apoapsis is beyond target altitude
-                lock steering to prograde.
-                if apoapsis<target_alt+500 {
-                    lock throttle to 1/10.
-                    return 1/10.
-                } else {
-                    lock throttle to 0.
-                    return 0. } },
+            "CORRECT_AP", plan:adj_at:bind((goal:ap+goal:pe)/2, goal:ap, goal:pe), plan:go,
+            "CORRECT_PE", plan:adj_at:bind(goal:ap, goal:ap, goal:pe), plan:go,
 
-            {   // extend the antennae.
-                lights on. return 0. },
+            "TUNE_AP_PE", phase:ap_pe:bind(goal:ap, goal:pe),
 
-            "CIRC", plan:circ_at:bind(target_alt), plan:go,
+            // TODO phase:ap_pe(ap, pe) similar to phase:circ?
+            // or does the above get us close enough for the
+            // RCS based position tuning to be good enough?
 
             "HOLD", {
                 if not lights lights on.
 
-                dbg:pv("observed period: ", TimeSpan(orbit:period)).
-                dbg:pv("assigned period: ", TimeSpan(target_period)).
-                dbg:pv("period error: ", TimeSpan(orbit:period - target_period)).
+                local te is abs(orbit:period - target_period).
+                io:say(ship:name, false).
+                io:say("Holding position", false).
+                io:say("Period error "+dbg:pr(TimeSpan(te)), false).
 
-                if abs(orbit:period - target_period) > 0.1 {
+                if te > 0.1 {
 
-                // this will not only try to fix our sma,
-                // but also minimizes our eccentricity.
+                    local r0 is body:radius.
+                    local r_pe is r0 + goal:pe.
+                    local r_ap is r0 + goal:ap.
+
+                    // if our period is not good enough, continuously adjust
+                    // to have the correct PE and AP.
+                    //
+                    // this propritizes "have the right SMA" massivly over
+                    // trying to efficiently transition to a different orbit.
 
                     ctrl:rcs_dv({
-                        if abs(orbit:period - target_period) < 0.1 return V(0,0,0).
-                        local obs_v is ship:velocity:orbit.
-                        local r1 is r0 + altitude.
-                        local r2 is target_sma * 2 - r1.
-                        local des_s is visviva:v(r1, r1, r2).
-                        // would be sqrt(mu/target_sma) if our sma were perfect.
-                        local des_v is vxcl(body:position, obs_v):normalized*des_s.
-                        local dv is des_v - obs_v.
-                        return dv. }).
+                        if abs(orbit:period - goal:t) < 0.1 return V(0,0,0).
+
+                        local r_now is r0+altitude.
+                        local desired_prograde_speed is visviva:v(r_now, r_ap, r_pe).
+                        local ref_pe_speed is visviva:v(r_ap, r_ap, r_pe).
+                        local desired_lateral_speed is ref_pe_speed * r_pe / r_now.
+                        local desired_radial_speed is safe_sqrt(desired_prograde_speed^2 - desired_lateral_speed^2).
+                        if (verticalspeed < 0) set desired_radial_speed to -desired_radial_speed.
+                        local lateral_direction is vxcl(up:vector,velocity:orbit):normalized.
+                        local radial_direction is -body:position:normalized.
+                        local desired_velocity is lateral_direction*desired_lateral_speed
+                            + radial_direction * desired_radial_speed.
+                        return desired_velocity - velocity:orbit.
+                         }).
 
                 } else {
                     set ship:control:neutralize to true.
@@ -82,7 +100,7 @@
                     lock steering to lookdirup(V(0,1,0),V(1,0,0)).
                 }
 
-                return 5.
+                return 30.
             })).
 
         mission:bg(phase:autostager).
