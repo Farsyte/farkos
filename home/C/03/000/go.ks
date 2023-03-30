@@ -1,5 +1,5 @@
 @LAZYGLOBAL off.
-{   parameter go. // default GO script for "C/03/a" satellite constellation leader.
+{   parameter go. // default GO script for "C/03/000" satellite constellation leader.
 
     local io is import("io").
     local nv is import("nv").
@@ -59,12 +59,17 @@
             "HOLD", {
                 if not lights lights on.
 
-                local te is abs(orbit:period - target_period).
+                local te is abs(orbit:period - goal:t).
                 io:say(ship:name, false).
                 io:say("Holding position", false).
                 io:say("Period error "+dbg:pr(TimeSpan(te)), false).
 
-                if te > 0.1 {
+                dbg:pv("observed period: ", TimeSpan(orbit:period)).
+                dbg:pv("assigned period: ", TimeSpan(goal:t)).
+                dbg:pv("period error: ", TimeSpan(te)).
+
+
+                if abs(te) > 0.1 {
 
                     local r0 is body:radius.
                     local r_pe is r0 + goal:pe.

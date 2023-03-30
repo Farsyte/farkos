@@ -1,5 +1,5 @@
 @LAZYGLOBAL off.
-{   parameter go. // default GO script for "X" series vessels.
+{   parameter go. // default GO script for "C" series vessels.
 
     local io is import("io").
     local nv is import("nv").

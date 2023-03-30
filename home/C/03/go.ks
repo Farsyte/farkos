@@ -1,5 +1,3 @@
-
-
 @LAZYGLOBAL off.
 {   parameter go. // GO script for C/03/NNN configuration
 
