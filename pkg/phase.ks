@@ -230,6 +230,47 @@
 
         return 5. }).
 
+    phase:add("ap_pe", {    parameter ap, pe.
+        if abort return 0.
+
+        phase_unwarp().
+
+        local radius_body is body:radius.
+
+        local max_facing_error is nv:get("appe_max_facing_error", 5, true).
+        local good_enough is nv:get("appe_good_enough", 1, true).
+
+        // we do not admit the possibility of circularizing
+        // without liquid fuel engines.
+        if ship:LiquidFuel <= 0 {   // deal with "no fuel" case.
+            io:say("Phase:AP_PE: no fuel.").
+            abort on. return 0. }
+
+        local r_ap is radius_body + min(ap, pe).
+        local r_pe is radius_body + max(ap, pe).
+
+        local dv is memo:getter({         // compute desired velocity change.
+            local r_now is radius_body+altitude.
+            local desired_prograde_speed is visviva:v(r_now, r_ap, r_pe).
+            local ref_pe_speed is visviva:v(r_ap, r_ap, r_pe).
+            local desired_lateral_speed is ref_pe_speed * r_pe / r_now.
+            local desired_radial_speed is safe_sqrt(desired_prograde_speed^2 - desired_lateral_speed^2).
+            if (verticalspeed < 0) set desired_radial_speed to -desired_radial_speed.
+            local lateral_direction is vxcl(up:vector,velocity:orbit):normalized.
+            local radial_direction is -body:position:normalized.
+            local desired_velocity is lateral_direction*desired_lateral_speed
+                + radial_direction * desired_radial_speed.
+            return desired_velocity - velocity:orbit. }).
+
+        {   // check termination condition.
+            local desired_velocity_change is dv():mag.
+            if desired_velocity_change <= good_enough {
+                return phase:pose(). } }
+
+        ctrl:dv(dv, 1, 1, max_facing_error).
+
+        return 5. }).
+
     local hold_in_pose is false.
     phase:add("hold", {
 
