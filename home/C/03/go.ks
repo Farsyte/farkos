@@ -1,5 +1,3 @@
-
-
 @LAZYGLOBAL off.
 {   parameter go. // GO script for C/03/NNN configuration
 
@@ -27,12 +25,12 @@
     local name is ship:name.
     local nary is name:split("/").
     local nlen is nary:length.
-    local nddd is nary[nlen-1].
+    local nddd is nary[2].
     local lang is nddd:toscalar(0).
 
     set targ:phase_offset to lang.
 
-    set nary[nlen-1] to "000".
+    set nary[2] to "000".
     local lead is nary:join("/").
 
     set target to lead.
@@ -93,41 +91,46 @@
         "CORRECT",      plan:corr,
         {   if hasnode mission:jump(nv:get("to/exec")). return 0. },
 
-        "CIRC", plan:circ_at:bind(target_altitude), plan:go, phase:circ,
+        "CIRC", plan:circ_at:bind(target_altitude), plan:go,
 
-        "HOLD", {
-            if not lights lights on.
+            "HOLD", {
+                if not lights lights on.
 
-            dbg:pv("observed period: ", TimeSpan(orbit:period)).
-            dbg:pv("assigned period: ", TimeSpan(target_period)).
-            dbg:pv("period error: ", TimeSpan(orbit:period - target_period)).
+                local te is abs(orbit:period - target_period).
+                io:say(ship:name, false).
+                io:say("Holding position", false).
+                io:say("Period error "+dbg:pr(TimeSpan(te)), false).
 
-            if abs(orbit:period - target_period) > 0.1 {
+                dbg:pv("observed period: ", TimeSpan(orbit:period)).
+                dbg:pv("assigned period: ", TimeSpan(target_period)).
+                dbg:pv("period error: ", TimeSpan(te)).
 
-            // this will not only try to fix our sma,
-            // but also minimizes our eccentricity.
+                if te > 0.1 {
 
-                ctrl:rcs_dv({
-                    if abs(orbit:period - target_period) < 0.1 return V(0,0,0).
-                    local obs_v is ship:velocity:orbit.
-                    local r1 is r0 + altitude.
-                    local r2 is target_sma * 2 - r1.
-                    local des_s is visviva:v(r1, r1, r2).
-                    // would be sqrt(mu/target_sma) if our sma were perfect.
-                    local des_v is vxcl(body:position, obs_v):normalized*des_s.
-                    local dv is des_v - obs_v.
-                    return dv. }).
+                // this will not only try to fix our sma,
+                // but also minimizes our eccentricity.
 
-            } else {
-                set ship:control:neutralize to true.
-                set phase:force_rcs_on to 0.
-                sas off. rcs off.
-                lock throttle to 0.
-                lock steering to lookdirup(V(0,1,0),V(1,0,0)).
-            }
+                    ctrl:rcs_dv({
+                        if abs(orbit:period - target_period) < 0.1 return V(0,0,0).
+                        local obs_v is ship:velocity:orbit.
+                        local r1 is r0 + altitude.
+                        local r2 is target_sma * 2 - r1.
+                        local des_s is visviva:v(r1, r1, r2).
+                        // would be sqrt(mu/target_sma) if our sma were perfect.
+                        local des_v is vxcl(body:position, obs_v):normalized*des_s.
+                        local dv is des_v - obs_v.
+                        return dv. }).
 
-            return 5.
-        })).
+                } else {
+                    set ship:control:neutralize to true.
+                    set phase:force_rcs_on to 0.
+                    sas off. rcs off.
+                    lock throttle to 0.
+                    lock steering to lookdirup(V(0,1,0),V(1,0,0)).
+                }
+
+                return 5.
+            })).
 
     go:add("go", {
 
