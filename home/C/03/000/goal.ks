@@ -13,13 +13,14 @@
     // if no change is indicated in the name.
     //
     // The current convention is that we specify
-    //    C/03/phase/t/h/i
+    //    C/03/phase/t/h/i/ω/Ω
     //
     // where
     //   t = orbital period (multiple of body:period)
     //   h = altitude of either ap or pe
     //   i = approximate assigned inclination
-    //
+    //   ω = argument of periapsis
+    //   Ω = longitude of the ascending node (NOT YET IMPLEMENTED)
 
     local na is ship:name:split("/").
 
