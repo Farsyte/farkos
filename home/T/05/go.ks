@@ -225,11 +225,17 @@
         "Mun Transition", establish_descent@, plan:go, fine_tune_descent@,
         "Mun Orbit", plan:circ_pe, plan:go, phase:circ,
 
+                {   // switch back to the local view of the vessel.
+                    set mapview to false. return 0. },
+
                 {   // wait until the flight engineer turns off the lights.
                     if not lights { lights on. return 0. }
                     io:say("ENJOY THE VIEW.", false).
                     io:say("turn off lights to return.", false).
                     return 5. },
+
+                {   // switch back to the map view.
+                    set mapview to true. return 0. },
 
         "Mun Departure", establish_mun_to_kerbin@, plan:go,
 
