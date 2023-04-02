@@ -214,6 +214,10 @@
                     lights on. return 0. },
         "Match Inclination", plan:match_incl,
         "Mun Xfer Inject", plan:xfer, plan:go,
+
+        // Drop the long "mun injection" stage so we can maneuver.
+        "Lighten(3)", phase:lighten:bind(3),
+
         "Mun Xfer Correct", plan:corr, plan:go,
 
         "Coast to Mun", wait_until_in_soi_of:bind(target_name),
@@ -231,12 +235,17 @@
 
         "Coast past Mun", wait_until_in_soi_of:bind("Kerbin"),
 
+                {   // tap the brakes to retract the antenna.
+                    if (brakes) { brakes off. return 0. }
+                    print "retract antenna at altitude " + altitude.
+                    brakes on. return 1. },
+
         "AERO", phase:aero, // when phase:aero ends, periapsis is in the lower half of the atmosphere.
         "DECEL", phase:decel,
-        "LIGHTEN", phase:lighten,
-        "PSAFE", phase:psafe,
                 {   // switch back to the local view of the vessel.
                     set mapview to false. return 0. },
+        "LIGHTEN", phase:lighten,
+        "PSAFE", phase:psafe,
         "CHUTE", phase:chute,
         "LAND", phase:land,
         "PARK", phase:park)).

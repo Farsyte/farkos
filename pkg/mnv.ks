@@ -25,6 +25,7 @@
     local e is constant:e.
     local G0 is constant:G0. // converion factor for Isp
 
+    local mnv_step_saved_time is 0.
     local saved_maneuver_direction is V(0,0,0).
     mnv:add("step", {         // maneuver step computation for right now
         //
@@ -47,8 +48,10 @@
             return 1/10.
 
         local bv is n:burnvector.
-        local waittime is n:eta - mnv:time(bv:mag)/2 - 1.5.
+        local burntime is mnv:time(bv:mag).
+        local waittime is n:eta - burntime/2 - 1.5.
         local starttime is time:seconds + waittime.
+        local finaltime is starttime + burntime + 30.
         local good_enough is nv:get("mnv/step/good_enough", 0.001).
 
         if waittime>0                               // until nominal time is reached,
@@ -59,6 +62,8 @@
             if nextnode<>n return V(0,0,0).         // node replaced
             local bv is n:burnvector.
             if bv*saved_maneuver_direction<=0       // complete if deltav has rotated more than 90 degrees.
+                return V(0,0,0).
+            if time:seconds>finaltime
                 return V(0,0,0).
 
             if time:seconds<starttime               // before start, hold burn attitude.

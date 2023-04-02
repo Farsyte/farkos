@@ -426,10 +426,10 @@
         ctrl:dv(-ship:velocity:surface, 1, 5, 15).
         return 1. }).
 
-    phase:add("lighten", {
+    phase:add("lighten", { parameter dropstage is 1.
         if not kuniverse:timewarp:issettled return 1.
         if not stage:ready return 1.
-        if stage:number<1 return 0.
+        if stage:number<dropstage return 0.
         if kuniverse:timewarp:rate>1 {
             kuniverse:timewarp:cancelwarp().
             return 1. }

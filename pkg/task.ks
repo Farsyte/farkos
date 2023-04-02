@@ -28,6 +28,10 @@
         return lexicon("text", text, "cond", cond,
             "start", start, "step", step, "stop", stop).}
 
+    task:add("text", { parameter text.
+        task:panel:addlabel(text).
+    }).
+
     task:add("idle", task_of("Idle",            // the IDLE task, executes if nothing else does.
         always, nothing, { lock throttle to 0. lock steering to facing. return 0. }, nothing)).
 
