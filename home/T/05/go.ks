@@ -25,20 +25,6 @@
     local target_alt is 50000.
     set TARGET to target_name.
 
-    local wait_until_in_soi_of is { parameter name.
-        if body:name = name {
-            io:say("Arrived in "+name+" SOI.").
-            kuniverse:timewarp:cancelwarp().
-            ctrl:dv(V(0,0,0),1,1,5).
-            return -15. }
-        if not kuniverse:timewarp:issettled return 1/10.
-        if kuniverse:timewarp:rate>1 return 5.
-        ctrl:dv(V(0,0,0), 0, 0, 0).
-        // dbg:pv("wait_until_in_soi_of "+name+" eta ", TimeSpan(eta:transition)).
-        if eta:transition > 60 warpto(time:seconds + eta:transition - 30).
-        if eta:transition > 10 return 5.
-        return clamp(5, 15, eta:transition). }.
-
     local function establish_descent {
 
         // io:say("establish_descent: "+target_name).
@@ -220,7 +206,7 @@
 
         "Mun Xfer Correct", plan:corr, plan:go,
 
-        "Coast to Mun", wait_until_in_soi_of:bind(target_name),
+        "Coast to Mun", phase:await_soi:bind(target_name),
 
         "Mun Transition", establish_descent@, plan:go, fine_tune_descent@,
         "Mun Orbit", plan:circ_pe, plan:go, phase:circ,

@@ -9,7 +9,6 @@
     local predict is import("predict").
     local visviva is import("visviva").
 
-
     plan:add("go", mnv:step).
 
     plan:add("dvt", {               // create maneuver for dv at time t
@@ -53,10 +52,10 @@
         local dv is vs:normalized*(vc-vs:mag).
         local n is plan:dvt(dv, ut).
 
-        print "Circularization at Apoapsis planned.".
-        dbg:pv("  Burn ETA: ", timespan(n:eta)).
-        dbg:pv("  Burn DV: ", n:deltav:mag).
-        dbg:pv("  Burn Vector: ", n:deltav).
+        // print "Circularization at Apoapsis planned.".
+        // dbg:pv("  Burn ETA: ", timespan(n:eta)).
+        // dbg:pv("  Burn DV: ", n:deltav:mag).
+        // dbg:pv("  Burn Vector: ", n:deltav).
 
         return 0. }).
 
@@ -77,10 +76,10 @@
 
         local n is plan:dvt(dv, ut).
 
-        print "Circularization at Periapsis planned.".
-        dbg:pv("  Burn ETA: ", timespan(n:eta)).
-        dbg:pv("  Burn DV: ", n:deltav:mag).
-        dbg:pv("  Burn Vector: ", n:deltav).
+        // print "Circularization at Periapsis planned.".
+        // dbg:pv("  Burn ETA: ", timespan(n:eta)).
+        // dbg:pv("  Burn DV: ", n:deltav:mag).
+        // dbg:pv("  Burn Vector: ", n:deltav).
 
         return 0. }).
 
@@ -111,18 +110,48 @@
         until scanner:step() {}
         return choose t_min if scanner:failed else scanner:result. }
 
+    plan:add("adj_at_md", {    // when we are near altitude h1, adjust to h1-by-h2 orbit.
+        parameter h1, h2.
+
+        until not hasnode { remove nextnode. wait 0. }
+
+        local hc is (periapsis + apoapsis) / 2.
+
+        local ut is next_time_near_altitude(hc).
+        return plan:adj_at_ut(ut, h1, h2). }).
+
     plan:add("adj_at", {    // when we are near altitude h1, adjust to h1-by-h2 orbit.
-        parameter h1.
-        parameter h2.
-        parameter h3.
+        parameter h1, h2, h3.
+
+        until not hasnode { remove nextnode. wait 0. }
+
+        local ut is next_time_near_altitude(h1).
+        return plan:adj_at_ut(ut, h2, h3). }).
+
+    plan:add("adj_at_pe", {    // when we are near altitude h1, adjust to h1-by-h2 orbit.
+        parameter h.
+
+        until not hasnode { remove nextnode. wait 0. }
+
+        local ut is time:seconds + eta:periapsis.
+        return plan:adj_at_ut(ut, periapsis, h). }).
+
+    plan:add("adj_at_ap", {    // when we are near altitude h1, adjust to h1-by-h2 orbit.
+        parameter h.
+
+        until not hasnode { remove nextnode. wait 0. }
+
+        local ut is time:seconds + eta:apoapsis.
+        return plan:adj_at_ut(ut, h, apoapsis). }).
+
+    plan:add("adj_at_ut", {    // at time ut, adjust to h1-by-h1 orbit.
+        parameter ut, h1, h2.
 
         until not hasnode { remove nextnode. wait 0. }
 
         local r0 is body:radius.
-        local des_rad_pe is r0 + min(h2, h3).
-        local des_rad_ap is r0 + max(h2, h3).
-
-        local ut is next_time_near_altitude(h1).
+        local des_rad_pe is r0 + min(h1, h2).
+        local des_rad_ap is r0 + max(h1, h2).
 
         local r0 is body:radius.
 
@@ -157,13 +186,12 @@
         local dv is desired_velocity - ship_vrel_body.
         local n is plan:dvt(dv, ut).
 
-        print "Orbital Adjustment at Altitude planned.".
-        dbg:pv("  Burn ETA: ", TimeSpan(n:eta)).
-        dbg:pv("  Burn DV: ", n:deltav:mag).
-        dbg:pv("  Burn Vector: ", n:deltav).
+        // print "Orbital Adjustment at Altitude planned.".
+        // dbg:pv("  Burn ETA: ", TimeSpan(n:eta)).
+        // dbg:pv("  Burn DV: ", n:deltav:mag).
+        // dbg:pv("  Burn Vector: ", n:deltav).
 
-        return 0.
-    }).
+        return 0. }).
 
     plan:add("circ_at", {           // circularize at specified altitude
         parameter des_alt.
@@ -202,11 +230,11 @@
 
         local n is plan:dvt(dv, t1).
 
-        print "Inclination Correction Planned.".
-        print "  Initial inclination error: "+ea.
-        dbg:pv("  Burn ETA: ", timespan(n:eta)).
-        dbg:pv("  Burn DV: ", n:deltav:mag).
-        dbg:pv("  Burn Vector: ", n:deltav).
+        // print "Inclination Correction Planned.".
+        // print "  Initial inclination error: "+ea.
+        // dbg:pv("  Burn ETA: ", timespan(n:eta)).
+        // dbg:pv("  Burn DV: ", n:deltav:mag).
+        // dbg:pv("  Burn Vector: ", n:deltav).
 
         return 0. }).
 
@@ -228,8 +256,9 @@
         local scanner is scan:init( fitness@, fitincr@, fitfine@, t1).
         until scanner:step() {}
         if scanner:failed {
-            print "find_node: scanner failed.".
-            wait until false. }
+            until (false) {
+                print "plan find_node scanner failed.".
+                wait 5. }}
         return scanner:result. }
 
     local approach_ap_drawvec_list is list().
@@ -331,10 +360,10 @@
 
         local n is plan:dvt(burn_dv, t1).
 
-        print "Approaching AP at AoP Planned.".
-        dbg:pv("  Burn ETA", timespan(n:eta)).
-        dbg:pv("  Burn DV", n:deltav:mag).
-        dbg:pv("  Burn Vector", n:deltav).
+        // print "Approaching AP at AoP Planned.".
+        // dbg:pv("  Burn ETA", timespan(n:eta)).
+        // dbg:pv("  Burn DV", n:deltav:mag).
+        // dbg:pv("  Burn Vector", n:deltav).
 
         return 0.
     }).

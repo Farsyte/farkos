@@ -274,6 +274,7 @@
 
         if r2e:mag<1000 {           // already close enough, no correction needed.
             return 0. }
+        // print "lamb plan_corr r2e mag is " + r2e:mag.
 
         local sInit is lex("t1", t1, "score", 0,
             "b1", V(0,0,0), "b2", V(0,0,0)).
@@ -352,12 +353,20 @@
         until plan_corr_scanner:step() { }
 
         local result is sMin.
-        if not plan_corr_scanner:failed
-            set result to plan_corr_scanner:result.
+        if not plan_corr_scanner:failed {
+            // print "lamb plan_corr best burn is located.".
+            set result to plan_corr_scanner:result. }
+        // else {
+        //     print "lamb plan_corr best burn is earliest burn.". }
+
+        // dbg:pv("lamb plan_corr b1 is ", result:b1).
+
+        if result:b1:mag < 0.1 return 0.
 
         plan:dvt(result:b1, result:t1).
-        if t2 < time:seconds + nextnode:orbit:eta:transition
-            plan:dvt(result:b2, t2).
+        if t2 < time:seconds + nextnode:orbit:eta:transition {
+            // dbg:pv("lamb plan_corr b2 is ", result:b2).
+            plan:dvt(result:b2, t2). }
 
         return 0. }).
 

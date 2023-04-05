@@ -230,6 +230,23 @@
 
         return 5. }).
 
+    phase:add("await_soi", { parameter name. // wait until in SOI of named body.
+
+        if body:name:tolower = name:tolower {
+            io:say("Arrived in "+name+" SOI.").
+            kuniverse:timewarp:cancelwarp().
+            ctrl:dv(V(0,0,0),1,1,5).
+            return -15. }
+
+        if not kuniverse:timewarp:issettled return 1/10.
+        if kuniverse:timewarp:rate>1 return 5.
+        ctrl:dv(V(0,0,0), 0, 0, 0).
+
+        // dbg:pv("wait_until_in_soi_of "+name+" eta ", TimeSpan(eta:transition)).
+        if eta:transition > 60 warpto(time:seconds + eta:transition - 30).
+        if eta:transition > 10 return 5.
+        return clamp(5, 15, eta:transition + 1). }).
+
     phase:add("ap_pe", {    parameter ap, pe.
         if abort return 0.
 
@@ -436,15 +453,15 @@
 
         ctrl:dv(V(0,0,0), 0, 0, 0).
 
-        print " ".
-        print "lighten activating for stage "+stage:number.
-        print "  MET: "+round(time:seconds - nv:get("T0")).
-        print "  altitude: "+round(altitude).
-        print "  apoapsis: "+round(apoapsis).
-        print "  periapsis: "+round(periapsis).
-        print "  s velocity: "+round(velocity:surface:mag).
-        print "  o velocity: "+round(velocity:orbit:mag).
-        print "  vacuum delta-v: "+round(ship:deltav:vacuum).
+        // print " ".
+        // print "lighten activating for stage "+stage:number.
+        // print "  MET: "+round(time:seconds - nv:get("T0")).
+        // print "  altitude: "+round(altitude).
+        // print "  apoapsis: "+round(apoapsis).
+        // print "  periapsis: "+round(periapsis).
+        // print "  s velocity: "+round(velocity:surface:mag).
+        // print "  o velocity: "+round(velocity:orbit:mag).
+        // print "  vacuum delta-v: "+round(ship:deltav:vacuum).
         wait 1.
         wait until stage:ready. stage.
         return 1. }).
@@ -533,16 +550,16 @@
         else                                                    rcs off.
         return 1. }).
 
-    {   // dump some info during boot.
-        print " ".
-        print "autostager initializing at stage "+stage:number.
-        print "  MET: "+(time:seconds - nv:get("T0")).
-        print "  altitude: "+altitude.
-        print "  s velocity: "+velocity:surface:mag.
-        print "  o velocity: "+velocity:orbit:mag.
-        print "  delta-v: "+ship:deltav:vacuum. }
+    // {   // dump some info during boot.
+    //     print " ".
+    //     print "autostager initializing at stage "+stage:number.
+    //     print "  MET: "+(time:seconds - nv:get("T0")).
+    //     print "  altitude: "+altitude.
+    //     print "  s velocity: "+velocity:surface:mag.
+    //     print "  o velocity: "+velocity:orbit:mag.
+    //     print "  delta-v: "+ship:deltav:vacuum. }
 
-    {
+    {   // autostager has some local storage.
         local autostager_callcount is 0.
         local mt is 0.
         local sn is stage:number.
@@ -551,7 +568,7 @@
             set autostager_callcount to autostager_callcount + 1.
 
             if stage:number<2 {
-                print "autostager: done; stage number was "+stage:number.
+                // print "autostager: done; stage number was "+stage:number.
                 return 0. }
 
             if not stage:ready return 1.
@@ -574,11 +591,11 @@
             // calls to the autostager, because I think I have seen
             // some oddball behaviors when rebooting on orbit.
             if (autostager_callcount < 3) {
-                print "autostager: would have staged but callcount=" + autostager_callcount.
-                dbg:pv("sn", sn).
-                dbg:pv("sn_old", sn_old).
-                dbg:pv("mt", mt).
-                dbg:pv("mt_old", mt_old).
+                // print "autostager: would have staged but callcount=" + autostager_callcount.
+                // dbg:pv("sn", sn).
+                // dbg:pv("sn_old", sn_old).
+                // dbg:pv("mt", mt).
+                // dbg:pv("mt_old", mt_old).
                 return 1.
             }
 
@@ -586,10 +603,10 @@
                 local engine_list is list().
                 list engines in engine_list.
                 if engine_list:length<1 {
-                    print "autostager: no more engines.".
+                    // print "autostager: no more engines.".
                     return 0. } }
 
-            print "autostager: staging; stage number was "+stage:number.
+            // print "autostager: staging; stage number was "+stage:number.
 
             stage.
             return 1. }).
