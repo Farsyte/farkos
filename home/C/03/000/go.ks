@@ -41,7 +41,7 @@
             "ASCENT", phase:ascent,
             "CIRC", plan:circ_ap, plan:go, phase:circ,
 
-            {   if not lights lights on. },
+            {   if not lights lights on. return 0. },
 
             "APPROACH_AP", plan:approach_ap:bind(goal:aop, goal:ap), plan:go,
 

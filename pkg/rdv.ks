@@ -258,7 +258,7 @@
         set targ:parking_distance to 5.
 
         if targ:park_from_ship():mag>(2*targ:parking_distance) {
-            io:say("Approacing to "+targ:parking_distance+" m.", false).
+            io:say("Approaching to "+targ:parking_distance+" m.", false).
             io:say("Please be patient.", false). }
 
         else {

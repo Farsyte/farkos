@@ -93,9 +93,12 @@
             local trmag is desired_trans_suf:mag.
 
             // RCS has a KSP-enforced 5% deadzone.
-            if trmag<0.01 {
+            // if we want nonzero RCS below this limit,
+            // fire at 10% and try to be brief.
 
-                // if we want <1% RCS, neutralize controls.
+            if trmag<1/10000 {
+
+                // if we want essentially zero RCS, neutralize controls.
                 set ship:control:neutralize to true. }
 
             else if trmag<1/10 {

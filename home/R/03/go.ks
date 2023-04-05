@@ -69,7 +69,7 @@
 
         "TRANSFER",    plan:xfer,
 
-        { nv:put("to/exec", mission:phase()+1). return 0. },
+        {   nv:put("to/exec", mission:phase()+1). return 0. },
 
         {   // if the current stage has insufficient fuel, drop it.
             // this makes our computation of burn time of the next node
@@ -93,6 +93,11 @@
         // configuration if we still have the ascent engines attached.
         { if stage:number<3 return 0. if stage:ready stage. return 1. },
 
+        {   // no more RCS usage until the rescue maneuver.
+            set phase:force_rcs_off to 1.
+            set phase:force_rcs_on to 0.
+            return 0. },
+
         "APP_PLAN",     rdv:node,            // get close enough rdv:fine can operate.
         "APP_BURN",     plan:go,
 
@@ -101,6 +106,12 @@
             if vang(steering:vector,facing:vector)>5 return 1.
             if ship:angularvel:mag>0.1 return 1.
             return -5. },
+
+        {   // Allow RCS usage during the rescue itself.
+            set phase:force_rcs_off to 0.
+            set phase:force_rcs_on to 1.
+            return 0. },
+
         "RESCUE",       rdv:rcs_5m,          // use RCS to approach to 10m
 
         // flight engineer will activate ABORT to return to Kerbin.

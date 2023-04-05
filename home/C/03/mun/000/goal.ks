@@ -3,8 +3,6 @@
 
     local pi is constant:pi.
 
-    local b is body("Kerbin").
-
     // This GOAL script is the goal for the ANCHOR satellite,
     // which is responsible for maintaining the SMA that the
     // other satellites will match.
@@ -13,7 +11,7 @@
     // if no change is indicated in the name.
     //
     // The current convention is that we specify
-    //    C/03/phase/t/h/i/ω/Ω
+    //    C/03/mun/phase/t/h/i/ω/Ω
     //
     // where
     //   t = orbital period (multiple of body:period)
@@ -24,21 +22,60 @@
 
     local na is ship:name:split("/").
 
+    // This may in fact be the beginning of a more generic
+    // service to parse mission parameters from the vessel name.
+
+    local function ns { parameter def.
+        if na:length < 1 return def.
+        local result is na[0].
+        na:remove(0).
+        return result.
+    }
+
+    local function nn { parameter def.
+        if na:length < 1 return def.
+        local nsval is na[0].
+        na:remove(0).
+        local ns0 is nsval:toscalar(0).
+        local ns1 is nsval:toscalar(1).
+        if ns0 = ns1 return ns0.
+        return def.
+    }
+
+    local consist_major is ns("C").
+    local consist_minor is nn(3).
+    local b is body(ns("mun")).
+
+    local phase is nn(0).
+
     // 3rd component of name adjusts orbital period.
-    local t is choose na[3]:toscalar(1)*b:rotationperiod if na:length > 3 else b:rotationperiod.
+    local t is nn(1)*b:rotationperiod.
 
     // compute semi-major axis.
     local a is (b:mu * (t/(2*pi))^2)^(1/3).
 
     // 4th component of name adjusts either AP or PE.
-    local h1 is choose na[4]:toscalar(a-b:radius) if na:length > 4 else a-b:radius.
+    local h1 is nn(a-b:radius).
     local h2 is 2*a - 2*b:radius - h1.
 
     // 5th component of name adjusts inclination.
-    local i is choose na[5]:toscalar(0) if na:length > 5 else 0.
+    local inc is nn(0).
 
-    // 6th component is argument of periapsis.
-    local aop is choose scalar_or_not(na[6], "any") if na:length > 6 else "any".
+    // 6th component is argument of periapsis,
+    // which could be a number or the string "any".
+    local aop is nn("any").
+
+    // 7th component is longitude of ascending node.
+
+    local lan is nn("any").
+
+    // NOTE: orbital data above are for the final
+    // orbit around the destination body. Launch data
+    // reflect our need to get to that body.
+
+    set target to b.
+    local bo is target:orbit.
+    local boi is bo:inclination.
 
     // TODO improve selection of launch azimuth.
 
@@ -59,17 +96,11 @@
     // control LAN by selecting the correct launch time,
     // if INC nonzero and LAN specified.
 
-    goal:add("az", 90 - i).         // assigned launch azimuth
+    goal:add("b", b).               // destination body name
+    goal:add("az", 90 - boi).       // assigned launch azimuth
     goal:add("pe", min(h1,h2)).     // assigned PE altitude
     goal:add("ap", max(h1,h2)).     // assigned AP altitude
     goal:add("aop", aop).           // assigned argument of periapsis
     goal:add("t", t).               // assigned orbit period
     goal:add("a", a).               // assigned orbit SMA
-
-    function scalar_or_not { parameter val, def.
-        local v0 is val:toscalar(0).
-        local v1 is val:toscalar(1).
-        return choose v0 if v0=v1 else def.
-    }
-
 }

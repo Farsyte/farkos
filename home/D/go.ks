@@ -16,6 +16,8 @@
     local dbg is import("dbg").
     local ctrl is import("ctrl").
 
+    local tweaks is import("tweaks").
+
     local orbit_altitude is nv:get("launch_altitude", 320000, true).
     local launch_azimuth is nv:get("launch_azimuth", 90, true).
     local launch_pitchover is nv:get("launch_pitchover", 3, false).
@@ -25,7 +27,7 @@
 
     local act_num is 0.
 
-
+    task:text(ship:name).
     task:new("Circularize Here", always, nothing, phase:circ,nothing).
     task:new("Execute Node", has_node, nothing, plan:go, nothing).
     task:new("Plan Plane Change", has_targ, targ:save, plan:match_incl, nothing).

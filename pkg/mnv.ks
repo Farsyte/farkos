@@ -25,15 +25,26 @@
     local e is constant:e.
     local G0 is constant:G0. // converion factor for Isp
 
-    local saved_maneuver_direction is V(0,0,0).
+    // there is some data we want to sample just as
+    // we start the burn.
+    local mnv_step_last_call is 0.
+    local mnv_step_preroll is true.
+
+    local mnv_step_initial_burn is V(0,0,0).
+    local mnv_step_final_time is 0.
+    local mnv_step_start_time is 0.
     mnv:add("step", {         // maneuver step computation for right now
         //
         // mnv:step() is intended to provide the same results
         // as mnv:exec() but with control inverted: where mnv:exec()
         // blocks until complete, mnv:step() does one step and returns.
         //
-        if abort return 0.
-        if not hasnode return 0.
+        if abort {
+            // print "mnv:step done, abort switch is on.".
+            return 0. }
+        if not hasnode {
+            // print "mnv:step done, maneuver node is missing.".
+            return 0. }
         if kuniverse:timewarp:rate>1 return 1.
         if not kuniverse:timewarp:issettled return 1.
 
@@ -47,23 +58,43 @@
             return 1/10.
 
         local bv is n:burnvector.
-        local waittime is n:eta - mnv:time(bv:mag)/2 - 1.5.
-        local starttime is time:seconds + waittime.
         local good_enough is nv:get("mnv/step/good_enough", 0.001).
 
-        if waittime>0                               // until nominal time is reached,
-            set saved_maneuver_direction to bv.     // continuously update saved direction.
+        // if we have not called mnv:step in the last 10 seconds,
+        // then presume this is an initial call.
+        local t is time:seconds.
+        local since_last_call is t - mnv_step_last_call.
+        set mnv_step_last_call to t.
+
+        if (since_last_call > 10)
+            set mnv_step_preroll to true.
+
+        if (mnv_step_preroll) {
+
+            local burntime is mnv:time(bv:mag).
+            local waittime is n:eta - burntime/2 - 1.5.
+
+            set mnv_step_initial_burn to bv.
+            set mnv_step_start_time to time:seconds + waittime.
+            set mnv_step_final_time to mnv_step_start_time + burntime + 60.
+        }
+
+        local waittime is mnv_step_start_time - time:seconds.
+        if waittime < 0
+            set mnv_step_preroll to false.
 
         local dv is {
             if not hasnode return V(0,0,0).         // node cancelled
             if nextnode<>n return V(0,0,0).         // node replaced
             local bv is n:burnvector.
-            if bv*saved_maneuver_direction<=0       // complete if deltav has rotated more than 90 degrees.
+            if bv*mnv_step_initial_burn<=0          // do not chase the burn direction.
+                return V(0,0,0).
+            if time:seconds>mnv_step_final_time     // do not keep burning forever.
                 return V(0,0,0).
 
-            if time:seconds<starttime               // before start, hold burn attitude.
+            if time:seconds<mnv_step_start_time     // before start, hold burn attitude.
                 return bv:normalized/10000.
-            if availablethrust=0                    // during stating, hold burn attitude.
+            if availablethrust=0                    // during staging, hold burn attitude.
                 return bv:normalized/10000.
 
             local dt is bv:mag*ship:mass/availablethrust.
@@ -72,6 +103,9 @@
             return bv. }.
 
         if dv():mag=0 {
+            // print "mnv:step done, dv() returned V(0,0,0).".
+            // print "deadman margin: " + (mnv_step_final_time-time:seconds).
+            set mnv_step_final_time to 0.
             ctrl:dv(V(0,0,0),1,1,5).
             if hasnode remove nextnode.
             return -10. }
@@ -86,7 +120,7 @@
                     return 1.
                 }
 
-                warpto(starttime-30). }
+                warpto(mnv_step_start_time-30). }
             return 1. }
 
         if waittime > 2
@@ -113,12 +147,12 @@
         local n is nextnode.
         local dv is n:burnvector.
 
-        local starttime is time:seconds + n:eta - mnv:time(dv:mag)/2.
+        local mnv_step_start_time is time:seconds + n:eta - mnv:time(dv:mag)/2.
         lock steering to n:burnvector.
 
-        if autowarp { warpto(starttime - 30). }
+        if autowarp { warpto(mnv_step_start_time - 30). }
 
-        wait until time:seconds >= starttime or abort.
+        wait until time:seconds >= mnv_step_start_time or abort.
         lock throttle to sqrt(max(0,min(1,mnv:time(n:burnvector:mag)))).
 
         wait until vdot(n:burnvector, dv) < 0 or abort.
