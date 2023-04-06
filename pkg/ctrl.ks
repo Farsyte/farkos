@@ -74,7 +74,7 @@
         local sum to 0.
         list rcs in rcs_list. for it in rcs_list
             set sum to sum + it:availablethrust.
-        if sum<1/1000 {
+        if sum<1/100 {
             set phase:force_rcs_on to 0.
             rcs off.
             io:say("CTRL: RCS has no fuel.").

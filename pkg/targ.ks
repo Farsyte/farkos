@@ -86,10 +86,16 @@
 
         if target:istype("Body") {
             local inside_soi to target:radius + 0.90 * (target:soiradius - target:radius).
-            if t_r < predict:pos(t, ship):mag {
-                return t_d * (t_r + inside_soi). }
-            else {
-                return t_d * (t_r - inside_soi). } }
+            // OBSERVED: if my initial transfer from kerbin to minmus overshoots,
+            // then this "corrects" my orbit to be beyond minmus. A valid solution
+            // but I want to correct to the near side.
+            //
+            // TODO rethink the conditions under which we decide to head to the
+            // outer side of the SOI rather than the inner.
+            //
+            // if t_r < predict:pos(t, ship):mag {
+            //     return t_d * (t_r + inside_soi). }
+            return t_d * (t_r - inside_soi). }
 
         return t_d*(t_r - targ:standoff_distance). }).
 
