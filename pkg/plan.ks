@@ -365,8 +365,7 @@
         // dbg:pv("  Burn DV", n:deltav:mag).
         // dbg:pv("  Burn Vector", n:deltav).
 
-        return 0.
-    }).
+        return 0. }).
 
     plan:add("xfer", lamb:plan_xfer).
     plan:add("corr", lamb:plan_corr).

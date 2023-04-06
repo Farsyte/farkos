@@ -66,13 +66,6 @@
     // io:say("assigned apoapsis: " + dbg:pr(goal:ap/1000.0)+" km.").
     // io:say("assigned angle of periapsis: " + dbg:pr(goal:aop)).
 
-    local function await_engineer {
-        if gear {
-            gear off.
-            return 0. }
-        io:say("Extend Gear to Continue.", false).
-        return 5. }
-
     mission:do(list(
 
         {   // start with the destination body as target.
@@ -138,6 +131,7 @@
         "CORRECT",      plan:corr,
         {   if hasnode mission:jump(nv:get("to/exec")). return 0. },
 
+        // TODO shift to executing the B2 burn from the last lambert solution?
         // TODO add support for eccentric orbits
         "CIRC", plan:circ_pe, plan:go,
 
