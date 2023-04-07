@@ -5,7 +5,6 @@
     local predict is import("predict").
     local memo is import("memo").
     local ctrl is import("ctrl").
-    local plan is import("plan").
     local dbg is import("dbg").
 
     //
@@ -30,10 +29,14 @@
     local mnv_step_last_call is 0.
     local mnv_step_preroll is true.
 
+    local function never { return false. }
+
     local mnv_step_initial_burn is V(0,0,0).
     local mnv_step_final_time is 0.
     local mnv_step_start_time is 0.
+
     mnv:add("step", {         // maneuver step computation for right now
+        parameter abort_callback is never@.
         //
         // mnv:step() is intended to provide the same results
         // as mnv:exec() but with control inverted: where mnv:exec()
@@ -84,6 +87,7 @@
             set mnv_step_preroll to false.
 
         local dv is {
+            if abort_callback() return V(0,0,0).
             if not hasnode return V(0,0,0).         // node cancelled
             if nextnode<>n return V(0,0,0).         // node replaced
             local bv is n:burnvector.

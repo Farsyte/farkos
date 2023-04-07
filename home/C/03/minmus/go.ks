@@ -128,6 +128,10 @@
         "PLANE", plan:match_incl,
         plan:go,
         {   lock throttle to 0. lock steering to prograde. return -5. },
+        // TODO do I need to think about transferring to a different orbit
+        // if the target orbit and the current orbit have a sufficiently
+        // similar period such that the lambert solution is a long long way
+        // in the far far future?
         "TRANSFER",     plan:xfer,
         {   nv:put("to/exec", mission:phase()). return 0. },
         plan:go,        phase:lighten,

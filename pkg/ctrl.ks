@@ -96,17 +96,17 @@
             // if we want nonzero RCS below this limit,
             // fire at 10% and try to be brief.
 
-            if trmag<1/10000 {
+            if trmag<1/1000 {
 
                 // if we want essentially zero RCS, neutralize controls.
                 set ship:control:neutralize to true. }
 
-            else if trmag<1/10 {
+            else if trmag<1/20 {
 
                 // if we want <10% RCS, ask for 10%
                 // as the 5% deadzone may be applied
                 // independently for each thruster.
-                set ship:control:translation to desired_trans_suf_dir/10.}
+                set ship:control:translation to desired_trans_suf_dir/20.}
 
             else if trmag>1 {
 

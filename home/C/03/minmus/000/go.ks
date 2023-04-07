@@ -10,6 +10,7 @@
     local match is import("match").
     local phase is import("phase").
     local plan is import("plan").
+    local mnv is import("mnv").
     local ctrl is import("ctrl").
     local visviva is import("visviva").
     local predict is import("predict").
@@ -38,6 +39,9 @@
     // io:say("assigned apoapsis: " + dbg:pr(goal:ap/1000.0)+" km.").
     // io:say("assigned angle of periapsis: " + dbg:pr(goal:aop)).
 
+    local abort_ap_threshold is 0.
+    local mnv_abort is
+
     mission:do(list(
 
         {   // start with the destination body as target.
@@ -61,7 +65,22 @@
                     lights on. return 0. },
         "Match Inclination", plan:match_incl, plan:go,
 
-        "SOI Xfer Inject", plan:xfer, plan:go,
+        "SOI Xfer Inject", plan:xfer, // plan:go,
+
+        // EXPERIMENTAL: stash the the apoapsis of the orbit that the
+        // maneuver node should leave us in. Then, if our actual apoapsis
+        // exceeds that value, immediately cut throttle. This uses the
+        // new "abort callback" mechanism in mnv:step.
+
+        {   nv:put("abort_ap_threshold", nextnode:orbit:apoapsis).
+            dbg:pv("abort_ap_threshold", nv:get("abort_ap_threshold")).
+            return 0. },
+
+        mnv:step:bind({
+            local abort_ap_threshold is nv:get("abort_ap_threshold").
+            return abort_ap_threshold>0 and apoapsis>abort_ap_threshold. }),
+
+        {   nv:clr("abort_ap_threshold"). return 0. },
 
         // The C/03/minmus configuration has enough Delta-V in its stage zero
         // to handle transfer correction and all of the maneuvering at Minmus,
