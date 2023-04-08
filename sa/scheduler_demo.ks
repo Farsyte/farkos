@@ -1,4 +1,8 @@
 @LAZYGLOBAL off.
+
+// this demo can be run via boot/sa.ks
+// by setting the vessel name to demo/scheduler.
+
 runpath("0:sa/scheduler").
 // global function schedule_call { parameter ut, task. ... return. }
 // glboal function schedule_runner { ... never returns. }

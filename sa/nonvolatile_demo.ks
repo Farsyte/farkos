@@ -1,5 +1,8 @@
 @LAZYGLOBAL OFF.
 
+// this demo can be run via boot/sa.ks
+// by setting the vessel name to demo/nonvolatile.
+
 runpath("0:sa/nonvolatile").
 
 local bootcount is nv_get("bootcount") + 1.

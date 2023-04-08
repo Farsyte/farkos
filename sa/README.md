@@ -31,7 +31,7 @@ the eventual result that I will be making some changes. These
 are not quite ready but as a consequence, autostager itself
 will not be using the "WHEN..THEN" constuct.
 
-The sa/autostager file remains, pointing to the WHEN-based
+The sa/autostager.ks file remains, pointing to the WHEN-based
 version of the code, for those that want to use it and are
 willing to pay the "WHEN" tax.
 
