@@ -5,4 +5,8 @@
 
 *.ksm
 
+Auto-Saved*.craft
+Untitled*.craft
+*.loadmeta
+
 auto_stage.ks

@@ -3,12 +3,17 @@
 
     local nv is import("nv").
     local io is import("io").
-    local dbg is import("dbg").
     local memo is import("memo").
     local predict is import("predict").
 
     // TODO verify support for DockingPort as TARGET.
 
+    // phase offset from target to destination (0..360)
+    // used for long range planning only
+    targ:add("phase_offset", 0).
+
+    // distance from target to our "parking" place.
+    // used for very short range maneuvering only.
     targ:add("parking_distance", 5).            // distance from targ to parking
 
     targ:add("targ_from_ship", {                // vector to targ (from ship)
@@ -64,18 +69,47 @@
     // planning.
     targ:add("standoff", {                      // standoff position, for long range planning
         parameter t is time:seconds.
+        local ph is targ:phase_offset.
+        local p is targ:orbit:period.
+        // if we have a nonzero phase offset, and the target has
+        // a positive period, then our destination is the point
+        // exactly on the target orbit that leads it by some fraction
+        // of the orbital period, which for convenience we express
+        // as an angle (180 is half the period in advance). If the target
+        // orbit is circular, then ph is the phase angle we will get.
+        if ph<>0 and p>0
+            return predict:pos(t + ph*p/360, target).
+
         local t_p is predict:pos(t, target).
         local t_d is t_p:normalized.
         local t_r is t_p:mag.
 
         if target:istype("Body") {
             local inside_soi to target:radius + 0.90 * (target:soiradius - target:radius).
-            if t_r < predict:pos(t, ship):mag {
-                return t_d * (t_r + inside_soi). }
-            else {
-                return t_d * (t_r - inside_soi). } }
+            // OBSERVED: if my initial transfer from kerbin to minmus overshoots,
+            // then this "corrects" my orbit to be beyond minmus. A valid solution
+            // but I want to correct to the near side.
+            //
+            // TODO rethink the conditions under which we decide to head to the
+            // outer side of the SOI rather than the inner.
+            //
+            // if t_r < predict:pos(t, ship):mag {
+            //     return t_d * (t_r + inside_soi). }
+            return t_d * (t_r - inside_soi). }
 
         return t_d*(t_r - targ:standoff_distance). }).
+
+    // standoff is the positition at the time,
+    // and when the phase angle is nonzero, it
+    // is well around the orbit. We need a similar
+    // prediction of the velocity at the time,
+    // which accounts for the phase angle as well.
+    targ:add("standoff_v", {
+        parameter t is time:seconds.
+        local ph is targ:phase_offset.
+        local p is targ:orbit:period.
+        if ph<>0 and p>0 set t to t + ph*p/360.
+        return predict:vel(t, target). }).
 
     targ:add("name", "").                       // mission target String  (or "" if not set)
     targ:add("target", "").                     // mission target (for KSP TARGET) (or "" if not set)
@@ -99,12 +133,11 @@
             if sel="" {                         // explicit "clear target" request
                 return targ:clr(). }
             local obj is named(sel).              // convert to something we can target
-            if obj="" {
-                print "targ:save rejecting '"+sel+"'".
-                return 0. }
+            if obj=""
+                return 0.
             set sel to obj. }
 
-        if sel:hassuffix("name") {              // update targ:name before moving from sel to its parent.
+        if sel:hassuffix("name") and not sel:istype("Orbit") {
             set targ:name to sel:name. }
         else {
             set targ:name to "". }

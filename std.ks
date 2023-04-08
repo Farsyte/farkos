@@ -3,9 +3,21 @@
 
 local pkg is lex().
 
-local home is "0:/home/" + ship:name + "/".
-local pkgd is "0:/pkg/".
-local dirs is list(home, home + "../", pkgd).
+local dirs is construct_dirs().
+local pkgd is dirs[dirs:length-1].
+local home is dirs[0].
+
+local function construct_dirs {
+    local result is list().
+    local sdl is ship:name:split("/").
+    local sd is "0:/home/".
+    result:add("0:/pkg/").
+    for d in sdl {
+        set sd to sd + d + "/".
+        result:insert(0,sd).
+    }
+    return result.
+}
 
 function clamp { parameter lo, hi, val.
     if val<lo return lo.

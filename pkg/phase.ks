@@ -169,7 +169,7 @@
 
         if verticalspeed<0 {            // terminate: we overshot apoapsis.
             if kuniverse:timewarp:rate > 1 { kuniverse:timewarp:cancelwarp(). return 1/10. }
-            ctrl:dv(prograde:srfretrograde/10000, 1, 1, 5).
+            ctrl:dv(srfretrograde:vector/10000, 1, 1, 5).
             if vang(steering:vector, facing:vector)>5 return 1.
             return 0. }
 
@@ -219,6 +219,64 @@
             local desired_lateral_speed is visviva:v(radius_body+altitude).
             local lateral_direction is vxcl(up:vector,velocity:orbit):normalized.
             local desired_velocity is lateral_direction*desired_lateral_speed.
+            return desired_velocity - velocity:orbit. }).
+
+        {   // check termination condition.
+            local desired_velocity_change is dv():mag.
+            if desired_velocity_change <= good_enough {
+                return phase:pose(). } }
+
+        ctrl:dv(dv, 1, 1, max_facing_error).
+
+        return 5. }).
+
+    phase:add("await_soi", { parameter name. // wait until in SOI of named body.
+
+        if body:name:tolower = name:tolower {
+            io:say("Arrived in "+name+" SOI.").
+            kuniverse:timewarp:cancelwarp().
+            ctrl:dv(V(0,0,0),1,1,5).
+            return -15. }
+
+        if not kuniverse:timewarp:issettled return 1/10.
+        if kuniverse:timewarp:rate>1 return 5.
+        ctrl:dv(V(0,0,0), 0, 0, 0).
+
+        // dbg:pv("wait_until_in_soi_of "+name+" eta ", TimeSpan(eta:transition)).
+        if eta:transition > 60 warpto(time:seconds + eta:transition - 30).
+        if eta:transition > 10 return 5.
+        return clamp(5, 15, eta:transition + 1). }).
+
+    phase:add("ap_pe", {    parameter ap, pe.
+        if abort return 0.
+
+        phase_unwarp().
+
+        local radius_body is body:radius.
+
+        local max_facing_error is nv:get("appe_max_facing_error", 5, true).
+        local good_enough is nv:get("appe_good_enough", 1, true).
+
+        // we do not admit the possibility of circularizing
+        // without liquid fuel engines.
+        if ship:LiquidFuel <= 0 {   // deal with "no fuel" case.
+            io:say("Phase:AP_PE: no fuel.").
+            abort on. return 0. }
+
+        local r_ap is radius_body + min(ap, pe).
+        local r_pe is radius_body + max(ap, pe).
+
+        local dv is memo:getter({         // compute desired velocity change.
+            local r_now is radius_body+altitude.
+            local desired_prograde_speed is visviva:v(r_now, r_ap, r_pe).
+            local ref_pe_speed is visviva:v(r_ap, r_ap, r_pe).
+            local desired_lateral_speed is ref_pe_speed * r_pe / r_now.
+            local desired_radial_speed is safe_sqrt(desired_prograde_speed^2 - desired_lateral_speed^2).
+            if (verticalspeed < 0) set desired_radial_speed to -desired_radial_speed.
+            local lateral_direction is vxcl(up:vector,velocity:orbit):normalized.
+            local radial_direction is -body:position:normalized.
+            local desired_velocity is lateral_direction*desired_lateral_speed
+                + radial_direction * desired_radial_speed.
             return desired_velocity - velocity:orbit. }).
 
         {   // check termination condition.
@@ -302,7 +360,7 @@
         local radius_body is body:radius.
 
         local dv is memo:getter({
-            local desired_speed is visviva:v(radius_body+altitude, radius_body+h-1, radius_body+apoapsis).
+            local desired_speed is visviva:v(radius_body+altitude, radius_body+h-100, radius_body+apoapsis).
             local current_speed is velocity:orbit:mag.
             local desired_speed_change is max(0, current_speed - desired_speed).
             return 0.10*retrograde:vector*desired_speed_change. }).
@@ -381,29 +439,29 @@
 
         // we are in, or just above, atmosphere. burn retrograde
         // to help shed our orbital energy. direction is somewhat important
-        // and magnitude needs to be enough to get us full throttle.
-        ctrl:dv(-ship:velocity:orbit, 1, 5, 15).
+        // and magnitude is how much velocity we would like to shed.
+        ctrl:dv(-ship:velocity:surface, 1, 5, 15).
         return 1. }).
 
-    phase:add("lighten", {
+    phase:add("lighten", { parameter dropstage is 1.
         if not kuniverse:timewarp:issettled return 1.
         if not stage:ready return 1.
-        if stage:number<1 return 0.
+        if stage:number<dropstage return 0.
         if kuniverse:timewarp:rate>1 {
             kuniverse:timewarp:cancelwarp().
             return 1. }
 
         ctrl:dv(V(0,0,0), 0, 0, 0).
 
-        print " ".
-        print "lighten activating for stage "+stage:number.
-        print "  MET: "+round(time:seconds - nv:get("T0")).
-        print "  altitude: "+round(altitude).
-        print "  apoapsis: "+round(apoapsis).
-        print "  periapsis: "+round(periapsis).
-        print "  s velocity: "+round(velocity:surface:mag).
-        print "  o velocity: "+round(velocity:orbit:mag).
-        print "  vacuum delta-v: "+round(ship:deltav:vacuum).
+        // print " ".
+        // print "lighten activating for stage "+stage:number.
+        // print "  MET: "+round(time:seconds - nv:get("T0")).
+        // print "  altitude: "+round(altitude).
+        // print "  apoapsis: "+round(apoapsis).
+        // print "  periapsis: "+round(periapsis).
+        // print "  s velocity: "+round(velocity:surface:mag).
+        // print "  o velocity: "+round(velocity:orbit:mag).
+        // print "  vacuum delta-v: "+round(ship:deltav:vacuum).
         wait 1.
         wait until stage:ready. stage.
         return 1. }).
@@ -411,7 +469,7 @@
     phase:add("fall", {         // fall into atmosphere
         if body:atm:height<10000 return 0.
         if altitude<body:atm:height/2 return 0.
-        ctrl:dv(V(0,0,0), 0, 0, 0).
+        ctrl:dv(srfretrograde:vector, 0, 0, 0).
         return 1. }).
 
     phase:add("decel", {        // active deceleration
@@ -475,28 +533,86 @@
     phase:add("force_rcs_off", 0).
     lock steering to facing. // have to set it at least once ...
     phase:add("autorcs", {      // enable RCS when appropriate.
+        local f is facing.
+        local s is steering.
         if has_no_rcs()                                         return 0.
-        else if phase:force_rcs_on>0                            rcs on.
-        else if phase:force_rcs_off>0                           rcs off.
+        else if 0<phase:force_rcs_on                            rcs on.
+        else if 0<phase:force_rcs_off                           rcs off.
         else if altitude < body:atm:height                      rcs off.
-        else if ship:angularvel:mag>0.1                         rcs on.
-        else if not steering:istype("Direction")                rcs off.
-        else if not facing:istype("Direction")                  rcs off.
-        else if 4<vang(facing:forevector, steering:forevector)  rcs on.
-        else if 4<vang(facing:topvector, steering:topvector)    rcs on.
+        else if not s:istype("Direction")                       rcs off.
+        else if not f:istype("Direction")                       rcs off.
+        else if 0.1<ship:angularvel:mag                         rcs on.
+        else if 4<vang(f:forevector, s:forevector)              rcs on.
+        else if 4<vang(f:topvector, s:topvector)                rcs on.
+        else if 0.01<ship:angularvel:mag                        return 1.
+        else if 1<vang(f:forevector, s:forevector)              return 1.
+        else if 1<vang(f:topvector, s:topvector)                return 1.
         else                                                    rcs off.
-        return 1/10. }).
+        return 1. }).
 
-    {   // dump some info during boot.
-        print " ".
-        print "autostager initializing at stage "+stage:number.
-        print "  MET: "+(time:seconds - nv:get("T0")).
-        print "  altitude: "+altitude.
-        print "  s velocity: "+velocity:surface:mag.
-        print "  o velocity: "+velocity:orbit:mag.
-        print "  delta-v: "+ship:deltav:vacuum. }
+    // {   // dump some info during boot.
+    //     print " ".
+    //     print "autostager initializing at stage "+stage:number.
+    //     print "  MET: "+(time:seconds - nv:get("T0")).
+    //     print "  altitude: "+altitude.
+    //     print "  s velocity: "+velocity:surface:mag.
+    //     print "  o velocity: "+velocity:orbit:mag.
+    //     print "  delta-v: "+ship:deltav:vacuum. }
 
-    phase:add("autostager", {   // stage when appropriate.
+    {   // autostager has some local storage.
+        local autostager_callcount is 0.
+        local mt is 0.
+        local sn is stage:number.
+        phase:add("autostager", {   // stage when appropriate.
+
+            set autostager_callcount to autostager_callcount + 1.
+
+            if stage:number<2 {
+                // print "autostager: done; stage number was "+stage:number.
+                return 0. }
+
+            if not stage:ready return 1.
+            if alt:radar<100 and availablethrust<=0 return 1.
+
+            local mt_old is mt.
+            set mt to ship:maxthrustat(0).
+
+            local sn_old is sn.
+            set sn to stage:number.
+
+            // TODO check if some future high tech engines
+            // might change their maxthrustat(0) in some
+            // situation other than ignition or flameout.
+
+            if sn<>sn_old or (mt>0 and mt>=mt_old)
+                return 1.
+
+            // after any boot, do not autostage for the first two
+            // calls to the autostager, because I think I have seen
+            // some oddball behaviors when rebooting on orbit.
+            if (autostager_callcount < 3) {
+                // print "autostager: would have staged but callcount=" + autostager_callcount.
+                // dbg:pv("sn", sn).
+                // dbg:pv("sn_old", sn_old).
+                // dbg:pv("mt", mt).
+                // dbg:pv("mt_old", mt_old).
+                return 1.
+            }
+
+            if mt=0 {
+                local engine_list is list().
+                list engines in engine_list.
+                if engine_list:length<1 {
+                    // print "autostager: no more engines.".
+                    return 0. } }
+
+            // print "autostager: staging; stage number was "+stage:number.
+
+            stage.
+            return 1. }).
+    }
+
+    phase:add("autostager_enginelist", {   // stage when appropriate.
 
         // PAUSE if STAGE:READY is false.
         // - catches "we are doing an EVA"

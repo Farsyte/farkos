@@ -1,12 +1,11 @@
 @LAZYGLOBAL off.
-{   parameter go. // default GO script for "X" series vessels.
+{   parameter go. // default GO script for "C" series vessels.
 
     local io is import("io").
     local nv is import("nv").
     local mission is import("mission").
     local phase is import("phase").
-    local match is import("match").
-    local mnv is import("mnv").
+    local plan is import("plan").
 
     local goal is import("goal").
 
@@ -47,7 +46,7 @@
 
             "COAST", phase:coast,
             "CIRC", phase:circ,
-            "PLANE", match:plan_incl, mnv:step,
+            "PLANE", plan:match_incl, plan:go,
             // TODO do we make "USE RCS" the default (after it is working)?
             "HOLD", { return max(1, phase:hold()). })).
 

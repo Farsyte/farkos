@@ -3,7 +3,7 @@
     local ctrl is import("ctrl").
     local memo is import("memo").
     local predict is import("predict").
-    local mnv is import("mnv").
+    local plan is import("plan").
     local targ is import("targ").
     local nv is import("nv").
     local io is import("io").
@@ -25,7 +25,7 @@
         local v1 is predict:vel(t2, target).
         local v2 is predict:vel(t2, ship).
         local dv is v1 - v2.
-        mnv:schedule_dv_at_t(dv, t2).
+        plan:dvt(dv, t2).
 
         return 0. }).
 
@@ -258,7 +258,7 @@
         set targ:parking_distance to 5.
 
         if targ:park_from_ship():mag>(2*targ:parking_distance) {
-            io:say("Approacing to "+targ:parking_distance+" m.", false).
+            io:say("Approaching to "+targ:parking_distance+" m.", false).
             io:say("Please be patient.", false). }
 
         else {

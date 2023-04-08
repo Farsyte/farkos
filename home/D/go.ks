@@ -7,15 +7,16 @@
     local nv is import("nv").
     local mission is import("mission").
     local phase is import("phase").
-    local lamb is import("lamb").
     local task is import("task").
     local targ is import("targ").
+    local plan is import("plan").
     local match is import("match").
-    local mnv is import("mnv").
     local hill is import("hill").
     local rdv is import("rdv").
     local dbg is import("dbg").
     local ctrl is import("ctrl").
+
+    local tweaks is import("tweaks").
 
     local orbit_altitude is nv:get("launch_altitude", 320000, true).
     local launch_azimuth is nv:get("launch_azimuth", 90, true).
@@ -26,12 +27,12 @@
 
     local act_num is 0.
 
-
+    task:text(ship:name).
     task:new("Circularize Here", always, nothing, phase:circ,nothing).
-    task:new("Execute Node", has_node, nothing, mnv:step, nothing).
-    task:new("Plan Plane Change", has_targ, targ:save, match:plan_incl, nothing).
-    task:new("Lamb Intercept", has_targ, targ:save, lamb:plan_xfer, nothing).
-    task:new("Lamb Correction", has_targ, targ:save, lamb:plan_corr, nothing).
+    task:new("Execute Node", has_node, nothing, plan:go, nothing).
+    task:new("Plan Plane Change", has_targ, targ:save, plan:match_incl, nothing).
+    task:new("Plan Intercept", has_targ, targ:save, plan:xfer, nothing).
+    task:new("Plan Correction", has_targ, targ:save, plan:corr, nothing).
     task:new("RDV Node", has_targ, targ:save, rdv:node, nothing).
     task:new("RDV Near", has_targ, targ:save, rdv:near, nothing).
     task:new("RDV RCS 5m", has_targ, targ:save, rdv:rcs_5m, nothing).

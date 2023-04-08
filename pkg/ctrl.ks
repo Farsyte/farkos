@@ -74,7 +74,7 @@
         local sum to 0.
         list rcs in rcs_list. for it in rcs_list
             set sum to sum + it:availablethrust.
-        if sum<1/1000 {
+        if sum<1/100 {
             set phase:force_rcs_on to 0.
             rcs off.
             io:say("CTRL: RCS has no fuel.").
@@ -93,17 +93,20 @@
             local trmag is desired_trans_suf:mag.
 
             // RCS has a KSP-enforced 5% deadzone.
-            if trmag<0.01 {
+            // if we want nonzero RCS below this limit,
+            // fire at 10% and try to be brief.
 
-                // if we want <1% RCS, neutralize controls.
+            if trmag<1/1000 {
+
+                // if we want essentially zero RCS, neutralize controls.
                 set ship:control:neutralize to true. }
 
-            else if trmag<1/10 {
+            else if trmag<1/20 {
 
                 // if we want <10% RCS, ask for 10%
                 // as the 5% deadzone may be applied
                 // independently for each thruster.
-                set ship:control:translation to desired_trans_suf_dir/10.}
+                set ship:control:translation to desired_trans_suf_dir/20.}
 
             else if trmag>1 {
 

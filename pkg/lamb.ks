@@ -8,7 +8,7 @@
     local dbg is import("dbg").
     local io is import("io").
     local nv is import("nv").
-    local mnv is import("mnv").
+    local plan is import("plan").
     local ctrl is import("ctrl").
     local memo is import("memo").
 
@@ -32,7 +32,7 @@
         local tof is t2-t1.
 
         local r1 is predict:pos(t1, ship).
-        local r2 is targ:standoff(t2). // predict:pos(t2, target).
+        local r2 is targ:standoff(t2).
         local mu is body:mu.
 
         local onv is vcrs(body:position, ship:velocity:orbit):normalized.
@@ -82,7 +82,7 @@
                 if tof<=0 return "skip".
                 local t2 is t1 + tof.
                 local r2 is targ:standoff(t2).
-                local v2 is predict:vel(t2, target).
+                local v2 is targ:standoff_v(t2).
 
                 if vang(r1,r2)>170 set r2 to vxcl(onv,r2).
 
@@ -243,10 +243,10 @@
 
         until not hasnode { remove nextnode. wait 0. }
 
-        mnv:schedule_dv_at_t(plan_xfer_best:b1, plan_xfer_best:t1).
+        plan:dvt(plan_xfer_best:b1, plan_xfer_best:t1).
 
         if plan_xfer_best:t2 < time:seconds + nextnode:orbit:eta:transition
-            mnv:schedule_dv_at_t(plan_xfer_best:b2, plan_xfer_best:t2).
+            plan:dvt(plan_xfer_best:b2, plan_xfer_best:t2).
 
         return 0. }).
 
@@ -274,17 +274,18 @@
 
         if r2e:mag<1000 {           // already close enough, no correction needed.
             return 0. }
+        // print "lamb plan_corr r2e mag is " + r2e:mag.
 
         local sInit is lex("t1", t1, "score", 0,
             "b1", V(0,0,0), "b2", V(0,0,0)).
 
         local r1 is predict:pos(t1, ship).
         local v1 is predict:vel(t1, ship).
-        local v2 is predict:vel(t2, target).
+        local v2 is targ:standoff_v(t2). // predict:vel(t2, target).
 
         local lr2 is r2.
-        if vang(r1,lr2)>170                 // if nearly 180-degree transfer,
-            set lr2 to vxcl(onv,lr2).       // ignore plane change.
+        if vang(r1,lr2)>120                  // if over 120-degree transfer,
+            set lr2 to vxcl(onv,lr2).       // leave plane change for later.
 
         // check normal and flipped, pick the one that is lower delta-v at v1.
         local s is lambert:v1v2(r1, lr2, tof, mu, false).
@@ -317,7 +318,7 @@
                 local v1 is predict:vel(t1, ship).
 
                 local lr2 is r2.
-                if vang(r1,lr2)>170                 // if nearly 180-degree transfer,
+                if vang(r1,lr2)>120                 // if more than 120-degree transfer,
                     set lr2 to vxcl(onv,lr2).       // ignore plane change.
 
                 // check normal and flipped, pick the one that is lower delta-v at v1.
@@ -352,12 +353,20 @@
         until plan_corr_scanner:step() { }
 
         local result is sMin.
-        if not plan_corr_scanner:failed
-            set result to plan_corr_scanner:result.
+        if not plan_corr_scanner:failed {
+            // print "lamb plan_corr best burn is located.".
+            set result to plan_corr_scanner:result. }
+        // else {
+        //     print "lamb plan_corr best burn is earliest burn.". }
 
-        mnv:schedule_dv_at_t(result:b1, result:t1).
-        if t2 < time:seconds + nextnode:orbit:eta:transition
-            mnv:schedule_dv_at_t(result:b2, t2).
+        // dbg:pv("lamb plan_corr b1 is ", result:b1).
+
+        if result:b1:mag < 0.1 return 0.
+
+        plan:dvt(result:b1, result:t1).
+        if t2 < time:seconds + nextnode:orbit:eta:transition {
+            // dbg:pv("lamb plan_corr b2 is ", result:b2).
+            plan:dvt(result:b2, t2). }
 
         return 0. }).
 

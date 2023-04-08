@@ -8,11 +8,10 @@
     local visviva is import("visviva").
     local phase is import("phase").
     local scan is import("scan").
-    local lamb is import("lamb").
     local task is import("task").
     local targ is import("targ").
     local match is import("match").
-    local mnv is import("mnv").
+    local plan is import("plan").
     local hill is import("hill").
     local rdv is import("rdv").
     local dbg is import("dbg").
@@ -63,7 +62,7 @@
         local v2 is bh:normalized * s2.
         local dv is v2 - v1.
 
-        mnv:schedule_dv_at_t(dv, t1).
+        plan:dvt(dv, t1).
         return 0. }
 
     local function tune_polar_pe {
@@ -107,7 +106,7 @@
         local v2 is v1:normalized * s2.
         local dv is v2 - v1.
 
-        mnv:schedule_dv_at_t(dv, t1).
+        plan:dvt(dv, t1).
 
         return 0. }
 
@@ -233,14 +232,14 @@
         "Circularize", phase:circ,
                 {   // turn on lights which also extends the radio dishes.
                     lights on. return 0. },
-        "Match Inclination", match:plan_incl,
-        "Mun Xfer Inject", lamb:plan_xfer, mnv:step,
-        "Mun Xfer Correct", lamb:plan_corr, mnv:step,
+        "Match Inclination", plan:match_incl,
+        "Mun Xfer Inject", plan:xfer, plan:go,
+        "Mun Xfer Correct", plan:corr, plan:go,
 
         "Coast to Mun", wait_for:bind(target_name),
 
-        "Mun Polar", establish_polar_ap@, mnv:step, tune_polar_pe@,
-        "Mun Orbit", plan_circ_at_pe@, mnv:step, phase:circ,
+        "Mun Polar", establish_polar_ap@, plan:go, tune_polar_pe@,
+        "Mun Orbit", plan_circ_at_pe@, plan:go, phase:circ,
 
                 {   // wait until the flight engineer turns off the lights.
                     if not lights { lights on. return 0. }
@@ -248,7 +247,7 @@
                     io:say("turn off lights to continue.", false).
                     return 5. },
 
-        "Mun Departure", establish_mun_to_kerbin@, mnv:step,
+        "Mun Departure", establish_mun_to_kerbin@, plan:go,
 
         "Coast past Mun", wait_for:bind("Kerbin"),
 
