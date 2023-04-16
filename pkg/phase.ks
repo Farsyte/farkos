@@ -16,32 +16,8 @@
     // which resets when we boot.
     local countdown is 10.
 
-    function phase_unwarp {
-        if kuniverse:timewarp:rate <= 1 return.
-        kuniverse:timewarp:cancelwarp().
-        wait until kuniverse:timewarp:issettled. }
-
-    function phase_apowarp {
-        if not kuniverse:timewarp:issettled return.
-
-        if kuniverse:timewarp:rate>1 {
-            kuniverse:timewarp:cancelwarp().
-            return.
-        }
-
-        if eta:apoapsis<60 return.
-
-        if kuniverse:timewarp:mode = "PHYSICS" {
-            set kuniverse:timewarp:mode to "RAILS".
-            wait 1.
-        }
-        kuniverse:timewarp:warpto(time:seconds+eta:apoapsis-45).
-        wait 5.
-        wait until kuniverse:timewarp:rate <= 1.
-        wait until kuniverse:timewarp:issettled. }
-
     phase:add("countdown", {    // countdown, ignite, wait for thrust.
-        if availablethrust>0 return 0.
+        if availablethrust>0 return 0.          // already ignited, just return.
         lock throttle to 1.
         lock steering to facing.
         if countdown > 0 {
@@ -49,17 +25,18 @@
             set countdown to countdown - 1.
             return 1. }
         radar:cal(). // trigger auto-calibration if needed.
-        if stage:ready stage.
+        wait until stage:ready. stage.
         return 1. }).
 
     phase:add("launch", {       // stabilize until clear of pad
         if alt:radar>50 return 0.
         lock steering to facing.
         lock throttle to 1.
+        // This only stores T0 if it is not already set.
         nv:get("T0", time:seconds, true).
         return 1/10. }).
 
-    phase:add("ascent", {
+    phase:add("ascent", {       // ascent control: approximate a gravity turn
         if abort return 0.
 
         local radius_body is body:radius.
@@ -199,7 +176,7 @@
         ctrl:dv(V(0,0,0), 0, 0, 0).
         return 0. }).
 
-    phase:add("circ", {
+    phase:add("circ", {                 // make the orbit circular. Nothing else matters.
         if abort return 0.
 
         phase_unwarp().
@@ -211,9 +188,30 @@
 
         // we do not admit the possibility of circularizing
         // without liquid fuel engines.
+
         if ship:LiquidFuel <= 0 {   // deal with "no fuel" case.
             io:say("Circularize: no fuel.").
             abort on. return 0. }
+
+        // This is not a precision entry into a circular orbit with a
+        // specified radius: it is a precision correction to make our
+        // current orbit circular, and we do not care about the exact
+        // radius of the result, just that it is circular.
+        //
+        // To do this, build an error controller that zeros the difference
+        // between our velocity vector, and the nearest velocity vector
+        // for a circular orbit. That is, take our vector, exclude the
+        // radial component, and adjust its length so that our speed is
+        // exactly the circular orbit speed for our current radius.
+        //
+        // During this process, our radius will change. Always use the
+        // current radius for the computation.
+        //
+        // Terminate when our velocity vector is very very close to the
+        // perfect circular velocity (the circ_good_enough nonvolatile
+        // has the maximum error expressed in Delta-V).
+        //
+        // TODO take availablethrust and mass into account in termination condition
 
         local dv is memo:getter({         // compute desired velocity change.
             local desired_lateral_speed is visviva:v(radius_body+altitude).
@@ -231,6 +229,16 @@
         return 5. }).
 
     phase:add("await_soi", { parameter name. // wait until in SOI of named body.
+
+        // This mission phase requires a parameter, which is presented
+        // by the mission using the "BIND" suffix of the delegate, thus:
+        //    mission:do(phase:await_soi:bind("mun"))
+        // Note that the BIND is done when building the plan, so it is not
+        // something that can be changed in flight.
+        //
+        // TODO maybe we should allow name to be a delegate.
+        // Do this the first time we have a real mission that would
+        // make use of such a feature.
 
         if body:name:tolower = name:tolower {
             io:say("Arrived in "+name+" SOI.").
@@ -251,6 +259,16 @@
         if abort return 0.
 
         phase_unwarp().
+
+        // This stage adjusts our current velocity to bring our AP and PE
+        // as close to the goal as possible. It does not have the ability
+        // to select the Argument of Periapsis. If the current altitude is
+        // not between the specified AP and PE, results are approximate
+        // and this method makes no further guarantees.
+        //
+        // TODO does this match SMA when altitude out of range?
+        //
+        // This step indicates termination when we are close.
 
         local radius_body is body:radius.
 
@@ -290,6 +308,17 @@
 
     local hold_in_pose is false.
     phase:add("hold", {
+
+        // This stage adjusts our current velocity to bring our AP and PE
+        // as close to the goal as possible. It does not have the ability
+        // to select the Argument of Periapsis. If the current altitude is
+        // not between the specified AP and PE, results are approximate
+        // and this method makes no further guarantees.
+        //
+        // TODO does this match SMA when altitude out of range?
+        //
+        // This step does not actually terminate: if the vessel is in the
+        // hold orbit, it commands rotation to the idle pose.
 
         local max_facing_error is nv:get("hold_max_facing_error", 5, true).
 
@@ -347,6 +376,14 @@
 
     phase:add("deorbit", {
 
+        // Bring the vessel down from orbit to within the atmosphere
+        // of the body it is orbiting. The target is 75% of the height
+        // of the altitude over the surface; if the body has no atmosphere
+        // then the target is "sea level" on the body.
+        //
+        // This code is expected to overshoot, especially if returning
+        // from a very high orbit.
+
         local h is round(0.75 * body:atm:height).
 
         if round(periapsis) <= h {
@@ -370,6 +407,17 @@
         return 1. }).
 
     phase:add("aero", {
+
+        // Manage Aerobraking.
+        //
+        // Drop our periapsis down into the atmosphere, then burn
+        // later to reduce the apoapsis significantly.
+        //
+        // The targets are to initially lower PE to 95% of the
+        // height of the atmosphere.
+        //
+        // This step terminates when PE drops to 50% of the height
+        // of the atmosphere.
 
         if not body:atm:exists return 0.
 
@@ -444,12 +492,20 @@
         return 1. }).
 
     phase:add("lighten", { parameter dropstage is 1.
+
+        // Jettison all but the last stage, or last N stages if the
+        // optional parameter is provided with a number of stages.
+
         if not kuniverse:timewarp:issettled return 1.
         if not stage:ready return 1.
         if stage:number<dropstage return 0.
         if kuniverse:timewarp:rate>1 {
             kuniverse:timewarp:cancelwarp().
             return 1. }
+
+        // assure throttle is off. This will also place us into
+        // the idle pose, making the "knock off" of the stages
+        // a little bit more predicatable.
 
         ctrl:dv(V(0,0,0), 0, 0, 0).
 
@@ -467,6 +523,11 @@
         return 1. }).
 
     phase:add("fall", {         // fall into atmosphere
+
+        // This stage just hangs out, oriented "surface retrograde",
+        // until we are well into the atmosphere of the body.
+        // It terminates immediately if there is no atmosphere.
+
         if body:atm:height<10000 return 0.
         if altitude<body:atm:height/2 return 0.
         ctrl:dv(srfretrograde:vector, 0, 0, 0).
@@ -475,6 +536,11 @@
     phase:add("decel", {        // active deceleration
         lock steering to srfretrograde.
 
+        // Final deceleration. Go full throttle, pointed in the
+        // surface retrograde direction, until we are out of fuel,
+        // or out of engines, or altitide is less than 25% of the
+        // height of the atmosphere, or our airspeed is under 200 m/s.
+        //
         // if no atmosphere, skip right to the next phase.
         if body:atm:height < 10000 return 0.
         if altitude < body:atm:height/4 return 0.
@@ -488,11 +554,24 @@
         return 1. }).
 
     phase:add("psafe", {        // wait until generally safe to deploy parachutes
+
+        // This code assumes the convention that parachutes are
+        // activated when we stage to stage zero.
+        //
+        // Wait until it is safe to deploy a parachute:
+        // Orient to surface retrograde and cut throttle.
+        // Stage until we are at stage zero.
+        // Keep running this step until we are under 5000 m and
+        // airspeed is under 300 m/s.
+        //
         // TODO what if we are not on Kerbin?
+        // TODO double check for "off by one" errors in stage numbering.
+        // This code should not arm the parachutes in stage zero.
+
         lock steering to srfretrograde.
         if throttle>0 { lock throttle to 0. return 1. }
         if verticalspeed>0 return 1.
-        if stage:number>0 and stage:ready { stage. return 1. }
+        if stage:number>1 and stage:ready { stage. return 1. }
         if altitude < 5000 and airspeed < 300 return 0.
         return 1. }).
 
@@ -501,7 +580,11 @@
         // This code assumes the convention that parachutes are
         // activated when we stage to stage zero.
 
+        // If we are in stage zero, we are done.
         if stage:number<1 return 0.
+
+        // otherwise, stage if we can, and double-check that
+        // our steering and throttle are released.
 
         if stage:ready stage.
         unlock steering.
@@ -509,6 +592,12 @@
         return 1. }).
 
     phase:add("land", {         // control during final landing
+
+        // final landing approach.
+        // assure gear is extended, steering and throttle are released,
+        // and remain in this stage until vertical speed stops (or until
+        // we bounce up a bit, which happens).
+
         if verticalspeed>=0 return 0.
 
         gear on.
@@ -517,11 +606,16 @@
         return 1. }).
 
     phase:add("park", {         // control while parked
+
+        // Final mission step for missions that land.
+        // Assure steering and throttle are released,
+        // and repeat this step after long delays.
+
         unlock steering.
         unlock throttle.
         return 10. }).
 
-    function has_no_rcs {
+    function has_no_rcs {       // detect "we have no RCS available"
         local rcs_list is list().
         list rcs in rcs_list.
         for it in rcs_list
@@ -668,4 +762,10 @@
         // print "  delta-v: "+round(dv1)+" m/s in vaccum after staging".
         if loss>0 print "  lost "+loss+" m/s during staging.".
         return 1. }).
+
+    function phase_unwarp {                             // cancel timewarp
+        if kuniverse:timewarp:rate > 1
+            kuniverse:timewarp:cancelwarp().
+        wait until kuniverse:timewarp:issettled. }
+
 }

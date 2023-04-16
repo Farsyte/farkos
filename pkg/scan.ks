@@ -1,6 +1,26 @@
 @LAZYGLOBAL off.
 {   parameter scan is lex(). // unidirectional hillclimb with backstep
 
+    // Scan Optization
+    //
+    // This code seeks the scalar parameter that generates the optimal
+    // value from a fitness function, scanning forward from a given value.
+    //
+    // This differs from hill climbing or gradient descent in that it
+    // provides a starting bound on the parameter value, and handles
+    // the initial movement away from a local maximum at the initial value.
+    //
+    // This method does not strictly call the function with values in monotonic
+    // order, obviously; we will probe the value until we are beyond the
+    // maximum, then scan the last interval at finer granularity. However,
+    // the parameter is always either "incremented" by the provided fitincr
+    // delegate, or is restored to an earlier value.
+    //
+    // This is not limited to a parameter that is a scalar; as long as there
+    // is support for making a copy, incrementing, and reducing the grid
+    // size, this works. For example, the state could be a vector, and the
+    // increment could be (for example) following a gradient.
+
     // To use this:
     // - define fitness, a function of a state, to be maximized.
     // - define fitincr, which increments (and returns) the state.

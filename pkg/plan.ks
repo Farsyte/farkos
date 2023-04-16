@@ -367,7 +367,17 @@
 
         return 0. }).
 
-    plan:add("xfer", lamb:plan_xfer).
-    plan:add("corr", lamb:plan_corr).
+    // lamb and plan depend on each other, so if we
+    // imported plan first, lamb will not yet have
+    // its suffixes set when we run. The first time
+    // plan:xfer or plan:corr is called, update the
+    // plan map to drop the indirection.
+    plan:add("xfer", {
+        set plan["xfer"] to lamb:plan_xfer.
+        return lamb:plan_xfer(). }).
+
+    plan:add("corr", {
+        set plan["corr"] to lamb:plan_corr.
+        return lamb:plan_corr(). }).
 
 }

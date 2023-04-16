@@ -1,12 +1,14 @@
 @LAZYGLOBAL off.
 {   parameter targ is lex().    // target management package.
 
+    // This package handles target management, including target
+    // orbits that are not embodied as Body or Vessel items, and
+    // allowing persistance of the TARG across reboots.
+
     local nv is import("nv").
     local io is import("io").
     local memo is import("memo").
     local predict is import("predict").
-
-    // TODO verify support for DockingPort as TARGET.
 
     // phase offset from target to destination (0..360)
     // used for long range planning only

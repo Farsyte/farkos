@@ -1,6 +1,9 @@
 @LAZYGLOBAL off.
 {   parameter lambert is lex(). // lambert equation solver.
 
+    // I do not even begin to pretend that I have a solid handle on
+    // all of the math that is going on here.
+
     // the content below was imported from
     // https://raw.githubusercontent.com/maneatingape/rsvp/main/src/lambert.ks
     // and is licensed under the GNU Public License (v3).
@@ -76,9 +79,17 @@
         local it1 is vcrs(ih, ir1):normalized.
         local it2 is vcrs(ih, ir2):normalized.
 
-        // Change transfer direction between prograde/retrograde  if requested
+        // Change transfer direction between prograde/retrograde if requested.
+        // NOTE: I am NOT willing to concede taht there is anything at all
+        // special about the Y axis. Everything needs to be in terms of the
+        // starting orbital plane, not the galactic horizontal plane.
+
         // // XOR if transfer angle is greater than 180 degrees.
-        // if (ih:y < 0) <> flip_direction {
+        // if (ih:y < 0) <> flip_direction
+        // yeah, no. flip or not based on the parameter.
+        // mucking about with ih:y is SOMETIMES WRONG
+        // when the starting orbit is inclined.
+
         if flip_direction {
             set it1 to -it1.
             set it2 to -it2.
@@ -91,6 +102,7 @@
         // This allows us to solve for x using a iterative numerical method then
         // use that value to determine the desired velocities of the transfer orbit
         // at points r1 and r2.
+
         local x is iterative_root_finder(lambda, t).
 
         // Construct velocity vectors from "x"

@@ -1,5 +1,5 @@
 @LAZYGLOBAL off.
-{   package term is lex(). // console terminal interface
+{   parameter term is lex(). // console terminal interface
 
     term:add("open", {                  // manipulate the debug console.
         parameter w is terminal:width.

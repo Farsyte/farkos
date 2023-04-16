@@ -3,6 +3,11 @@
     local io is import("io").
 
     go:add("go", {                              // default vessel control code
+        // This is the last chance pick-up for running a GO script
+        // for a vessel that does not have one, and one is not found
+        // in any parent of its mission home.
+        // Absent anything else, just print and display a good message
+        // and release control to the flight engineer.
         io:say(LIST(
             "No 'GO' package found",
             "for "+ship:name+",",

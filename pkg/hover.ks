@@ -9,7 +9,7 @@
         {   // Implementation Notes:
             //
             // Compute the amount of throttle we should use right now
-            // if our plan is to be at altitude h_set, with asecent
+            // if our desire is to be at altitude h_set, with ascent
             // velocity v_set, right now.
             //
             // When the vessel is within 10m of the altiude set point,

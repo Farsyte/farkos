@@ -5,6 +5,7 @@
     // correct to subtract CURRENT body position
     // from the predicted position of the ship or
     // the target, to get the Body-centered
+    // position of the target at that time.
 
     predict:add("pos", {                // predict Body->Target vector a time t.
         parameter t is time:seconds.    // 1st parameter is time (default to now)

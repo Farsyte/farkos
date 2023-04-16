@@ -1,5 +1,7 @@
 {   parameter rdv is lex(). // RDV package: rendezvous
 
+    // mission sequence steps relatiing to Rendezvous.
+
     local ctrl is import("ctrl").
     local memo is import("memo").
     local predict is import("predict").
@@ -13,14 +15,18 @@
 
     rdv:add("node", {                                               // place maneuver node at xfer/final
 
+        // rdv:nodd places a maneuver node at the "xfer/final" time,
+        // with the Delta-V set to the burn that, if done in zero time,
+        // would match our velocity with the target velocity.
+        //
+        // NOTE: this is for actual rendezvous, do not attempt to use
+        // it when the standoff includes an orbital phase angle offset.
+
         until not hasnode { remove nextnode. wait 0. }
 
         local t2 is nv:get("xfer/final").
         local dt is t2 - time:seconds.
         if dt < 60 return 0.
-
-        local r1 is targ:standoff(t2). // predict:pos(t2, target).
-        local r2 is predict:pos(t2, ship).
 
         local v1 is predict:vel(t2, target).
         local v2 is predict:vel(t2, ship).
@@ -31,26 +37,6 @@
 
     rdv:add("coarse", {                                             // coarse rendezvous from very far away
         parameter targ is target.
-        if abort return 0.
-
-        if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
-        if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
-
-        local Tf is nv:get("xfer/final").
-        local stop_warp_at is Tf - 60.
-        local wait_for is stop_warp_at - time:seconds.
-
-        if wait_for>30 {
-            lock steering to facing.
-            lock throttle to 0.
-            wait 3.
-            warpto(stop_warp_at).
-            return 1. }
-
-        if wait_for>0 {
-            lock steering to facing.
-            lock throttle to 0.
-            return min(1, wait_for). }
 
         // Coarse Approach Maneuver
         //
@@ -68,6 +54,35 @@
         // and set the throttle (or not) based on cmd_X and
         // our current distance.
 
+        // move on to the next mission plan step if ABORT is set.
+        if abort return 0.
+
+        // If we are in timewarp or timewarp is not settled,
+        // then just wait until we are back to normal.
+        if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
+        if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+
+        // If the rendezvous time is a long way away,
+        // use WARPTO to get there in less real time;
+        // if it is still in the future, ask the sequencer
+        // to delay until the right time.
+
+        local Tf is nv:get("xfer/final").
+        local stop_warp_at is Tf - 60.
+        local wait_for is stop_warp_at - time:seconds.
+
+        if wait_for>30 {
+            lock steering to facing.
+            lock throttle to 0.
+            wait 3.
+            warpto(stop_warp_at).
+            return 1. }
+
+        if wait_for>0 {
+            lock steering to facing.
+            lock throttle to 0.
+            return min(1, wait_for). }
+
         local margin is 20.
 
         local dir is prograde:vector.
@@ -83,6 +98,11 @@
         local Xc is vdot(t_p, dir).                     // distance available to stop
         local Vc is vdot(s_v - t_v, dir).               // speed toward the stopping point
 
+        // Pick the burn direction. This is likely to be a
+        // fairly big burn, and we will correct later, so
+        // burn exactly prograde or retrograde to get the
+        // most orbital energy change possible.
+
         if Xc > 0 {
             lock steering to retrograde. }
 
@@ -91,11 +111,28 @@
             set Vc to -Vc.
             lock steering to prograde. }
 
+        // We want to stop BEFORE we get there, in fact, "margin"
+        // meters before that plane we discussed above. If we are
+        // already too close ... cut throttle and move on to the
+        // next mission plan step, which will handle the shorter
+        // range work of the rendezvous.
+
         set Xc to Xc - margin.
 
         if Vc<=0 or Xc<=0 {
             lock throttle to 0.
             return 0. }
+
+        // Base our decisions based on our maximum thrust, and how
+        // far we would move before we got our velocity to zero.
+        //
+        // If we can't stop in time, give up and move on.
+        //
+        // If we have a much longer distance to go, run again
+        // later when we are closer.
+        //
+        // Between those conditions, try to set the throttle so
+        // we hit zero velocity as we reach our intended position.
 
         local cmd_A is availablethrust / ship:mass.     // available acceleration
         if cmd_A=0 return 1/100.                        // staging. deal with it.
@@ -116,9 +153,20 @@
         return 1/100. }).
 
     rdv:add("near", {                   // engine based approach dist <= TSD and speed<=1 m/s
+
+        // Logic for handling the NEAR part of rendezvous. This spans
+        // from the end of our "roughly match the orbit" burn, until we
+        // are close enough that we want to come in on RCS thrusters.
+
+        // As usual: if ABORT is set, move on; if we are in timewarp,
+        // have the sequencer call us back later.
+
         if abort return 0.
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
+
+        // Copy standoff distance into parking distance so we
+        // can use common "parking spot" support code.
 
         local standoff_distance to targ:standoff_distance.
         set targ:parking_distance to standoff_distance.
@@ -183,6 +231,10 @@
         return 5. }).
 
     rdv:add("fine", {                   // entirely engine based rescue fine control and posing
+
+        // rdv:fine performs fine rendezvous using the main engines.
+        // This can be a bit fiddly if the thrust-to-weight ratio is high.
+
         if abort return 0.
         if kuniverse:timewarp:rate>1 return 1.                      // timewarp active, come back later.
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
@@ -248,6 +300,10 @@
         return 5. }).
 
     rdv:add("rcs_5m", {
+
+        // rdv:rcs_5m uses the RCS jets to gently nudge us to
+        // our rescue spot, five meters away from the target.
+
         if abort return 0.
         if not hastarget return 0.
         if not kuniverse:timewarp:issettled return 1/10.            // if timewarp rate is changing, try again very shortly.
