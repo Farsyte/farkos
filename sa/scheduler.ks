@@ -1,4 +1,9 @@
+@LAZYGLOBAL OFF.
+
 // Call tasks when scheduled.
+
+// this code can be demonstrated via boot/sa.ks
+// by setting the vessel name to demo/scheduler.
 
 // SIMPLEST IMPLEMENTATION: task_list is just a sorted linear list
 // where each element is a list containing time and delegate, and
@@ -40,8 +45,10 @@
 // make the schedule_runner loop a bit more complicated, so I am
 // going to play the You Aren't Going To Need It Yet card.
 
+
 local task_list is list(list(2^64, { return 0. })).
 
+// schedule_call(ut, task) schedules a task
 global function schedule_call { parameter ut, task.
     local i is 0.
     until task_list[i][0] > ut
@@ -49,6 +56,7 @@ global function schedule_call { parameter ut, task.
     task_list:insert(i, list(ut, task)).
 }
 
+// schedule_runner() enters the scheduler service loop
 global function schedule_runner {
     until task_list:length<2 {
         wait until time:seconds >= task_list[0][0].

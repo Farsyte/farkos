@@ -1,5 +1,8 @@
 @LAZYGLOBAL OFF.
 
+// this code can be demonstrated via boot/sa.ks
+// by setting the vessel name to demo/nonvolatile.
+
 // Nonvolatile storage: value that survives a reboot.
 //
 // Because the built-in JSON stuff is way way way too verbose.
@@ -19,10 +22,12 @@
 // TODO: #38 improve serialization of floating point value so it round-trips.
 
 // select the prefix to use when encoding strings.
+
 local quot is """".
 
 // nv_enc(val): return the string encoding of the value.
 // NOTE: floating point values may not perfectly round-trip.
+
 local function nv_enc { parameter val.
     if val:istype("String")
         return quot+val.
@@ -31,6 +36,7 @@ local function nv_enc { parameter val.
 
 // nv_dec(enc): convert an encoded value back to the value.
 // NOTE: floating point values may not perfectly round-trip.
+
 local function nv_dec { parameter enc.
     if enc:startswith(quot)
         return enc:remove(0,quot:length).
@@ -39,6 +45,7 @@ local function nv_dec { parameter enc.
 
 // nv_open(name): open the named file.
 // Create it if it does not exist.
+
 local function nv_open { parameter name.
     local f is open(name).
     if f:istype("Boolean") and not f
@@ -55,7 +62,11 @@ local function nv_open { parameter name.
 local nv_cache is lex().
 
 // nv_name(name): convert nonvolatile name to file name
+
 local function nv_name { parameter name.
+    // appending .nv assures that we can store values for
+    // both "foo" and "foo/bar" as long as no smartalec
+    // wants to store "foo" and "foo.nv/bar" ...
     return name + ".nv".
 }
 
