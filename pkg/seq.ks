@@ -17,7 +17,7 @@
 
     local sch is import("sch").
     local nv is import("nv").
-    local io is import("io").
+    local hud is import("hud").
     local dbg is import("dbg").
 
     local phase_list is list().
@@ -49,7 +49,7 @@
         if l:istype("Delegate") { phase_list:add(l). return.}
         if l:istype("String") { seq:do({ return sayname(l). }). return. }
         if l:istype("List") { for e in l seq:do(e). return. }
-        io:say("seq:do handling TBD for <"+l:typename+"> "+l). }).
+        hud:say("seq:do handling TBD for <"+l:typename+"> "+l). }).
 
     seq:add("go", {                         // start the main sequence. activates SCH:EXECUTE.
 
@@ -62,7 +62,7 @@
         sch:schedule(time:seconds, run_phase@).
         sch:execute(). }).
 
-    local function sayname { parameter n.             // display and store label, if it changed.
+    local function sayname { parameter n.   // display and store label, if it changed.
 
         // This local function is the support code that handles setting
         // a mission phase name. It is used directly from the mission plan
@@ -72,7 +72,7 @@
         if printed_phase_name=n return.
         set printed_phase_name to n.
         nv:put("seq/phase/name", n).
-        io:say("SEQ: "+n).
+        hud:say("SEQ: "+n).
         return 0. }.
 
     local function run_phase {

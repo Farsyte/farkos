@@ -1,0 +1,108 @@
+* std.ks: standard microlibrary
+
+The main purpose of this library is to export the ~import~ method into
+the global namespace for direct use by subsequent modules.
+
+It is also the central location where we place the *very few* methods
+and data items that we want to have in the global namespace.
+
+** initialization
+
+On first load -- and std.ks is loaded by boot.ks -- will attempt to
+open the kOS terminal, which can fail depending on the career state.
+
+After the functions are compiled and the data items are initialized,
+the script waits for the ship to be unpacked, erases any drawn vectors
+from the display, and clears the text console.
+
+** exports
+
+*** import(n) -- import a named package
+
+If the package with this name has been imported before, the LEXICON
+associated with the package is returned.
+
+Otherwise, find and import the package. An empty lexicon is created
+and installed in the package map for this package, then the directory
+path is searched for an appropriate source file. If one is found, it
+is executed, with the lexicon presented as its function parameter.
+
+The package exports items by adding them to the lexicon. In general,
+packages should be very careful to avoid adding any symbols to the
+global name space.
+
+*** clamp(lo,hi,val) -- clamp a value into a range
+
+If val < lo, returns lo.
+If val > hi, returns hi.
+Otherise, returns val.
+
+Generally used to take a computed result and limit
+its range.
+
+*** eval(vod) -- resolve lazy evaluations.
+
+If the passed value is a delegate, evaluate the delegate, and repeat
+the logic (keep evaluating until a delegate returns a value that is
+not a delegate).
+
+*** ua(ang) -- map an angle into the 0..360 range
+
+Returns the value from 0 to 360, excluding 360, that is equal
+modulo 360 to the given angle.
+
+NaN and Inf inputs generate NaN output.
+
+*** sa(ang) -- keep an angle into the -180..+180 range
+
+Returns the value from -180 to 180 that is equal modulo 360 to the
+given angle. Positive angles equal mod 360 to 180 return +180, while
+negative angles equal mod 360 to -180 return -180.
+
+NaN and Inf inputs generate NaN output.
+
+*** sgn(val) -- determine sign of value.
+
+Returns -1 if value is negative.
+Returns +1 if value is positive.
+Returns 0 otherwise.
+
+NaN input generates NaN output.
+
+*** assert(cond) -- assert a condition is true.
+
+Returns zero if the condition is true; otherwise,
+attempts to trigger an error by returning 1/0.
+
+*** nothing -- DELEGATE that does nothing.
+
+*** always -- DELEGATE that returns true.
+
+*** zero -- DELEGATE that returns zero.
+
+** locals
+
+*** dirs -- LIST of directories to search for pacakges
+
+For a ship called a/b/01, this list is:
+    0:/home/A/B/01/
+    0:/home/A/B/
+    0:/home/A/
+    0:/pkg/
+
+*** construct_dirs() -- create a dirs list
+
+This function derives the search list for ~dirs~ from the ship name,
+using string literals designating the top of the pkg and home trees.
+
+*** pkgd -- STRING 0:/pkg/
+
+Actually set to last entry in dirs.
+
+*** home -- STRING 0:/home/A/B/01/
+
+Actually set to first entry in dirs.
+
+*** pkg -- LEXICON maps package name to package object
+
+initialized to the empty lexicon. 

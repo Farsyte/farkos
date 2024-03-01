@@ -8,12 +8,12 @@
     local plan is import("plan").
     local targ is import("targ").
     local nv is import("nv").
-    local io is import("io").
+    local hud is import("hud").
     local dbg is import("dbg").
 
     local holding_position is false.
 
-    rdv:add("node", {                                               // place maneuver node at xfer/final
+    rdv:add("node", {                   // place maneuver node at xfer/final
 
         // rdv:nodd places a maneuver node at the "xfer/final" time,
         // with the Delta-V set to the burn that, if done in zero time,
@@ -35,7 +35,7 @@
 
         return 0. }).
 
-    rdv:add("coarse", {                                             // coarse rendezvous from very far away
+    rdv:add("coarse", {                 // coarse rendezvous from very far away
         parameter targ is target.
 
         // Coarse Approach Maneuver
@@ -224,7 +224,7 @@
         ctrl:dv(dv, 1, 1, 15).
 
         if holding_position {
-            io:say("This is Fine.", false).
+            hud:say("This is Fine.", false).
             ctrl:dv(V(0,0,0),1,1,5).
             return 0. }
 
@@ -295,14 +295,11 @@
         ctrl:dv(dv, 1, 1, 15).
 
         if holding_position
-            io:say("This is Fine.", false).
+            hud:say("This is Fine.", false).
 
         return 5. }).
 
-    rdv:add("rcs_5m", {
-
-        // rdv:rcs_5m uses the RCS jets to gently nudge us to
-        // our rescue spot, five meters away from the target.
+    rdv:add("rcs_5m", {                 // use RCS jets to nudge us to a point 5m from the target.
 
         if abort return 0.
         if not hastarget return 0.
@@ -314,11 +311,11 @@
         set targ:parking_distance to 5.
 
         if targ:park_from_ship():mag>(2*targ:parking_distance) {
-            io:say("Approaching to "+targ:parking_distance+" m.", false).
-            io:say("Please be patient.", false). }
+            hud:say("Approaching to "+targ:parking_distance+" m.", false).
+            hud:say("Please be patient.", false). }
 
         else {
-            io:say("Holding "+targ:parking_distance+" m from Target.", false). }
+            hud:say("Holding "+targ:parking_distance+" m from Target.", false). }
 
         ctrl:rcs_dx(targ:park_from_ship).
         return 5. }).

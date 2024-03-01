@@ -6,7 +6,7 @@
     // allowing persistance of the TARG across reboots.
 
     local nv is import("nv").
-    local io is import("io").
+    local hud is import("hud").
     local memo is import("memo").
     local predict is import("predict").
 
@@ -178,7 +178,7 @@
     targ:add("wait", {                          // wait for TARGET, then make it the mission target.
         if hastarget { return targ:save(). }
         // periodically show a hud message.
-        io:say("Please select target", false).
+        hud:say("Please select target", false).
         return 5. }).
 
     targ:add("restore", {                       // load mission target from persisted data.

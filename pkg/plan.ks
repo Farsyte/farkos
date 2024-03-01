@@ -1,6 +1,6 @@
 {   parameter plan is lex().        // generate maneuver nodes.
 
-    local io is import("io").
+    local hud is import("hud").
     local dbg is import("dbg").
     local mnv is import("mnv").
     local lamb is import("lamb").

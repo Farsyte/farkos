@@ -6,7 +6,7 @@
     local lambert is import("lambert").
     local targ is import("targ").
     local dbg is import("dbg").
-    local io is import("io").
+    local hud is import("hud").
     local nv is import("nv").
     local plan is import("plan").
     local ctrl is import("ctrl").
@@ -301,7 +301,7 @@
             // five seconds so the flight engineer knows we are actually
             // doing something.
             set lamb_plan_chat to time:seconds+5.
-            io:say("Lambert Planning", false). }
+            hud:say("Lambert Planning", false). }
 
         // TERMINATION CONDITION! The step will return false for "please call
         // me again soon" -- so we return a tiny elapsed time, and will soon
@@ -327,7 +327,7 @@
             // or for transfers to Mun and Minmus, which are my
             // current test cases.
 
-            io:say("Lambert Planning Failed.").
+            hud:say("Lambert Planning Failed.").
             return 0. }
 
         local result is plan_xfer_t1_scanner:result.
@@ -356,7 +356,7 @@
 
         // Inform the flight engineer. He will be happy.
 
-        io:say("Lambert Planning Successful.").
+        hud:say("Lambert Planning Successful.").
 
         // Dump any maneuver nodes that might be hanging around.
         // This is paranoia, but it has paid off.

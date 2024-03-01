@@ -1,6 +1,5 @@
 @LAZYGLOBAL off.
-{
-    parameter visviva is lex().         // apply v^2/mu = 2/r1 - 1/a
+{   parameter visviva is lex().         // apply v^2/mu = 2/r1 - 1/a
 
     // see doc/visviva.pdf for derivation of the vis-viva equation used here.
 

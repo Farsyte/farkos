@@ -124,7 +124,8 @@
         // the longer process of encoding and writing the data
         // if the value has not actually changed.
         if not nv:is(name, data)                // elide the "not changed" case.
-            nv_write(name, data). }).
+            nv_write(name, data).
+        return data. }).
 
     nv:add("clr", { parameter name.             // erase the named nonvolatile.
 

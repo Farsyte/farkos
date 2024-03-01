@@ -1,7 +1,7 @@
 @LAZYGLOBAL off.
-{   parameter term is lex(). // console terminal interface
+{   parameter term is lex().            // console terminal interface
 
-    term:add("open", {                  // manipulate the debug console.
+    term:add("open", {                  // display (and maybe resize) the text console.
         parameter w is terminal:width.
         parameter h is terminal:height.
         set terminal:height to h.

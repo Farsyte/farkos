@@ -6,7 +6,7 @@
 
         // Some getters will return the same value when called many times
         // during the same tick, and take significant resources to run,
-        // and this methid will wrap them up so that additional calls will
+        // and this method will wrap them up so that additional calls will
         // instead just use the value.
         //
         // Many getters should NOT be wrapped in this way. This wrapper is just

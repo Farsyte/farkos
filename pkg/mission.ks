@@ -6,7 +6,7 @@
     // with steps being able to request a repeat after a delay,
     // and with explicit action, even loop back to earlier steps.
 
-    local io is import("io").
+    local hud is import("hud").
     local nv is import("nv").
 
     local printed_phase_name is "".
@@ -43,7 +43,7 @@
         if l:istype("String") { mission:do(sayname:bind(l)). return. }
         if l:istype("List") { for e in l mission:do(e). return. }
 
-        io:say("mission:do handling TBD for <"+l:typename+"> "+l). }).
+        hud:say("mission:do handling TBD for <"+l:typename+"> "+l). }).
 
     mission:add("fg", {                         // execute mission plan
 
@@ -125,6 +125,6 @@
         if printed_phase_name=n return.
         set printed_phase_name to n.
         nv:put("mission/phase/name", n).
-        io:say("PHASE: "+n).
+        hud:say("PHASE: "+n).
         return 0. }.
 }
