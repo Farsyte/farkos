@@ -1,0 +1,50 @@
+@LAZYGLOBAL off.
+{   parameter go is lex().
+
+    local Hmin is altitude.             // command 90 pitch at this altitude.
+    local Hmax is 240000.               // command 0 pitch at this altitude.
+
+    go:add("go", {
+        {   // Start with controls locked for initial ascent
+            local ascent_attitude is lookdirup(up:vector, facing:topvector).
+            lock steering to ascent_attitude.
+            lock throttle to 1. }
+
+        {   // Flight engineer hits SPACE BAR to initiate launch.
+            wait until ship:thrust>0. }
+
+        {   // Release the launch clamp when thrust exceeds thrust_wanted.
+            local thrust_wanted is ship:mass * body:mu / body:radius^2.
+            wait until ship:thrust>thrust_wanted and stage:ready. stage. }
+
+        {   // Ascend in launch altitude to Hmin.
+            wait until altitude >= Hmin. }
+
+        {   // ASYNC: Jettison the engine and tank when we hit 80km, or if we start verticalspeed<0.
+            when (altitude>80000 or verticalspeed<0) and stage:ready then stage. }
+
+        {   // ASYNC OPTIONAL: activate something in payload when we ascend above 101 km.
+            when (altitude>101000) then lights on. }
+
+        {   // ASYNC OPTIONAL: deactivate something in payload when we are verticalspeed<0 below 99 km.
+            when (altitude<99000 and verticalspeed<0) then lights off. }
+
+        {   // ASYNC: Arm the parachute when we are verticalspeed<0 below 40 km.
+            when (altitude<40000 and verticalspeed<0 and stage:ready) then stage. }
+
+        {   // ASYNC: report flight path pitch angle when we cross 140 km.
+        }
+
+        {   // Steer gradually from "up" to "east" until out of fuel.
+            lock altitude_fraction to clamp(0,1,(altitude-Hmin)/(Hmax-Hmin)).
+            lock pitch_wanted to 90*(1 - sqrt(altitude_fraction)).
+            // limit angle of attack to ±5°.
+            lock pitch_current to 90-vang(up:vector,velocity:surface).
+            lock pitch_command to clamp(pitch_current-5,pitch_current+5,pitch_wanted).
+            lock dir_steering to heading(90,pitch_command,0).
+            lock steering to lookdirup(dir_steering:vector, facing:topvector).
+            wait until ship:thrust <= 0. unlock throttle. unlock steering. }
+
+        {   // Keep kOS running until we run out of electricity.
+            wait until false. } }).
+}
