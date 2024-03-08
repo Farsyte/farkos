@@ -33,6 +33,12 @@
             when (altitude<40000 and verticalspeed<0 and stage:ready) then stage. }
 
         {   // ASYNC: report flight path pitch angle when we cross 140 km.
+            when (altitude>=100000) then {
+                print "Passing Karman line with "
+                    +round(90-VANG(up:vector,velocity:orbit),1)
+                    +"° flight path pitch". } }
+
+        {   // ASYNC: report flight path pitch angle when we cross 140 km.
             when (altitude>=140000) then {
                 print "Entering space with "
                     +round(90-VANG(up:vector,velocity:orbit),1)
