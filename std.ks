@@ -1,4 +1,5 @@
 @LAZYGLOBAL off.                        // Standard Library: GLOBAL things for FarKOS packages.
+parameter hd is "home".			// allow boot to specify different /home tree
 
 {   // clean-up steps taken at every boot
     wait until ship:unpacked.
@@ -13,7 +14,7 @@ local package_registry is lex().        // map name to package lexicon
 
 {   // global package_path, vessel_home.
     global package_path is list().
-    global vessel_home is "0:/home/".
+    global vessel_home is "0:/"+hd+"/".
     package_path:add("0:/pkg/").
     for d in ship:name:split("-") {
         set vessel_home to vessel_home + d + "/".
@@ -33,7 +34,7 @@ function import { parameter n.          // import the named package.
         local ks is d+n+".ks".
         if exists(ks) {
             runpath(ks, ret). return ret. } }
-print "import: missing "+n.
+    print "import: missing "+n.
     return ret. }
 
 function eval { parameter val.          // resolve lazy evaluations.
