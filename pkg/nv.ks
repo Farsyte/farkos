@@ -58,8 +58,8 @@
         "Body", { parameter val. return "B"+val:name. }).
 
     function nv_enc { parameter val.            // encode value for NV storage.
-        local t is val:typename.
-        return nv_enc_t[t](val). }
+        local ty is val:typename.
+        return nv_enc_t[ty](val). }
 
     function nv_dec { parameter s.              // decode value from NV storage.
         if s[0]=quot return s:remove(0,1).
@@ -124,7 +124,8 @@
         // the longer process of encoding and writing the data
         // if the value has not actually changed.
         if not nv:is(name, data)                // elide the "not changed" case.
-            nv_write(name, data). }).
+            nv_write(name, data).
+        return data. }).
 
     nv:add("clr", { parameter name.             // erase the named nonvolatile.
 

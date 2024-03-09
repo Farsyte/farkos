@@ -12,7 +12,7 @@
 
     local task_list is list(list(2^64, { return 0. })).
 
-    local function schedule { parameter ut, task.
+    local function schedule { parameter ut, task.   // ad task to schedule.
 
         // Request that, at or after the given time, we call the task.
         // Current implementation uses list insertion, which is often
@@ -35,7 +35,7 @@
             set i to i + 1.
         task_list:insert(i, list(ut, task)). }
 
-    local function execute {
+    local function execute {        // execute all scheduled tasks (except the sentinel)
 
         // Execute tasks from the list at their designated times.
         //

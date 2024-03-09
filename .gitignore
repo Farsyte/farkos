@@ -4,6 +4,7 @@
 !.gitignore
 
 *.ksm
+*.log
 
 Auto-Saved*.craft
 Untitled*.craft

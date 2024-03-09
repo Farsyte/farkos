@@ -9,7 +9,7 @@
     local plan is import("plan").
     local scan is import("scan").
     local dbg is import("dbg").
-    local io is import("io").
+    local hud is import("hud").
     local nv is import("nv").
 
     // state retained between steps but not across reboots:
@@ -67,15 +67,15 @@
         local delta_sec is delta_lon * body:rotationperiod/360.
 
         if delta_sec < 11 {
-            io:say("PAD HOLD released:", false).
-            io:say("  delta_lon is "+delta_lon, false).
-            io:say("  delta_sec is "+delta_sec, false).
+            hud:say("PAD HOLD released:", false).
+            hud:say("  delta_lon is "+delta_lon, false).
+            hud:say("  delta_sec is "+delta_sec, false).
             return 0. }
 
         if delta_sec > 30 {
-            io:say("PAD HOLD warping:", false).
-            io:say("  delta_lon is "+delta_lon, false).
-            io:say("  delta_sec is "+delta_sec, false).
+            hud:say("PAD HOLD warping:", false).
+            hud:say("  delta_lon is "+delta_lon, false).
+            hud:say("  delta_sec is "+delta_sec, false).
             kuniverse:timewarp:warpto(time:seconds+delta_sec-15). }
 
         return 1. }).
@@ -99,7 +99,7 @@
 
         if match_peri <= apoapsis and apoapsis <= match_apo {    // SUCCESS.
             lock throttle to 0. lock steering to prograde.
-            io:say("phase_match_apo complete").
+            hud:say("phase_match_apo complete").
             return 0. }
 
         local match_gain is nv:get("match_gain", 1, true).

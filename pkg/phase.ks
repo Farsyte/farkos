@@ -1,8 +1,8 @@
 @LAZYGLOBAL off.
-{   parameter phase is lex(). // stock mission phase library.
+{   parameter phase is lex().           // stock mission phase library.
 
     local nv is import("nv").
-    local io is import("io").
+    local hud is import("hud").
     local dbg is import("dbg").
     local ctrl is import("ctrl").
     local memo is import("memo").
@@ -13,22 +13,22 @@
     local dbg is import("dbg").
 
     // countdown phase needs a local,
-    // which resets when we boot.
     local countdown is 10.
 
-    phase:add("countdown", {    // countdown, ignite, wait for thrust.
+    phase:add("countdown", {            // countdown, ignite, wait for thrust.
         if availablethrust>0 return 0.          // already ignited, just return.
         lock throttle to 1.
         lock steering to facing.
         if countdown > 0 {
-            io:say("T-"+countdown, false).
+            hud:say("T-"+countdown, false).
             set countdown to countdown - 1.
             return 1. }
         radar:cal(). // trigger auto-calibration if needed.
         wait until stage:ready. stage.
+        nv:put("T0", time:seconds).
         return 1. }).
 
-    phase:add("launch", {       // stabilize until clear of pad
+    phase:add("launch", {               // stabilize until clear of pad
         if alt:radar>50 return 0.
         lock steering to facing.
         lock throttle to 1.
@@ -36,7 +36,7 @@
         nv:get("T0", time:seconds, true).
         return 1/10. }).
 
-    phase:add("ascent", {       // ascent control: approximate a gravity turn
+    phase:add("ascent", {               // ascent control: approximate a gravity turn
         if abort return 0.
 
         local radius_body is body:radius.
@@ -46,6 +46,7 @@
         local launch_pitchover is nv:get("launch_pitchover", 2, false).
         local max_facing_error is nv:get("ascent_max_facing_error", 90, true).
         local ascent_apo_grace is nv:get("ascent_apo_grace", 0.5).
+        local atm_height is nv:get("ascent_zero_pitch_altitude", { return max(body:atm:height, 2000). }, true).
 
         if apoapsis >= orbit_altitude-ascent_apo_grace and altitude >= body:atm:height {
             lock throttle to 0.
@@ -63,7 +64,11 @@
             local desired_speed is visviva:v(radius_body+altitude,radius_body+orbit_altitude+1000,radius_body+periapsis).
             local speed_change_wanted is max(0, desired_speed - current_speed).
 
-            local altitude_fraction is clamp(0,1,altitude / min(70000,orbit_altitude)).
+            // AHA: altitude_fraction had a hard-coded 70 km which neeeded to be
+            // the height of the atmosphere.
+            // local altitude_fraction is clamp(0,1,altitude / min(70000,orbit_altitude)).
+
+            local altitude_fraction is clamp(0,1,altitude / min(atm_height,orbit_altitude)).
             local pitch_wanted is (90-launch_pitchover)*(1 - sqrt(altitude_fraction)).
             local cmd_steering is heading(launch_azimuth,pitch_wanted,0).
 
@@ -72,7 +77,7 @@
         ctrl:dv(dv, 1, max_facing_error/2, max_facing_error).
         return 5. }).
 
-    phase:add("ascent_v2", { // throttle back to manage Apoapsis ETA
+    phase:add("ascent_v2", {            // throttle back to manage Apoapsis ETA
         if abort return 0.
 
         // Data collected from the M/01 launch configuration:
@@ -100,6 +105,8 @@
         // conclusion: original ascent is very slightly more efficient
         // and quite a bit faster, but the V2 ascent might allow the
         // use of more efficient but lower thrust engines.
+
+        // TODO provide a way to adapt to body and launch latitude
 
         local eta_min is nv:get("ascent/eta/min", 45, false).
         local eta_max is nv:get("ascent/eta/max", 90, false).
@@ -190,7 +197,7 @@
         // without liquid fuel engines.
 
         if ship:LiquidFuel <= 0 {   // deal with "no fuel" case.
-            io:say("Circularize: no fuel.").
+            hud:say("Circularize: no fuel.").
             abort on. return 0. }
 
         // This is not a precision entry into a circular orbit with a
@@ -241,7 +248,7 @@
         // make use of such a feature.
 
         if body:name:tolower = name:tolower {
-            io:say("Arrived in "+name+" SOI.").
+            hud:say("Arrived in "+name+" SOI.").
             kuniverse:timewarp:cancelwarp().
             ctrl:dv(V(0,0,0),1,1,5).
             return -15. }
@@ -278,7 +285,7 @@
         // we do not admit the possibility of circularizing
         // without liquid fuel engines.
         if ship:LiquidFuel <= 0 {   // deal with "no fuel" case.
-            io:say("Phase:AP_PE: no fuel.").
+            hud:say("Phase:AP_PE: no fuel.").
             abort on. return 0. }
 
         local r_ap is radius_body + min(ap, pe).
@@ -357,13 +364,13 @@
         if hold_in_pose {
             // if we exceed the pose exit threshold, stop posing.
             if peek_throttle > nv:get("hold/pose/exit", 0.5) {
-                io:say("HOLD maneuvering.").
+                hud:say("HOLD maneuvering.").
                 set hold_in_pose to false. } }
 
         else {
             // if we are within the pose entry threshold, start posing.
             if peek_throttle < nv:get("hold/pose/enter", 0.1) {
-                io:say("HOLD in idle pose.").
+                hud:say("HOLD in idle pose.").
                 set hold_in_pose to true. } }
 
         if hold_in_pose {
@@ -522,7 +529,7 @@
         wait until stage:ready. stage.
         return 1. }).
 
-    phase:add("fall", {         // fall into atmosphere
+    phase:add("fall", {                 // fall into atmosphere
 
         // This stage just hangs out, oriented "surface retrograde",
         // until we are well into the atmosphere of the body.
@@ -533,7 +540,7 @@
         ctrl:dv(srfretrograde:vector, 0, 0, 0).
         return 1. }).
 
-    phase:add("decel", {        // active deceleration
+    phase:add("decel", {                // active deceleration
         lock steering to srfretrograde.
 
         // Final deceleration. Go full throttle, pointed in the
@@ -553,7 +560,7 @@
         lock throttle to 1.
         return 1. }).
 
-    phase:add("psafe", {        // wait until generally safe to deploy parachutes
+    phase:add("psafe", {                // wait until generally safe to deploy parachutes
 
         // This code assumes the convention that parachutes are
         // activated when we stage to stage zero.
@@ -575,7 +582,7 @@
         if altitude < 5000 and airspeed < 300 return 0.
         return 1. }).
 
-    phase:add("chute", {        // deploy parachutes.
+    phase:add("chute", {                // deploy parachutes.
 
         // This code assumes the convention that parachutes are
         // activated when we stage to stage zero.
@@ -591,7 +598,7 @@
         unlock throttle.
         return 1. }).
 
-    phase:add("land", {         // control during final landing
+    phase:add("land", {                 // control during final landing
 
         // final landing approach.
         // assure gear is extended, steering and throttle are released,
@@ -605,7 +612,7 @@
         unlock throttle.
         return 1. }).
 
-    phase:add("park", {         // control while parked
+    phase:add("park", {                 // control while parked
 
         // Final mission step for missions that land.
         // Assure steering and throttle are released,
@@ -615,7 +622,7 @@
         unlock throttle.
         return 10. }).
 
-    function has_no_rcs {       // detect "we have no RCS available"
+    function has_no_rcs {               // detect "we have no RCS available"
         local rcs_list is list().
         list rcs in rcs_list.
         for it in rcs_list
@@ -625,8 +632,8 @@
 
     phase:add("force_rcs_on", 0).
     phase:add("force_rcs_off", 0).
-    lock steering to facing. // have to set it at least once ...
-    phase:add("autorcs", {      // enable RCS when appropriate.
+    lock steering to facing.            // have to set it at least once ...
+    phase:add("autorcs", {              // enable RCS when appropriate.
         local f is facing.
         local s is steering.
         if has_no_rcs()                                         return 0.
@@ -644,20 +651,21 @@
         else                                                    rcs off.
         return 1. }).
 
-    // {   // dump some info during boot.
-    //     print " ".
-    //     print "autostager initializing at stage "+stage:number.
-    //     print "  MET: "+(time:seconds - nv:get("T0")).
-    //     print "  altitude: "+altitude.
-    //     print "  s velocity: "+velocity:surface:mag.
-    //     print "  o velocity: "+velocity:orbit:mag.
-    //     print "  delta-v: "+ship:deltav:vacuum. }
-
-    {   // autostager has some local storage.
+    {   // autostager with its local storage.
         local autostager_callcount is 0.
         local mt is 0.
         local sn is stage:number.
-        phase:add("autostager", {   // stage when appropriate.
+
+        // dump some info during boot.
+        //     print " ".
+        //     print "autostager initializing at stage "+stage:number.
+        //     print "  MET: "+(time:seconds - nv:get("T0")).
+        //     print "  altitude: "+altitude.
+        //     print "  s velocity: "+velocity:surface:mag.
+        //     print "  o velocity: "+velocity:orbit:mag.
+        //     print "  delta-v: "+ship:deltav:vacuum.
+
+        phase:add("autostager", {       // basic auto-stager.
 
             set autostager_callcount to autostager_callcount + 1.
 
@@ -703,10 +711,9 @@
             // print "autostager: staging; stage number was "+stage:number.
 
             stage.
-            return 1. }).
-    }
+            return 1. }). }
 
-    phase:add("autostager_enginelist", {   // stage when appropriate.
+    phase:add("autostager_enginelist", {   // engine focused autostager.
 
         // PAUSE if STAGE:READY is false.
         // - catches "we are doing an EVA"
@@ -763,7 +770,7 @@
         if loss>0 print "  lost "+loss+" m/s during staging.".
         return 1. }).
 
-    function phase_unwarp {                             // cancel timewarp
+    function phase_unwarp {             // cancel timewarp
         if kuniverse:timewarp:rate > 1
             kuniverse:timewarp:cancelwarp().
         wait until kuniverse:timewarp:issettled. }

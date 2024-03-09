@@ -1,4 +1,4 @@
-* FARKOS: Farsyte returns to kOS [save 3]
+* FARKOS: Farsyte returns to kOS in 2024 with RP-1
 
 This project attempts to construct a collection of KOS scripts to
 automate control of vessels in KSP.
@@ -6,6 +6,13 @@ automate control of vessels in KSP.
 My goal here is to enjoy the process of building an autopilot
 with a growing collection of capabilities, including combining
 them into automating entire missions.
+
+Now, finally, in 2024, I am tinkering with RP-1 and want to
+make use of kOS and my ~farkos~ code to do automation. Since
+this has been "off my mind" for almost a year, I have of course
+forgotten all the details of ~farkos~ and ~kOS~ in general,
+so revisiting this code gives me a chance to think about what
+documentation (and testing) needs to be added.
 
 ** Design Directions
 
@@ -45,6 +52,19 @@ for folding away details.
 
 See [[doc/folding.org]] for more on this.
 
+Now in 2024, I actually ended up reverting to EMACS as my daily
+driver, but I just popped open VS-Code with the KS extensions I
+set up a year ago, and I'll try to continue using it.
+
+*** Testing, new in 2024
+
+Somehow I managed to set up a fair sized body of KS scripts without
+any apparent automated testing, so I will have to set up the tooling
+for regression tests as part of any effort to modify existing code.
+
+Running tests is going to require an in-game vessel, so running the
+regression tests is going to require some manual steps.
+
 ** Mission Names
 
 I have played with {adverb} {adjective} {object} style names. These
@@ -59,14 +79,20 @@ example, including "tourist" or "orbit" or "rescue" in vessel designs
 that are specific to those needs. I may decide to use compact names,
 and will try to document the abbreviations here.
 
+Currently in use:
+
+    S       Sounding rockets
+    D       Downrange rockets
+
+Planned and reserved:
+
+    A       Automated Testing
     X       Experimental: initial attempts at anything new
     H       Hover specialized vessels
-    S       Sub-orbital specialized vessels
     O       Simple orbital-specialized vessels
     T       Tourist Vessels
     G       Ground Vehicles
     C       Communication Satellites
-    D       Development Platform
 
 ** Module system and bootstrap
 

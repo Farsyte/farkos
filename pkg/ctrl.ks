@@ -2,7 +2,7 @@
 {   parameter ctrl is lex().    // augmented control package
 
     local phase is import("phase").
-    local io is import("io").
+    local hud is import("hud").
 
     // allow missions to tweak these parameters.
     ctrl:add("gain", 1).    // gain: acceleration per change in velocity
@@ -30,7 +30,7 @@
 
     ctrl:add("steering", {                      // steer based on delta-v
         parameter dv_fd.                   // lambda that returns delta-v
-        // ctrl:steering(dv_fd) constructs a direction vector appropraite
+        // ctrl:steering(dv_fd) constructs a direction vector appropriate
         // to the Delta-V value passed in, which may be a Function Delegate.
         // If the Delta-V vector is zero, the returned direction is from ctrl:pose().
         local dv is eval(dv_fd).
@@ -93,7 +93,7 @@
         // This neutralizes the RCS based translation controls in k-OS, turns
         // off the special override that keeps RCS enabled, and restroes k-OS
         // cooked controls to maintain zero thrust in a parked pose.
-        io:say("CTRL: terminating RCS translation.").
+        hud:say("CTRL: terminating RCS translation.").
         set ship:control:neutralize to true.
         set phase:force_rcs_on to 0.
         sas off. rcs off.
@@ -116,7 +116,7 @@
             // and return to the idle pose.
             set phase:force_rcs_on to 0.
             rcs off.
-            io:say("CTRL: RCS has no fuel.").
+            hud:say("CTRL: RCS has no fuel.").
             return ctrl:dv(V(0,0,0),1,1,5). }
 
         // presume half our RCS units are effective in each direction.
