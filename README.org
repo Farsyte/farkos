@@ -14,6 +14,11 @@ forgotten all the details of ~farkos~ and ~kOS~ in general,
 so revisiting this code gives me a chance to think about what
 documentation (and testing) needs to be added.
 
+After some tinkering, I have arranged ~farkos~ so that ~/home~
+continues to hold scripts for unmodified KSP, and ~/rp1~ contains
+the scripts for ~RP-1~ flights. The ~Ships-RP1~ tree will from
+time to time receive snapshots of my ~craft~ files.
+
 ** Design Directions
 
 *** No Local Copies
@@ -65,21 +70,23 @@ for regression tests as part of any effort to modify existing code.
 Running tests is going to require an in-game vessel, so running the
 regression tests is going to require some manual steps.
 
-** Mission Names
+** Mission Names for RP-1
 
 I have played with {adverb} {adjective} {object} style names. These
 were cute and humerous but in the end the joke wore thin, and I found
 myself using other methods to organize my vessels so I could pick out
 the right one for each mission.
 
-Therefore ...
+So now, mission names are a single letter designating what kind of
+mission they automate, and a number that increments when a change is
+made that requires new code. Following that are numbers that indicate
+which launch of that specific configuration.
 
-Missions will be named in ways that suggest what they are doing; for
-example, including "tourist" or "orbit" or "rescue" in vessel designs
-that are specific to those needs. I may decide to use compact names,
-and will try to document the abbreviations here.
+Example:
+    S-2     is the second major configuration for a Sounding rocket.
+    S-2-3   indicates the third launch of the S-2 configuration.
 
-Currently in use:
+Abbreviations currently in use:
 
     S       Sounding rockets
     D       Downrange rockets
@@ -93,6 +100,11 @@ Planned and reserved:
     T       Tourist Vessels
     G       Ground Vehicles
     C       Communication Satellites
+
+** Mission Names for unmodified KSP
+
+The older standard was much as above, but I forced two digit numbers
+for the configuration number (which was never necessary).
 
 ** Module system and bootstrap
 
